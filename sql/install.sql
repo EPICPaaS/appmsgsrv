@@ -16,15 +16,13 @@ CREATE TABLE `application` (
 
 delimiter $$
 
-CREATE TABLE `client` (
-  `id` bigint(20) NOT NULL,
-  `user_id` bigint(20) DEFAULT NULL,
-  `type` varchar(45) DEFAULT NULL,
-  `device_id` varchar(45) DEFAULT NULL,
-  `created` datetime DEFAULT NULL,
-  `updated` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
+CREATE  TABLE `appmsgsrv`.`session` (
+  `id` VARCHAR(64) NOT NULL ,
+  `type` VARCHAR(45) NULL ,
+  `user_id` VARCHAR(64) NULL ,
+  `created` DATETIME NULL ,
+  `updated` DATETIME NULL ,
+  PRIMARY KEY (`id`) );
 
 
 delimiter $$
