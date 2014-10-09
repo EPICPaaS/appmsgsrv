@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"github.com/EPICPaaS/appmsgsrv/app"
+	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/appmsgsrv/perf"
 	"github.com/EPICPaaS/appmsgsrv/process"
 	"github.com/EPICPaaS/appmsgsrv/ver"
@@ -35,6 +36,11 @@ func main() {
 	defer glog.Flush()
 	if err = app.InitConfig(); err != nil {
 		glog.Errorf("InitConfig() error(%v)", err)
+		return
+	}
+	//init db config
+	if err = db.InitConfig(); err != nil {
+		glog.Error("db-InitConfig() error(%v)", err)
 		return
 	}
 	// Set max routine
@@ -57,8 +63,8 @@ func main() {
 		}
 	}
 
-	app.InitDB()
-	defer app.CloseDB()
+	db.InitDB()
+	defer db.CloseDB()
 
 	app.InitRedisStorage()
 
@@ -72,7 +78,7 @@ func main() {
 		return
 	}
 
-	defer app.MySQL.Close()
+	defer db.MySQL.Close()
 
 	// init signals, block wait signals
 	signalCH := InitSignal()

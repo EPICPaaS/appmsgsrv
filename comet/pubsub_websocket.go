@@ -126,6 +126,10 @@ func SubscribeHandle(ws *websocket.Conn) {
 		glog.Errorf("<%s> user_key:\"%s\" add conn error(%s)", addr, key, err)
 		return
 	}
+	//添加会话记录sessionID
+
+	//添加定时任务跟新会话更新时间
+
 	// blocking wait client heartbeat
 	reply := ""
 	begin := time.Now().UnixNano()
@@ -155,9 +159,15 @@ func SubscribeHandle(ws *websocket.Conn) {
 		}
 		end = time.Now().UnixNano()
 	}
+
+	//移除定时更新会话定时任务
+
 	// remove exists conn
 	if err := c.RemoveConn(key, connElem); err != nil {
 		glog.Errorf("<%s> user_key:\"%s\" remove conn error(%s)", addr, key, err)
+	} else {
+		//删除会话
 	}
+
 	return
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
@@ -101,7 +102,7 @@ func (*device) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 
 // 在数据库中查询指定类型客户端的最新的版本.
 func getLatestVerion(deviceType string) (*ClientVersion, error) {
-	row := MySQL.QueryRow(SelectLatestClientVerByType, deviceType)
+	row := db.MySQL.QueryRow(SelectLatestClientVerByType, deviceType)
 
 	clientVer := ClientVersion{}
 	if err := row.Scan(&clientVer.Id, &clientVer.Type, &clientVer.VersionCode, &clientVer.VersionName,

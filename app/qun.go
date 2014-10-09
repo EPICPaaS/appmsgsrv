@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
 	"github.com/golang/glog"
 )
@@ -487,7 +488,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 
 //根据群id更新群topic
 func updateQunTopicById(qunId string, topic string) bool {
-	tx, err := MySQL.Begin()
+	tx, err := db.MySQL.Begin()
 
 	if err != nil {
 		glog.Error(err)
@@ -514,7 +515,7 @@ func updateQunTopicById(qunId string, topic string) bool {
 
 // 数据库中插入群记录、群-用户关联记录.
 func createQun(qun *Qun, qunUsers []QunUser) bool {
-	tx, err := MySQL.Begin()
+	tx, err := db.MySQL.Begin()
 
 	if err != nil {
 		glog.Error(err)
@@ -560,7 +561,7 @@ func createQun(qun *Qun, qunUsers []QunUser) bool {
 
 //添加群成员
 func addQunmember(qunUsers []QunUser) bool {
-	tx, err := MySQL.Begin()
+	tx, err := db.MySQL.Begin()
 
 	if err != nil {
 		glog.Error(err)
@@ -592,7 +593,7 @@ func addQunmember(qunUsers []QunUser) bool {
 
 //删除群成员
 func DelQunMember(qunUsers []QunUser) bool {
-	tx, err := MySQL.Begin()
+	tx, err := db.MySQL.Begin()
 
 	if err != nil {
 		glog.Error(err)
@@ -625,7 +626,7 @@ func DelQunMember(qunUsers []QunUser) bool {
 func getUsersInQun(qunId string) ([]member, error) {
 	ret := []member{}
 	glog.Infoln("qunId", qunId)
-	rows, err := MySQL.Query(SelectQunUserSQL, qunId)
+	rows, err := db.MySQL.Query(SelectQunUserSQL, qunId)
 	if err != nil {
 		glog.Error(err)
 
@@ -660,7 +661,7 @@ func getUsersInQun(qunId string) ([]member, error) {
 func getUserIdsInQun(qunId string) ([]string, error) {
 	ret := []string{}
 
-	rows, err := MySQL.Query(SelectQunUserIdSQL, qunId)
+	rows, err := db.MySQL.Query(SelectQunUserIdSQL, qunId)
 	if err != nil {
 		glog.Error(err)
 
@@ -710,7 +711,7 @@ func getUserNamesInQun(qunId string) ([]string, error) {
 
 // 在数据库中查询群.
 func getQunById(qunId string) (*Qun, error) {
-	row := MySQL.QueryRow(SelectQunById, qunId)
+	row := db.MySQL.QueryRow(SelectQunById, qunId)
 
 	qun := Qun{}
 	if err := row.Scan(&qun.Id, &qun.CreatorId, &qun.Name, &qun.Description, &qun.MaxMember, &qun.Avatar, &qun.Created, &qun.Updated); err != nil {

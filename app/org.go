@@ -3,14 +3,14 @@ package app
 import (
 	"database/sql"
 	"encoding/json"
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
 	"text/template"
 	"time"
-
-	"github.com/golang/glog"
 )
 
 type member struct {
@@ -56,7 +56,7 @@ func getUserByField(fieldName, fieldArg string) *member {
 
 	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where " + fieldName + "=?"
 
-	smt, err := MySQL.Prepare(sql)
+	smt, err := db.MySQL.Prepare(sql)
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -267,7 +267,7 @@ func sortMemberList(lst []*member) {
 }
 
 func getUserListByTenantId(id string) members {
-	smt, err := MySQL.Prepare("select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where tenant_id=?")
+	smt, err := db.MySQL.Prepare("select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where tenant_id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -298,7 +298,7 @@ func getUserListByTenantId(id string) members {
 }
 
 func getUserListByOrgId(id string) members {
-	smt, err := MySQL.Prepare("select `user`.`id`, `user`.`name`, `user`.`nickname`, `user`.`status`, `user`.`avatar`, `user`.`tenant_id`, `user`.`name_py`, `user`.`name_quanpin`, `user`.`mobile`, `user`.`area`,`org_user`.`sort`	from `user`,`org_user` where `user`.`id`=`org_user`.`user_id` and org_id=?")
+	smt, err := db.MySQL.Prepare("select `user`.`id`, `user`.`name`, `user`.`nickname`, `user`.`status`, `user`.`avatar`, `user`.`tenant_id`, `user`.`name_py`, `user`.`name_quanpin`, `user`.`mobile`, `user`.`area`,`org_user`.`sort`	from `user`,`org_user` where `user`.`id`=`org_user`.`user_id` and org_id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -379,7 +379,7 @@ func updateUser(member *member, tx *sql.Tx) error {
 
 func (*device) SyncUser(w http.ResponseWriter, r *http.Request) {
 	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
-	tx, err := MySQL.Begin()
+	tx, err := db.MySQL.Begin()
 
 	body := ""
 	res := map[string]interface{}{"baseResponse": baseRes}
@@ -427,7 +427,7 @@ func (*device) SyncUser(w http.ResponseWriter, r *http.Request) {
 
 func (*device) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
-	tx, err := MySQL.Begin()
+	tx, err := db.MySQL.Begin()
 
 	body := ""
 	res := map[string]interface{}{"baseResponse": baseRes}
@@ -627,7 +627,7 @@ func nextLocation(first, second string) string {
 }
 
 func isUserExists(id string) bool {
-	smt, err := MySQL.Prepare("select 1 from user where id=?")
+	smt, err := db.MySQL.Prepare("select 1 from user where id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -653,7 +653,7 @@ func isUserExists(id string) bool {
 }
 
 func isStar(fromUid, toUId string) bool {
-	smt, err := MySQL.Prepare("select 1 from user_user where from_user_id=? and to_user_id=?")
+	smt, err := db.MySQL.Prepare("select 1 from user_user where from_user_id=? and to_user_id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -683,7 +683,7 @@ func isStar(fromUid, toUId string) bool {
 }
 
 func isExists(id string) (bool, string) {
-	smt, err := MySQL.Prepare("select parent_id from org where id=?")
+	smt, err := db.MySQL.Prepare("select parent_id from org where id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -755,7 +755,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	glog.V(1).Infof("Uid [%s], DeviceId [%s], userName [%s], password [%s]",
 		uid, deviceId, userName, password)
 
-	smt, err := MySQL.Prepare("select id, name,  parent_id, sort from org where tenant_id=?")
+	smt, err := db.MySQL.Prepare("select id, name,  parent_id, sort from org where tenant_id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -813,7 +813,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	sortMemberList(rootList)
 	tenant.MemberList = rootList
 	tenant.MemberCount = len(rootList)
-	smt, err = MySQL.Prepare("select id, code, name from tenant where id=?")
+	smt, err = db.MySQL.Prepare("select id, code, name from tenant where id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -842,7 +842,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 		tenant.UserName = tenant.Uid + TENANT_SUFFIX
 		break
 	}
-	smt, err = MySQL.Prepare("select org_id from org_user where user_id=?")
+	smt, err = db.MySQL.Prepare("select org_id from org_user where user_id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -943,7 +943,7 @@ func getStarUser(userId string) members {
 	ret := members{}
 	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where id in (select to_user_id from user_user where from_user_id=?)"
 
-	smt, err := MySQL.Prepare(sql)
+	smt, err := db.MySQL.Prepare(sql)
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -979,7 +979,7 @@ func searchUser(tenantId, nickName string, offset, limit int) (members, int) {
 	ret := members{}
 	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where tenant_id=? and nickname like ? limit ?, ?"
 
-	smt, err := MySQL.Prepare(sql)
+	smt, err := db.MySQL.Prepare(sql)
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -1009,7 +1009,7 @@ func searchUser(tenantId, nickName string, offset, limit int) (members, int) {
 	}
 
 	sql = "select count(*) from user where nickname like ?"
-	smt, err = MySQL.Prepare(sql)
+	smt, err = db.MySQL.Prepare(sql)
 	if smt != nil {
 		defer smt.Close()
 	} else {
