@@ -16,16 +16,15 @@ CREATE TABLE `application` (
 
 delimiter $$
 
-CREATE TABLE `client` (
-  `id` bigint(20) NOT NULL,
-  `user_id` bigint(20) DEFAULT NULL,
+CREATE TABLE `session` (
+  `id` varchar(64) NOT NULL,
   `type` varchar(45) DEFAULT NULL,
-  `device_id` varchar(45) DEFAULT NULL,
+  `user_id` varchar(64) DEFAULT NULL,
+  `state` varchar(45) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
-
 
 delimiter $$
 
