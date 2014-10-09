@@ -23,7 +23,9 @@
 
 ### 会话
 
-一个会话对应一个推送连接，连接断开会话终止。可以针对会话级别进行推送控制，请参考[会话推送](https://github.com/EPICPaaS/appmsgsrv/issues/1)。
+一个会话对应一个推送连接，连接断开会话终止。
+
+可以针对会话级别进行推送控制，请参考[会话推送](https://github.com/EPICPaaS/appmsgsrv/issues/1)。
 
 ### Name
 
