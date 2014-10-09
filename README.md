@@ -1,6 +1,6 @@
 # 应用消息服务
 
-在 gopush-cluster 基础上做了扩展，加入了用户、群、组织机构等应用元素。
+在 [gopush-cluster](https://github.com/Terry-Mao/gopush-cluster) 基础上做了扩展，加入了用户、群、组织机构等应用元素。
 
 ## 概要
 
