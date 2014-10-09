@@ -18,7 +18,7 @@ package rpc
 
 import (
 	"encoding/json"
-	myzk "github.com/EPICPaaS/gopush-cluster/zk"
+	myzk "github.com/EPICPaaS/appmsgsrv/zk"
 	"github.com/golang/glog"
 	"github.com/samuel/go-zookeeper/zk"
 	"net/rpc"

@@ -18,8 +18,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/EPICPaaS/gopush-cluster/app"
-	"github.com/EPICPaaS/gopush-cluster/router"
+	"github.com/EPICPaaS/appmsgsrv/app"
+	"github.com/EPICPaaS/appmsgsrv/router"
 	"github.com/golang/glog"
 )
 

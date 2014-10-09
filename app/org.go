@@ -213,7 +213,7 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	userName := args["userName"].(string)
 	password := args["password"].(string)
 
-	// glog.V(1).Infof("uid [%s], deviceId [%s], userName [%s], password [%s]", uid, deviceId, userName, password)
+	glog.V(5).Infof("uid [%s], deviceId [%s], userName [%s], password [%s]", uid, deviceId, userName, password)
 
 	// TODO: 登录验证逻辑
 

@@ -2,8 +2,8 @@ package app
 
 import (
 	"errors"
+	"github.com/EPICPaaS/appmsgsrv/ketama"
 	"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/EPICPaaS/gopush-cluster/ketama"
 	"github.com/garyburd/redigo/redis"
 	"github.com/golang/glog"
 	"strconv"

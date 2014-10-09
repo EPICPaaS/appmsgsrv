@@ -17,9 +17,9 @@
 package main
 
 import (
-	"github.com/EPICPaaS/gopush-cluster/app"
-	myrpc "github.com/EPICPaaS/gopush-cluster/rpc"
-	myzk "github.com/EPICPaaS/gopush-cluster/zk"
+	"github.com/EPICPaaS/appmsgsrv/app"
+	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
+	myzk "github.com/EPICPaaS/appmsgsrv/zk"
 	"github.com/golang/glog"
 	"github.com/samuel/go-zookeeper/zk"
 )

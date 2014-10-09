@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	myrpc "github.com/EPICPaaS/gopush-cluster/rpc"
+	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
 	"github.com/golang/glog"
 )
 

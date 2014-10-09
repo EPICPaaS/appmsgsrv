@@ -19,7 +19,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"github.com/EPICPaaS/gopush-cluster/rpc"
+	"github.com/EPICPaaS/appmsgsrv/rpc"
 	"github.com/golang/glog"
 )
 

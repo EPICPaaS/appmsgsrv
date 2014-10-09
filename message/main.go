@@ -18,9 +18,9 @@ package main
 
 import (
 	"flag"
-	"github.com/EPICPaaS/gopush-cluster/perf"
-	"github.com/EPICPaaS/gopush-cluster/process"
-	"github.com/EPICPaaS/gopush-cluster/ver"
+	"github.com/EPICPaaS/appmsgsrv/perf"
+	"github.com/EPICPaaS/appmsgsrv/process"
+	"github.com/EPICPaaS/appmsgsrv/ver"
 	"github.com/golang/glog"
 	"runtime"
 	"time"

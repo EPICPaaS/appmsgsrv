@@ -18,8 +18,8 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/EPICPaaS/gopush-cluster/app"
-	myrpc "github.com/EPICPaaS/gopush-cluster/rpc"
+	"github.com/EPICPaaS/appmsgsrv/app"
+	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
 	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"

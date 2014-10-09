@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/EPICPaaS/gopush-cluster/app"
+	"github.com/EPICPaaS/appmsgsrv/app"
 	"github.com/golang/glog"
 )
 

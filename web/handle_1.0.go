@@ -17,8 +17,8 @@
 package main
 
 import (
-	"github.com/EPICPaaS/gopush-cluster/app"
-	myrpc "github.com/EPICPaaS/gopush-cluster/rpc"
+	"github.com/EPICPaaS/appmsgsrv/app"
+	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
 	"github.com/golang/glog"
 	"net/http"
 	"strconv"
