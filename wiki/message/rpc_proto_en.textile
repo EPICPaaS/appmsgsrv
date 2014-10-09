@@ -1,0 +1,86 @@
+<h3>Terry-Mao/gopush-cluster Message RPC protocol document</h3>
+Message internal communication RPC interface document, used for storing and getting message and such messages management.
+
+<h3>Interface Summary</h3>
+(head). | Name | Description | Method |
+| "<a href="#MessageRPC.Ping">MessageRPC.Ping</a>":MessageRPC_Ping | Service Ping | tcp RPC |
+| "<a href="#MessageRPC.SavePrivate">MessageRPC.SavePrivate</a>":MessageRPC_SavePrivate | Stored Message   | tcp RPC |
+| "<a href="#MessageRPC.GetPrivate">MessageRPC.GetPrivate</a>":MessageRPC_GetPrivate   | Get Message   | tcp RPC |
+| "<a href="#MessageRPC.DelPrivate">MessageRPC.DelPrivate</a>":MessageRPC_DelPrivate   | Clean Key       | tcp RPC |
+
+<h3>Public ErrorCode</h3>
+
+(head). | ErrorCode | Description |
+| 0 | Success |
+| 65534 | Parameter Error |
+| 65535 | Internal Error |
+
+<a name="MessageRPC.Ping"></a>
+
+<h3>MessageRPC.Ping</h3>
+ * Request Parameter
+
+(head). | Parameter | Type | Description |
+| m | int | Write 0 |
+
+ * ErrorCode
+Only Public ErrorCode
+
+<a name="MessageRPC.SavePrivate"></a>
+
+<h3>MessageRPC.SavePrivate</h3>
+ * Request Parameter
+
+(head). | Parameter | Type | Description |
+| m | rpc.MessageSavePrivateArgs | Request parameter struct of Save interface |
+<pre>
+package rpc
+
+// Message SavePrivate Args
+type MessageSavePrivateArgs struct {
+	Key    string          // subscriber key
+	Msg    json.RawMessage // message content
+	MsgId  int64           // message id
+	Expire uint            // message expire second
+}
+</pre>
+
+ * ErrorCode
+Only Public ErrorCode
+
+<a name="MessageRPC.GetPrivate"></a>
+
+<h3>MessageRPC.GetPrivate</h3>
+ * Request Parameter
+
+(head). | Parameter | Type | Description |
+| m | rpc.MessageGetPrivateArgs | Request parameter struct of Get interface |
+<pre>
+// Message Get Args
+type MessageGetPrivateArgs struct {
+	MsgId int64  // message id
+	Key   string // subscriber key
+}
+</pre>
+
+ * ErrorCode
+
+(head). | ErrorCode | Description |
+| rpc. MessageGetResp | Struct of response |
+<pre>
+// Message Get Response
+type MessageGetResp struct {
+	Msgs []*Message // messages
+}
+</pre>
+
+<a name="MessageRPC.DelPrivate"></a>
+
+<h3>MessageRPC.DelPrivate</h3>
+ * Request Parameter
+
+(head). | Parameter | Type | Description |
+| key | string | Subscription key or Public key |
+
+ * ErrorCode
+Only Public ErrorCode

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<meta name="HandheldFriendly" content="true" />
+<title>用户信息</title>
+<link rel="stylesheet" type="text/css" href="{{.staticServer}}/css/user.css" />
+</head>
+
+<body>
+<div id="warp">
+  <header class="section">
+  	<h1>用户信息</h1>
+  
+  	<div id="head-photo">
+  		<div id="img-wrap"><img src="{{.staticServer}}/images/head-photo-big.png" alt="" /></div>
+   	</div>
+  	<p id="user-name">{{.nickname}}</p>
+  </header>
+  <div id="user-info">
+  	<p class="section">Name: {{.nickname}}</p>
+    <p class="section">Email：{{.email}}</p>
+    <p class="section">Phone：{{.phone}}</p>
+  </div>
+  
+  <footer>
+  	<p>云南远信数通科技有限公司&nbsp;&nbsp;版权所有</p>
+    <p>Copyright&nbsp;&nbsp;©&nbsp;&nbsp;2011-2014</p>
+    <p>All Rights Reserved</p>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,88 @@
+@charset "utf-8";
+
+body, div, p, ul, li, dl, dt, dd, h1, h2, h3, h4, h5, h6 {
+	margin:0;
+	padding:0;
+	}
+html {
+	font-size: 10px;
+	}
+body {
+	background:#eaeaea;
+	font-family: 微软雅黑, "Helvetica Neue", Helvetica, STHeiTi, sans-serif;
+	}
+/*html, body {
+    -webkit-user-select: none; 
+    user-select: none;
+}*/
+img {
+	border:none;
+	margin:0;
+	padding:0;
+	}
+a {
+	text-decoration:none;
+	}
+a, img {
+    -webkit-touch-callout: none; /* 禁止长按链接与图片弹出菜单 */
+}
+#warp {
+	width:100%;
+	max-width:1080px;
+	margin:0 auto;
+	font-size: 2.4rem;
+	}
+#warp header {
+	
+	}
+header h1 {
+	font-size: 2.8rem;
+	font-weight: normal;
+	padding:0px 0px 10px 10px;
+	background: url(../images/line-big.png) left bottom no-repeat;
+	background-size: 100% 2px;
+	}
+.section {
+	margin-top: 25px;
+	padding: 10px;
+	background: #fbfbfc;
+	}
+#head-photo {
+	margin: 35px 0px 25px 0px;
+	display: box;
+	display: -webkit-box;
+	display: -moz-box;
+	-webkit-box-pack:center;
+	-moz-box-pack:center;
+	box-pack:center;
+	width: 100%;
+	}
+#img-wrap {
+	width: 13.5%;
+	max-width: 144px;
+	}
+#head-photo img {
+	box-shadow: 0px 0px 5px 3px #dddcdc;
+	border-radius: 65px;
+	max-width: 100%;
+	width: 100%;
+	}
+#user-name {
+	text-align: center;
+	margin-bottom: 35px;
+	}
+#user-info .section {
+	padding: 20px;
+	}
+footer {
+	margin: 55px 0px 20px 0px;
+	color: #8b8b8b;
+	font-size: 14px;
+	text-align: center;
+	}
+	
+@media screen and (max-width: 480px) {
+	html {
+		font-size: 7.5px;
+		}
+	}

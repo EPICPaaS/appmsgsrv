@@ -1,0 +1,58 @@
+<h3>Terry-Mao/gopush-cluster Comet TCP客户端通讯协议文档</h3>
+直接使用Redis的协议格式，方便解析和使用，参考 "Redis 协议":redis_ref 。
+
+<h3>流程图</h3>
+ !http://raw.github.com/Terry-Mao/gopush-cluster/master/wiki/comet/client_proto_zh.png(comet protocol)!
+
+<h3>网络层</h3>
+协议命令总是以 \r\n(CRLF)结尾。
+
+<h3>请求</h3>
+当comet接受订阅命令，如果存在任何错误会返回状态包或主动断开连接，否则会返回响应心跳或者是响应包。
+<pre>
+==*==参数个数 CR LF
+$第一个参数的字符串占用字节数 CR LF
+参数数据 CR LF
+...
+$第N个参数的字符串占用字节数字 CR LF
+参数数据 CR LF
+</pre>
+请求订阅参数列表：
+
+(head). | 字段 | 类型 | 是否必选 | 顺序 | 描述 |
+| cmd | string | 是 | 0 | 指令，发起订阅指令为“sub” |
+| key | string | 是 | 1 | 用户发起订阅的Key |
+| heartbeat | int | 是 | 2 | 长连接的心跳周期（单位：秒）|
+| token | string | 否 | 3 | 验证连接的token |
+| version | string | 否 | 4 | 客户端版本号 |
+
+例如：
+<pre>==*==4\r\n$3\r\nsub\r\n$9\r\nTerry-Mao\r\n$2\r\n30\r\n$5\r\n1.0.4\r\n</pre>
+表示一共有 *4* 个参数的指令，第一个参数表示指令是 *sub* ；第二个参数表示Key是 *Terry-Mao* ；第三个参数表示心跳周期是 *30* 秒；第四个参数表示客户端版本，一般写为gopush-cluster版本号即可；其中指令前面的$num表示指令的字符字节长度，如$3表示sub的订阅指令长度为 *3* 。
+
+<h3>状态</h3>
+错误状态的协议首字符都是“-”，例如参数错误、未授权的Channel、Token验证失败等。
+<pre>-p\r\n
+-a\r\n
+-c\r\n
+</pre>
+其中p表示参数错误、a表示token验证失败、c表示channel未授权或找不到。
+
+<h3>请求心跳</h3>
+心跳包：<pre>h</pre>
+客户端定期发送请求心跳给服务端，服务端接受以后，返回响应心跳包。
+
+<h3>响应心跳</h3>
+心跳包：<pre>+h\r\n</pre>
+服务端接受请求命令包成功以后，返回一个初始响应心跳给客户端，这时候客户端才开始定期发送请求心跳以及接受返回数据。
+
+<h3>响应</h3>
+格式参照上面提到的Redis协议来返回reply，
+例如：
+<pre>$5\r\nTerry\r\n</pre>
+其中Terry就是接受到推送的消息内容。
+在comet返回的数据定义为标准json：
+<pre>{msg:"your data", mid:100, gid:0}</pre>
+客户端需要最终拿到的是json字符串，然后解析获取其中的msg为推送数据，mid为 *int64* 消息ID（客户端保存这个ID，用于获取下次离线消息用，注意区分私信和公共信息的MID要分开存储），gid为消息分组ID（0：表示私信，1：表示公共信息）。
+
+[redis_ref]http://redis.io/topics/protocol
