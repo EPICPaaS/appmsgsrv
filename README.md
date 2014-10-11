@@ -1,4 +1,4 @@
-# 应用消息服务
+# 应用消息服务 [![Build Status](https://drone.io/github.com/EPICPaaS/appmsgsrv/status.png)](https://drone.io/github.com/EPICPaaS/appmsgsrv/latest)
 
 在 [gopush-cluster](https://github.com/Terry-Mao/gopush-cluster) 基础上做了扩展，加入了用户、群、组织机构等应用元素。
 
