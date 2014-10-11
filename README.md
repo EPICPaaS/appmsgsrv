@@ -69,7 +69,7 @@ Postman 是一个 Chrome 扩展，用于开发时调试 HTTP 接口。
 * [《使用 GitBook 写文档》](http://88250.b3log.org/write-doc-via-gitbook)
 * **开发的同时我们也需要同步完善文档**
 * https://github.com/EPICPaaS/youxin-dev-guide
-* [《有信开发指南》](http://88250.gitbooks.io/youxin-dev-guide/zh-cn/index.html)
+* [《有信开发指南》](http://88250.gitbooks.io/youxin-dev-guide)
 
 ## 部署
 
