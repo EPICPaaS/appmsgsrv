@@ -15,14 +15,23 @@
 
 ### 数据库表
 
-* 用户
-* 组织机构
-* 应用
-* 群
-* 用户-群关联
+* 用户（user、user_user）
+* 组织机构（tenant、org、org_user）
+* 应用（application）
+* 群（qun、qun_user）
+* 客户端版本（client_version）
+
+### 会话
+
+一个会话对应一个推送连接，连接断开会话终止。
+
+可以针对会话级别进行推送控制，请参考[会话推送](https://github.com/EPICPaaS/appmsgsrv/issues/1)。
 
 ### Name
-发送/监听时使用 `Name` 作为 gopush-cluster 的 key，规则是在对应的数据库记录 id 上加 `@后缀`：
+
+发送/监听时使用 `Name` 作为 gopush-cluster 的 key：`数据库记录 id` + `会话 id` + `@后缀`
+
+#### @后缀
 
 * 组织机构单位：@tenant
 * 组织机构部门：@org
@@ -41,7 +50,7 @@
 
 迁出项目后需要修改 web.conf，用于在当前目录下运行的默认配置文件。
 * base.app.bind：应用接口监听端口
-* zookeeper.addr：gopush-cluster 集群节点通知
+* zookeeper.addr：gopush-cluster 集群节点通知n
 * user daniel：当前操作系统登录用户 
 * IP 绑定
 
