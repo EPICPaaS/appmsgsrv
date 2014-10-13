@@ -24,3 +24,4 @@ _testmain.go
 /web/web
 /message/message
 /comet/comet
+/client/java/gopush-cli-java-master/target/
