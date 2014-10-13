@@ -20,7 +20,8 @@
 				script = null;
 			}
 		};
-		script.src = options.url + ((/\?/).test(options.url) ? '&' : '?') + 'callback=GoPushCli.' + callback;
+		//script.src = options.url + ((/\?/).test(options.url) ? '&' : '?') + 'callback=GoPushCli.' + callback;
+		script.src = options.url + ((/\?/).test(options.url) ? '&' : '?') + 'cb=GoPushCli.' + callback;
 		head.insertBefore(script, head.firstChild);
 	};
 
@@ -35,7 +36,26 @@
 		// Properties
 		this.host = options.host;
 		this.port = options.port;
-		this.key = options.key;
+		//构建sessionID {key}_{browser}_{version}_{rn}@{xx}  
+		//                               订阅key_浏览器型号 _浏览器版本号 _随机数@ 
+		//例如:  有@user后缀的12345_Netscape_5_751@user ,
+		//        没有@后缀的自动去掉  12345_Netscape_5_098
+		//1 先判断是否有@user这样的后缀
+		var tmp = options.key;
+		var browser=navigator.appName;
+		var b_version=navigator.appVersion;
+		var version=parseFloat(b_version);
+		var rn = Math.round(Math.random()*999); //三位随机数
+ 		 
+		if(tmp.indexOf('@') == -1){
+			tmp = tmp +"_"+browser+"_"+version+"_"+rn;
+		}else{
+			var start = tmp.substring(0,tmp.lastIndexOf('@'));
+			var end = tmp.substring(tmp.lastIndexOf('@'))
+			tmp = start +"_"+browser+"_"+version+"_"+rn+end;
+		}
+		this.type = browser;
+		this.key = tmp;
 		this.heartbeat = options.heartbeat || 60;
 		this.mid = options.mid || 0;
 		this.pmid = options.pmid || 0;
@@ -58,7 +78,7 @@
 	GoPushCli.prototype.start = function(){
 		var that = this;
 		getScript({
-			url: 'http://' + that.host + ':' + that.port + '/server/get?key=' + that.key + '&proto=' + that.proto,
+			url: 'http://' + that.host + ':' + that.port + '/1/server/get?k=' + that.key + '&p=' + that.proto,
 			success: function(json){
 				if(json.ret == 0){
 					that.isGetNode = true;
@@ -77,8 +97,8 @@
 
 	GoPushCli.prototype.initWebSocket = function(node){
 		var that = this;
-		//that.ws = new ReconnectingWebSocket('ws://' + node[0] + ':' + parseInt(node[1]) + '/sub?key=' + that.key + '&heartbeat=' + that.heartbeat);
-		that.ws = new ReconnectingWebSocket('ws://' + node[0] + ':81/sub?key=' + that.key + '&heartbeat=' + that.heartbeat);
+		that.ws = new ReconnectingWebSocket('ws://' + node[0] + ':' + parseInt(node[1]) + '/sub?key=' + that.key + '&heartbeat=' + that.heartbeat);
+		//that.ws = new ReconnectingWebSocket('ws://' + node[0] + ':81/sub?key=' + that.key + '&heartbeat=' + that.heartbeat);
 		that.ws.onopen = function(){
 			var key = that.key;
 			var heartbeatStr = that.heartbeat + '';
@@ -148,7 +168,7 @@
 	GoPushCli.prototype.getOfflineMessage = function(){
 		var that = this;
 		getScript({
-			url: 'http://' + that.host + ':' + that.port + '/msg/get?key=' + that.key + '&mid=' + that.mid + '&pmid=' + that.pmid,
+			url: 'http://' + that.host + ':' + that.port + '/1/msg/get?k=' + that.key +'&t='+ that.type + '&m=' + that.mid + '&p=' + that.pmid,
 			success: function(json){
 				if(json.ret == 0){
 					var message;

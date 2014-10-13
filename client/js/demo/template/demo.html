@@ -38,20 +38,21 @@
     </head>
     <body>
         <div id="content"></div>
-        <form id="chat" method="post" action="http://115.29.107.77:8091/1/admin/push/private?key=QXF&expire=600">
+        <form id="chat" method="post" action="http://127.0.0.1:8091/1/admin/push/private?key=a&expire=600">
             <input id="message" type="text" autocomplete="off" placeholder="想要说什么" />
         </form>
 
         <input id="close" type="button" value="断开">
 
-        <script src="/static/msg-js.js"></script>
+        
         <script src="/static/jquery-1.11.1.min.js"></script>
+        <script src="/static/msg-js.js"></script>
 
         <script>
             var channel = new GoPushCli({
-                host: '115.29.107.77',
+                host: '127.0.0.1',
                 port: 8090,
-                key: '527',
+                key: 'a',
                 onOfflineMessage: function (data) {
                     addContent(decodeURIComponent(data.msg));
                 },
