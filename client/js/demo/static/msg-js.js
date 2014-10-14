@@ -38,8 +38,8 @@
 		this.port = options.port;
 		//构建sessionID {key}_{browser}_{version}_{rn}@{xx}  
 		//                               订阅key_浏览器型号 _浏览器版本号 _随机数@ 
-		//例如:  有@user后缀的12345_Netscape_5_751@user ,
-		//        没有@后缀的自动去掉  12345_Netscape_5_098
+		//例如:  有@user后缀的12345-Netscape-5-751@user ,
+		//        没有@后缀的自动去掉  12345-Netscape-5-098
 		//1 先判断是否有@user这样的后缀
 		var tmp = options.key;
 		var browser=navigator.appName;
@@ -48,11 +48,11 @@
 		var rn = Math.round(Math.random()*999); //三位随机数
  		 
 		if(tmp.indexOf('@') == -1){
-			tmp = tmp +"_"+browser+"_"+version+"_"+rn;
+			tmp = tmp +"-"+browser+"-"+version+"-"+rn;
 		}else{
 			var start = tmp.substring(0,tmp.lastIndexOf('@'));
 			var end = tmp.substring(tmp.lastIndexOf('@'))
-			tmp = start +"_"+browser+"_"+version+"_"+rn+end;
+			tmp = start +"-"+browser+"-"+version+"-"+rn+end;
 		}
 		this.type = browser;
 		this.key = tmp;
