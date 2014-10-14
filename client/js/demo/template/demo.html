@@ -38,7 +38,7 @@
     </head>
     <body>
         <div id="content"></div>
-        <form id="chat" method="post" action="http://127.0.0.1:8091/1/admin/push/private?key=a&expire=600">
+        <form id="chat" method="post" action="http://10.180.120.63:8091/1/admin/push/private?key=a&expire=600">
             <input id="message" type="text" autocomplete="off" placeholder="想要说什么" />
         </form>
 
@@ -50,7 +50,7 @@
 
         <script>
             var channel = new GoPushCli({
-                host: '127.0.0.1',
+                host: '10.180.120.63',
                 port: 8090,
                 key: 'a',
                 onOfflineMessage: function (data) {
