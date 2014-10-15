@@ -3,14 +3,15 @@ package app
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/golang/glog"
 )
 
 type member struct {
@@ -210,10 +211,12 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 
 	uid := baseReq["uid"]
 	deviceId := baseReq["deviceID"]
+	deviceType := baseReq["deviceType"]
 	userName := args["userName"].(string)
 	password := args["password"].(string)
 
-	glog.V(5).Infof("uid [%s], deviceId [%s], userName [%s], password [%s]", uid, deviceId, userName, password)
+	glog.V(5).Infof("uid [%s], deviceId [%s], deviceType [%s], userName [%s], password [%s]",
+		uid, deviceId, deviceType, userName, password)
 
 	// TODO: 登录验证逻辑
 
