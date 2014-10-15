@@ -229,8 +229,11 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//登录后设置用户关联session
-	session.UpdateSessionUserID(deviceId.(string), userName)
+	// 登录后设置用户关联session
+	go session.UpdateSessionUserID(deviceId.(string), userName)
+
+	// 客户端登录记录
+	go loginLog(&Client{UserId: uid, Type: deviceType, DeviceId: deviceId})
 
 	member.UserName = member.Uid + USER_SUFFIX
 

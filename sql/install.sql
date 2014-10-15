@@ -33,10 +33,12 @@ CREATE TABLE `client` (
   `user_id` varchar(64) DEFAULT NULL,
   `type` varchar(45) DEFAULT NULL,
   `device_id` varchar(255) DEFAULT NULL COMMENT '多个的话以 , 分隔',
+  `latest_login_time` datetime DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
+
 
 delimiter $$
 

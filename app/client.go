@@ -2,11 +2,13 @@ package app
 
 import (
 	"encoding/json"
-	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/EPICPaaS/go-uuid/uuid"
+	"github.com/golang/glog"
 )
 
 const (
@@ -14,6 +16,19 @@ const (
 	// 获取最新的客户端版本
 	SelectLatestClientVerByType = "SELECT * FROM `client_version` WHERE `type` = ? ORDER BY `ver_code` DESC LIMIT 1"
 )
+
+// 客户端结构.
+//
+// 设备登录的时候会记录.
+type Client struct {
+	Id              string
+	UserId          string
+	Type            string
+	DeviceId        string
+	LatestLoginTime time.Time
+	Created         time.Time
+	Updated         time.Time
+}
 
 // 客户端版本结构.
 type ClientVersion struct {
@@ -41,6 +56,106 @@ type ClientVerUpdateMsg struct {
 	MsgType       int                           `json:"msgType"`
 	Content       string                        `json:"content"`
 	ObjectContent *ClientVerUpdateObjectContent `json:"objectContent"`
+}
+
+// 登录日志.
+func (*device) loginLog(client *Client) {
+	now := time.Now()
+
+	client.LatestLoginTime = now
+	client.Created = now
+	client.Updated = now
+
+	sql := "select id, user_id, type, device_id, latest_login_time, created, updated from client where " + user_id + "=? and device_id = ?"
+
+	smt, err := db.MySQL.Prepare(sql)
+	if smt != nil {
+		defer smt.Close()
+	} else {
+		return
+	}
+
+	if err != nil {
+		glog.Error(err)
+
+		return
+	}
+
+	row, err := smt.Query(client.UserId, client.DeviceId)
+
+	if row != nil {
+		defer row.Close()
+	} else {
+		return nil
+	}
+
+	exists := false
+	rec := Client{}
+	for row.Next() {
+		exists = true
+
+		err = row.Scan(&rec.Id, &rec.UserId, &rec.Type, &rec.DeviceId, &rec.LatestLoginTime, &rec.Created, &rec.Updated)
+		if err != nil {
+			glog.Error(err)
+
+			return
+		}
+	}
+
+	if exists { // 存在则更新
+		updateLoginLog(client)
+	} else { // 不存在则插入
+		client.Id = uuid.New()
+
+		insertLoginLog(client)
+	}
+}
+
+func insertLoginLog(client *Client) {
+	tx, err := db.MySQL.Begin()
+	if err != nil {
+		glog.Error(err)
+		return
+	}
+
+	_, err = tx.Exec("INSERT INTO `client`(`id`,`user_id`,`type`,`device_id`, `latest_login_time`, `created`,`updated`)"+
+		" VALUES (?,?,?,?,?,?,?)",
+		client.Id, client.UserId, client.Type, client.DeviceId, client.LatestLoginTime, client.Created, client.Updated)
+	if err != nil {
+		glog.Error(err)
+
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		glog.Error(err)
+	}
+}
+
+func updateLoginLog(client *Client) {
+	tx, err := db.MySQL.Begin()
+	if err != nil {
+		glog.Error(err)
+		return
+	}
+
+	_, err = tx.Exec("UPDATE `client` SET  `latest_login_time` = ? WHERE  `id` = ?", client.LatestLoginTime, client.Id)
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		glog.Error(err)
+	}
 }
 
 // 移动端检查更新.
