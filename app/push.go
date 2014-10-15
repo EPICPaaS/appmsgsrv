@@ -185,7 +185,7 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		expire = int(exp.(float64))
 	}
 
-	// 获取推送目标用户 id 集
+	// 获取推送目标用户 Name 集
 	toUserNames, _ := getToUserNames(toUserName)
 
 	// 推送分发

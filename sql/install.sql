@@ -28,6 +28,21 @@ CREATE TABLE `session` (
 
 delimiter $$
 
+CREATE TABLE `client` (
+  `id` varchar(64) NOT NULL,
+  `user_id` varchar(64) DEFAULT NULL,
+  `type` varchar(45) DEFAULT NULL,
+  `device_id` varchar(64) DEFAULT NULL COMMENT '多个的话以 , 分割',
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
+
+
+
+
+delimiter $$
+
 CREATE TABLE `client_version` (
   `id` varchar(64) NOT NULL,
   `type` varchar(45) DEFAULT NULL,
