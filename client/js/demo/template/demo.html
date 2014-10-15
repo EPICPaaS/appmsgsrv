@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Go Push Cluster JavaScript Demo</title>
+
+        <style type="text/css">
+            #content{
+                width: 600px;
+                height: 400px;
+                overflow: auto;
+                font-size: 12px;
+                background: #eee;
+                padding: 5px 10px;
+                margin-bottom: 5px;
+                border: 1px solid #888;
+                box-sizing: border-box;
+                font-family: "微软雅黑";
+                word-wrap: break-word;
+            }
+            #message{
+                width: 600px;
+                padding: 3px;
+                font-size: 12px;
+                font-family: "微软雅黑";
+                box-sizing: border-box;
+            }
+            #api{
+                display: none;
+            }
+        </style>
+
+        <script type="text/javascript" src="/static/ws-flash/swfobject.js"></script>
+        <script type="text/javascript" src="/static/ws-flash/web_socket.js"></script>
+        <script>
+            WEB_SOCKET_SWF_LOCATION = "/static/ws-flash/WebSocketMain.swf";
+        </script>
+    </head>
+    <body>
+        <div id="content"></div>
+        <form id="chat" method="post" action="http://10.180.120.63:8091/1/admin/push/private?key=a&expire=600">
+            <input id="message" type="text" autocomplete="off" placeholder="想要说什么" />
+        </form>
+
+        <input id="close" type="button" value="断开">
+
+        
+        <script src="/static/jquery-1.11.1.min.js"></script>
+        <script src="/static/msg-js.js"></script>
+
+        <script>
+            var channel = new GoPushCli({
+                host: 'localhost',
+                port: 8090,
+                key: 'a',
+                onOfflineMessage: function (data) {
+                    addContent(decodeURIComponent(data.msg));
+                },
+                onOnlineMessage: function (data) {
+                    addContent(decodeURIComponent(data.msg));
+                },
+                onError: function (message) {
+                    addContent(message);
+                },
+                onOpen: function (message) {
+                    addContent('初始化完成');
+                },
+                onClose: function (message) {
+                    addContent('连接断开');
+                }
+            });
+
+            var addContent = function (content) {
+                var element = document.getElementById('content');
+                element.innerHTML += content + '<br />';
+                element.scrollTop = element.scrollHeight;
+            }
+
+            var nickname = prompt('请输入昵称：', 'Name') || 'Name';
+
+            document.getElementById('chat').onsubmit = function () {
+                if (document.getElementById('message').value == '') {
+                    return false;
+                }
+                setTimeout(function () {
+                    document.getElementById('message').value = '';
+                });
+            };
+
+            document.getElementById('close').onclick = function () {
+                channel.destory();
+            };
+
+            channel.start();
+        </script>
+    </body>
+</html>
