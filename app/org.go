@@ -210,9 +210,9 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 
 	baseReq := args["baseRequest"].(map[string]interface{})
 
-	uid := baseReq["uid"]
-	deviceId := baseReq["deviceID"]
-	deviceType := baseReq["deviceType"]
+	uid := baseReq["uid"].(string)
+	deviceId := baseReq["deviceID"].(string)
+	deviceType := baseReq["deviceType"].(string)
 	userName := args["userName"].(string)
 	password := args["password"].(string)
 
@@ -230,10 +230,10 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 登录后设置用户关联session
-	go session.UpdateSessionUserID(deviceId.(string), userName)
+	go session.UpdateSessionUserID(deviceId, userName)
 
 	// 客户端登录记录
-	go loginLog(&Client{UserId: uid, Type: deviceType, DeviceId: deviceId})
+	go Device.loginLog(&Client{UserId: uid, Type: deviceType, DeviceId: deviceId})
 
 	member.UserName = member.Uid + USER_SUFFIX
 

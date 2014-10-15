@@ -66,7 +66,7 @@ func (*device) loginLog(client *Client) {
 	client.Created = now
 	client.Updated = now
 
-	sql := "select id, user_id, type, device_id, latest_login_time, created, updated from client where " + user_id + "=? and device_id = ?"
+	sql := "select id, user_id, type, device_id, latest_login_time, created, updated from client where user_id =? and device_id = ?"
 
 	smt, err := db.MySQL.Prepare(sql)
 	if smt != nil {
@@ -86,7 +86,7 @@ func (*device) loginLog(client *Client) {
 	if row != nil {
 		defer row.Close()
 	} else {
-		return nil
+		return
 	}
 
 	exists := false
