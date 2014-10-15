@@ -90,7 +90,7 @@ func (*device) loginLog(client *Client) {
 	}
 
 	exists := false
-	rec := Client{}
+	rec := &Client{}
 	for row.Next() {
 		exists = true
 
@@ -103,7 +103,7 @@ func (*device) loginLog(client *Client) {
 	}
 
 	if exists { // 存在则更新
-		updateLoginLog(client)
+		updateLoginLog(rec)
 	} else { // 不存在则插入
 		client.Id = uuid.New()
 
@@ -143,7 +143,12 @@ func updateLoginLog(client *Client) {
 		return
 	}
 
-	_, err = tx.Exec("UPDATE `client` SET  `latest_login_time` = ? WHERE  `id` = ?", client.LatestLoginTime, client.Id)
+	now := time.Now()
+	client.Updated = now
+	client.LatestLoginTime = now
+
+	_, err = tx.Exec("UPDATE `client` SET  `latest_login_time` = ? , `updated` = ? WHERE  `id` = ?",
+		client.LatestLoginTime, client.Updated, client.Id)
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
