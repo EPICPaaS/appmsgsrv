@@ -42,6 +42,10 @@ func main() {
 		glog.Error("db-InitConfig() wrror(%v)", err)
 		return
 	}
+
+	db.InitDB()
+	defer db.CloseDB()
+
 	// set max routine
 	runtime.GOMAXPROCS(Conf.MaxProc)
 	// start pprof

@@ -18,6 +18,7 @@ package db
 
 import (
 	"flag"
+	"fmt"
 	"github.com/Terry-Mao/goconf"
 	"github.com/golang/glog"
 )
@@ -29,7 +30,7 @@ var (
 
 // InitConfig initialize config file path
 func init() {
-	flag.StringVar(&confFile, "c", "./db.conf", " set web config file path")
+	flag.StringVar(&confFile, "dbc", "./db.conf", " set db config file path")
 }
 
 type Config struct {
@@ -43,10 +44,11 @@ func InitConfig() error {
 
 	gconf := goconf.New()
 	if err := gconf.Parse(confFile); err != nil {
+		fmt.Println("confFile", confFile)
 		glog.Errorf("goconf.Parse(\"%s\") error(%v)", confFile, err)
 		return err
 	}
-
+	Conf = &Config{}
 	if err := gconf.Unmarshal(Conf); err != nil {
 		glog.Errorf("goconf.Unmarshall() error(%v)", err)
 		return err

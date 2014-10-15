@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/EPICPaaS/appmsgsrv/session"
 	"github.com/golang/glog"
 )
 
@@ -227,6 +228,9 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
+	//登录后设置用户关联session
+	session.UpdateSessionUserID(deviceId.(string), userName)
 
 	member.UserName = member.Uid + USER_SUFFIX
 
