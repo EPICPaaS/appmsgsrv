@@ -18,10 +18,12 @@ package main
 
 import (
 	"code.google.com/p/go.net/websocket"
+	"github.com/EPICPaaS/appmsgsrv/session"
 	"github.com/golang/glog"
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -85,11 +87,13 @@ func SubscribeHandle(ws *websocket.Conn) {
 	params := ws.Request().URL.Query()
 	// get subscriber key
 	key := params.Get("key")
+
 	if key == "" {
 		ws.Write(ParamReply)
 		glog.Warningf("<%s> key param error", addr)
 		return
 	}
+
 	// get heartbeat second
 	heartbeatStr := params.Get("heartbeat")
 	i, err := strconv.Atoi(heartbeatStr)
@@ -103,6 +107,7 @@ func SubscribeHandle(ws *websocket.Conn) {
 		glog.Warningf("<%s> user_key:\"%s\" heartbeat argument error, less than %d", addr, key, minHearbeatSec)
 		return
 	}
+
 	heartbeat := i + delayHeartbeatSec
 	token := params.Get("token")
 	version := params.Get("ver")
@@ -126,10 +131,35 @@ func SubscribeHandle(ws *websocket.Conn) {
 		glog.Errorf("<%s> user_key:\"%s\" add conn error(%s)", addr, key, err)
 		return
 	}
+
 	//添加会话记录sessionID
-
-	//添加定时任务跟新会话更新时间
-
+	var sessionId string = ""
+	strs := strings.Split(key, "@")
+	if len(strs) > 0 {
+		//分割出userid sessionid  type {key}_{browser}-{version}-{rn}@{xx}
+		tmps := strings.Split(strs[0], "_")
+		if len(tmps) > 1 {
+			userId := tmps[0] //此user不一定时userid 若用户为登录则时应用制定的任意数
+			sessionId = tmps[1]
+			sessionType := ""
+			types := strings.Split(sessionId, "-")
+			if len(types) > 0 {
+				sessionType = types[0]
+			}
+			sessionObj := &session.Session{
+				Id:      sessionId,
+				Type:    sessionType,
+				UserId:  userId,
+				Sate:    "initactive",
+				Created: time.Now().Local(),
+				Updated: time.Now().Local(),
+			}
+			session.CreatSession(sessionObj)
+		}
+	}
+	//开始定时更新会话更新时间
+	var tickerFlagStop = make(chan bool, 1)
+	go session.TickerTaskUpdateSession(sessionId, tickerFlagStop)
 	// blocking wait client heartbeat
 	reply := ""
 	begin := time.Now().UnixNano()
@@ -160,14 +190,15 @@ func SubscribeHandle(ws *websocket.Conn) {
 		end = time.Now().UnixNano()
 	}
 
-	//移除定时更新会话定时任务
-
+	//结束定时更新会话定时任务
+	tickerFlagStop <- true
 	// remove exists conn
 	if err := c.RemoveConn(key, connElem); err != nil {
 		glog.Errorf("<%s> user_key:\"%s\" remove conn error(%s)", addr, key, err)
-	} else {
-		//删除会话
 	}
+
+	//移除会话session
+	session.RemoveSessionById(sessionId)
 
 	return
 }

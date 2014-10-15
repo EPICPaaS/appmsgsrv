@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/EPICPaaS/appmsgsrv/session"
 	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
@@ -224,6 +225,9 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
+	//登录后设置用户关联session
+	session.UpdateSessionUserID(deviceId.(string), userName)
 
 	member.UserName = member.Uid + USER_SUFFIX
 
