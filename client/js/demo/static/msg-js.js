@@ -37,8 +37,8 @@
         // Properties
         this.host = options.host;
         this.port = options.port;
-        // 构建会话 id： {key}_{browser}_{version}_{rn}@{xx}  
         
+        // 构建会话 id： {key}_{browser}_{version}_{rn}@{xx}  
         var tmp = options.key;
         var browser = navigator.appName;
         var b_version = navigator.appVersion;
