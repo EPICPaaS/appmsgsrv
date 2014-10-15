@@ -163,6 +163,48 @@ func updateLoginLog(client *Client) {
 	}
 }
 
+func getDeviceIds(userId string) []string {
+	ret := []string{}
+
+	sql := "select device_id from client where user_id =?"
+
+	smt, err := db.MySQL.Prepare(sql)
+	if smt != nil {
+		defer smt.Close()
+	} else {
+		return ret
+	}
+
+	if err != nil {
+		glog.Error(err)
+
+		return ret
+	}
+
+	row, err := smt.Query(userId)
+
+	if row != nil {
+		defer row.Close()
+	} else {
+		return ret
+	}
+
+	for row.Next() {
+		deviceId := ""
+
+		err = row.Scan(&deviceId)
+		if err != nil {
+			glog.Error(err)
+
+			return ret
+		}
+
+		ret = append(ret, deviceId)
+	}
+
+	return ret
+}
+
 // 移动端检查更新.
 func (*device) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
