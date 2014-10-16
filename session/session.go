@@ -23,7 +23,7 @@ type Session struct {
 	Id      string    `json:"id"`
 	Type    string    `json:"type"`
 	UserId  string    `json:"userId"`
-	Sate    string    `json:"sate"`
+	State   string    `json:"state"`
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`
 }
@@ -73,7 +73,7 @@ func CreatSession(session *Session) bool {
 		return false
 	}
 	//var e error
-	_, err = tx.Exec(INSERT_SESSION, session.Id, session.Type, session.UserId, session.Sate, session.Created, session.Updated)
+	_, err = tx.Exec(INSERT_SESSION, session.Id, session.Type, session.UserId, session.State, session.Created, session.Updated)
 	if err != nil {
 
 		glog.Error(err)

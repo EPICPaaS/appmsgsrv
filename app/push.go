@@ -14,9 +14,10 @@ import (
 
 // 推送 Name.
 type Name struct {
-	Id        string
-	SessionId string
-	Suffix    string
+	Id               string
+	SessionId        string
+	ActiveSessionIds []string
+	Suffix           string
 }
 
 func (n *Name) toKey() string {
@@ -102,14 +103,13 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	userNames := []*Name{}
 	// 会话分发
 	for _, userName := range toUserNames {
-		names, _ := getToUserNames(userName.(string), sessionArgs)
+		names, _ := getNames(userName.(string), sessionArgs)
 
 		userNames = append(userNames, names...)
 	}
 
 	// 推送
 	for _, userName := range userNames {
-		// userName 就是 gopush 的 key
 		key := userName.toKey()
 
 		// 看到的接收人应该是具体的目标接收者
@@ -227,11 +227,10 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 获取推送目标用户 Name 集
-	toUserNames, _ := getToUserNames(toUserName, sessionArgs)
+	toUserNames, _ := getNames(toUserName, sessionArgs)
 
 	// 推送
 	for _, userName := range toUserNames {
-		// userName 就是 gopush 的 key
 		key := userName.toKey()
 
 		// 看到的接收人应该是具体的目标接收者
@@ -296,13 +295,20 @@ func buildNames(userIds []string, sessionArgs []string) (names []*Name) {
 	for _, userId := range userIds {
 		sessions := session.GetSessions(userId, sessionArgs)
 
+		activeSessionIds := []string{}
 		for _, s := range sessions {
-			name := &Name{Id: userId, SessionId: s.Id, Suffix: USER_SUFFIX}
+			if session.SESSION_STATE_ACTIVE == s.State {
+				activeSessionIds = append(activeSessionIds, s.Id)
+			}
+		}
+
+		for _, s := range sessions {
+			name := &Name{Id: userId, SessionId: s.Id, ActiveSessionIds: activeSessionIds, Suffix: USER_SUFFIX}
 			names = append(names, name)
 		}
 
-		// id@user
-		name := &Name{Id: userId, SessionId: "", Suffix: USER_SUFFIX}
+		// id@user (i.e. for offline msg)
+		name := &Name{Id: userId, SessionId: "", ActiveSessionIds: activeSessionIds, Suffix: USER_SUFFIX}
 		names = append(names, name)
 	}
 
@@ -310,7 +316,7 @@ func buildNames(userIds []string, sessionArgs []string) (names []*Name) {
 }
 
 // 根据 toUserName 获得最终推送的 name 集（包含会话分发处理）.
-func getToUserNames(toUserName string, sessionArgs []string) (names []*Name, pushType string) {
+func getNames(toUserName string, sessionArgs []string) (names []*Name, pushType string) {
 	toUserId := toUserName[:strings.Index(toUserName, "@")]
 
 	if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 群推
