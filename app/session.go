@@ -127,7 +127,7 @@ func (*app) GetSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//获取用户会话
+	//获取用户会话列表
 	userId := baseReq["uid"].(string)
 	ret := session.GetSessions(userId, []string{"all"})
 	res["memberList"] = ret
