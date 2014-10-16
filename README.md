@@ -29,7 +29,7 @@
 
 ### Name
 
-发送/监听时使用 `Name` 作为 gopush-cluster 的 key：`数据库记录 id` + `会话 id` + `@后缀`
+发送/监听时使用 `Name` 作为 gopush-cluster 的 key：`数据库记录 id` + `_` + `会话 id` + `@后缀`
 
 #### @后缀
 
