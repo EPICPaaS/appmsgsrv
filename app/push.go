@@ -8,6 +8,7 @@ import (
 	"time"
 
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
+	"github.com/EPICPaaS/appmsgsrv/session"
 	"github.com/golang/glog"
 )
 
@@ -155,6 +156,16 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	fromUserID := fromUserName[:strings.Index(fromUserName, "@")]
 	toUserName := msg["toUserName"].(string)
 	toUserID := toUserName[:strings.Index(toUserName, "@")]
+	sessionArgs := []string{}
+	_, exists := args["sessions"]
+	if !exists {
+		// 不存在参数的话默认为 all
+		sessionArgs = append(sessionArgs, "all")
+	} else {
+		for _, arg := range args["sessions"].([]interface{}) {
+			sessionArgs = append(sessionArgs, arg.(string))
+		}
+	}
 
 	if strings.HasSuffix(toUserName, USER_SUFFIX) { // 如果是推人
 		m := getUserByUid(fromUserID)
@@ -186,7 +197,7 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 获取推送目标用户 Name 集
-	toUserNames, _ := getToUserNames(toUserName)
+	toUserNames, _ := getToUserNames(toUserName, sessionArgs)
 
 	// 推送分发
 	for _, userName := range toUserNames {
@@ -251,7 +262,9 @@ func push(key string, msgBytes []byte, expire int) int {
 }
 
 // 根据 toUserName 获得最终推送的 name 集.
-func getToUserNames(toUserName string) (userNames []string, pushType string) {
+func getToUserNames(toUserName string, sessionArgs []string) (userNames []string, pushType string) {
+	toUserId := toUserName[:strings.Index(toUserName, "@")]
+
 	if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 群推
 		qunId := toUserName[:len(toUserName)-len(QUN_SUFFIX)]
 
@@ -293,7 +306,17 @@ func getToUserNames(toUserName string) (userNames []string, pushType string) {
 
 		return userNames, TENANT_SUFFIX
 	} else if strings.HasSuffix(toUserName, USER_SUFFIX) { // 用户推
-		return []string{toUserName}, USER_SUFFIX
+		// 目前只有用户推的时候做会话处理
+		sessions := session.GetSessions(toUserId, sessionArgs)
+		userNames := []string{}
+		for _, session := range sessions {
+			userNames = append(userNames, toUserId+"_"+session.Id+USER_SUFFIX)
+		}
+
+		// 离线消息使用 id@user
+		userNames = append(userNames, toUserId+USER_SUFFIX)
+
+		return userNames, USER_SUFFIX
 	} else if strings.HasSuffix(toUserName, APP_SUFFIX) { // 应用推
 		glog.Warningf("应用推需要走单独的接口")
 		return []string{}, APP_SUFFIX

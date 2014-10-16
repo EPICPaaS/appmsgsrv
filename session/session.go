@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	SESSION_STATE_ACTIVE    = "active"
-	SESSION_STATE_INACTIVE  = "inactive"
+	SESSION_STATE_ACTIVE   = "active"
+	SESSION_STATE_INACTIVE = "inactive"
+
 	INSERT_SESSION          = "INSERT INTO `session`(`id`,`type`,`user_id`,`state`,`created`,`updated`)  VALUES (?,?,?,?,?,?) "
 	DELETE_SESSION_BYID     = "DELETE FROM `session` WHERE `id`=?"
 	DELETE_SESSION_BYUSERID = "DELETE FROM `session` WHERE `user_id`=?"
@@ -29,6 +30,19 @@ type Session struct {
 
 //一个星期扫描一次
 var ScanSessionTime = time.NewTicker(168 * time.Hour)
+
+// 根据 args 参数获取用户 uid 的会话集.
+//
+// args 参数：
+//  1. ["all"] 表示获取该用户所有的会话
+//  2. ["xxx1", "xxx2"] 表示获取该用户 xxx1、xxx2 会话
+//  3. ["active"] 表示获取该用户的所有激活的会话
+//  4. [inactive"] 表示获取该用户的所有非激活的会话
+func GetSessions(uid string, args []string) []*Session {
+	ret := []*Session{}
+
+	return ret
+}
 
 //创建会话session记录
 func CreatSession(session *Session) bool {
