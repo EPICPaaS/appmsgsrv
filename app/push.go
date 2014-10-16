@@ -12,6 +12,17 @@ import (
 	"github.com/golang/glog"
 )
 
+// 推送 Name.
+type Name struct {
+	Id        string
+	SessionId string
+	Suffix    string
+}
+
+func (n *Name) toKey() string {
+	return n.Id + n.SessionId + n.Suffix
+}
+
 // 应用端推送消息给用户.
 func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -88,17 +99,18 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		expire = int(exp.(float64))
 	}
 
-	userNames := []string{}
+	userNames := []*Name{}
+	// 会话分发
 	for _, userName := range toUserNames {
 		names, _ := getToUserNames(userName.(string), sessionArgs)
 
 		userNames = append(userNames, names...)
 	}
 
-	// 推送分发
+	// 推送
 	for _, userName := range userNames {
 		// userName 就是 gopush 的 key
-		key := userName
+		key := userName.toKey()
 
 		// 看到的接收人应该是具体的目标接收者
 		msg["toUserName"] = userName
@@ -217,10 +229,10 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	// 获取推送目标用户 Name 集
 	toUserNames, _ := getToUserNames(toUserName, sessionArgs)
 
-	// 推送分发
+	// 推送
 	for _, userName := range toUserNames {
 		// userName 就是 gopush 的 key
-		key := userName
+		key := userName.toKey()
 
 		// 看到的接收人应该是具体的目标接收者
 		msg["toUserName"] = userName
@@ -279,66 +291,84 @@ func push(key string, msgBytes []byte, expire int) int {
 	return ret
 }
 
-// 根据 toUserName 获得最终推送的 name 集.
-func getToUserNames(toUserName string, sessionArgs []string) (userNames []string, pushType string) {
+// 构造推送 name 集.
+func buildNames(userIds []string, sessionArgs []string) (names []*Name) {
+	for _, userId := range userIds {
+		sessions := session.GetSessions(userId, sessionArgs)
+
+		for _, s := range sessions {
+			name := &Name{Id: userId, SessionId: s.Id, Suffix: USER_SUFFIX}
+			names = append(names, name)
+		}
+
+		// id@user
+		name := &Name{Id: userId, SessionId: "", Suffix: USER_SUFFIX}
+		names = append(names, name)
+	}
+
+	return names
+}
+
+// 根据 toUserName 获得最终推送的 name 集（包含会话分发处理）.
+func getToUserNames(toUserName string, sessionArgs []string) (names []*Name, pushType string) {
 	toUserId := toUserName[:strings.Index(toUserName, "@")]
 
 	if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 群推
 		qunId := toUserName[:len(toUserName)-len(QUN_SUFFIX)]
 
-		userNames, err := getUserNamesInQun(qunId)
+		userIds, err := getUserIdsInQun(qunId)
 
 		if nil != err {
-			return []string{}, QUN_SUFFIX
+			return names, QUN_SUFFIX
 		}
 
-		return userNames, QUN_SUFFIX
+		names = buildNames(userIds, sessionArgs)
+
+		return names, QUN_SUFFIX
 	} else if strings.HasSuffix(toUserName, ORG_SUFFIX) { // 组织机构部门推
 		orgId := toUserName[:len(toUserName)-len(ORG_SUFFIX)]
 
 		users := getUserListByOrgId(orgId)
 
 		if nil == users {
-			return []string{}, ORG_SUFFIX
+			return names, ORG_SUFFIX
 		}
 
-		userNames := []string{}
+		userIds := []string{}
 		for _, user := range users {
-			userNames = append(userNames, user.UserName)
+			userIds = append(userIds, user.Uid)
 		}
 
-		return userNames, ORG_SUFFIX
+		names = buildNames(userIds, sessionArgs)
+
+		return names, ORG_SUFFIX
 	} else if strings.HasSuffix(toUserName, TENANT_SUFFIX) { // 组织机构单位推
 		tenantId := toUserName[:len(toUserName)-len(TENANT_SUFFIX)]
 
 		users := getUserListByTenantId(tenantId)
 
 		if nil == users {
-			return []string{}, TENANT_SUFFIX
+			return names, TENANT_SUFFIX
 		}
 
-		userNames := []string{}
+		userIds := []string{}
 		for _, user := range users {
-			userNames = append(userNames, user.UserName)
+			userIds = append(userIds, user.Uid)
 		}
 
-		return userNames, TENANT_SUFFIX
+		names = buildNames(userIds, sessionArgs)
+
+		return names, TENANT_SUFFIX
 	} else if strings.HasSuffix(toUserName, USER_SUFFIX) { // 用户推
-		// 目前只有用户推的时候做会话处理
-		sessions := session.GetSessions(toUserId, sessionArgs)
-		userNames := []string{}
-		for _, session := range sessions {
-			userNames = append(userNames, toUserId+"_"+session.Id+USER_SUFFIX)
-		}
+		userIds := []string{toUserId}
 
-		// id@user (i.e. for offline msg)
-		userNames = append(userNames, toUserId+USER_SUFFIX)
+		names = buildNames(userIds, sessionArgs)
 
-		return userNames, USER_SUFFIX
+		return names, USER_SUFFIX
 	} else if strings.HasSuffix(toUserName, APP_SUFFIX) { // 应用推
 		glog.Warningf("应用推需要走单独的接口")
-		return []string{}, APP_SUFFIX
+		return names, APP_SUFFIX
 	} else {
-		return []string{}, "@UNDEFINDED"
+		return names, "@UNDEFINDED"
 	}
 }
