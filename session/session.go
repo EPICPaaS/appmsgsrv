@@ -18,17 +18,17 @@ const (
 	UPDATE_SESSION_STATE    = "UPDATE `session` SET `state` = ?  WHERE `id`=? "
 	DELETE_SESSION_PAST     = "DELETE  FROM `session` WHERE  `updated` < ?"
 	SET_USERID              = "UPDATE `session` SET  `user_id` = ? WHERE  `id` = ?"
-	SELECT_SESSION_BYSTATE  = "SELECT  `id`,`type`,`user_id`,`created`,`updated` FROM SESSION WHERE `user_id`=?  AND `state`=?"
-	SELECT_SESSION_BYUSERID = "SELECT  `id`,`type`,`user_id`,`created`,`updated` FROM SESSION WHERE `user_id` = ?"
-	SELECT_SESSION_BYID     = "SELECT  `id`,`type`,`user_id`,`created`,`updated` FROM SESSION WHERE `id`=?"
-	SELECT_SESSION_BYIDS    = "SELECT  `id`,`type`,`user_id`,`created`,`updated` FROM SESSION WHERE `id`IN (？)"
+	SELECT_SESSION_BYSTATE  = "SELECT  `id`,`type`,`user_id`,`state`,`created`,`updated` FROM SESSION WHERE `user_id`=?  AND `state`=?"
+	SELECT_SESSION_BYUSERID = "SELECT  `id`,`type`,`user_id`,`state`,`created`,`updated` FROM SESSION WHERE `user_id` = ?"
+	SELECT_SESSION_BYID     = "SELECT  `id`,`type`,`user_id`,`state`,`created`,`updated` FROM SESSION WHERE `id`=?"
+	SELECT_SESSION_BYIDS    = "SELECT  `id`,`type`,`user_id`,`state`,`created`,`updated` FROM SESSION WHERE `id`IN (？)"
 )
 
 type Session struct {
 	Id      string    `json:"id"`
 	Type    string    `json:"type"`
 	UserId  string    `json:"userId"`
-	Sate    string    `json:"sate"`
+	State   string    `json:"sate"`
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`
 }
@@ -80,7 +80,7 @@ func GetSessions(uid string, args []string) []*Session {
 	}
 	for rows.Next() {
 		session := &Session{}
-		if err := rows.Scan(&session.Id, &session.Type, &session.UserId, &session.Sate, &session.Created, &session.Updated); err != nil {
+		if err := rows.Scan(&session.Id, &session.Type, &session.UserId, &session.State, &session.Created, &session.Updated); err != nil {
 			glog.Error(err)
 			return ret
 		}
@@ -99,7 +99,7 @@ func CreatSession(session *Session) bool {
 		return false
 	}
 	//var e error
-	_, err = tx.Exec(INSERT_SESSION, session.Id, session.Type, session.UserId, session.Sate, session.Created, session.Updated)
+	_, err = tx.Exec(INSERT_SESSION, session.Id, session.Type, session.UserId, session.State, session.Created, session.Updated)
 	if err != nil {
 
 		glog.Error(err)
