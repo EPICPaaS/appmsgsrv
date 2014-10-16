@@ -20,6 +20,7 @@ type Name struct {
 	Suffix           string
 }
 
+// 转换为推送 key.
 func (n *Name) toKey() string {
 	return n.Id + n.SessionId + n.Suffix
 }
