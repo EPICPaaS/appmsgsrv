@@ -67,7 +67,10 @@ func StartHTTP() {
 	appAppServeMux.HandleFunc("/app/client/device/updateQunTopic", app.Device.UpdateQunTopicById)
 	appAppServeMux.HandleFunc("/app/client/device/addQunMember", app.Device.AddQunMember)
 	appAppServeMux.HandleFunc("/app/client/device/delQunMember", app.Device.DelQunMember)
-
+	//消息会话服务
+	appAppServeMux.HandleFunc("/app/client/app/setSessionState ", app.SessionStat)
+	appAppServeMux.HandleFunc("/app/client/device/setSessionState", app.SessionStat)
+	appAppServeMux.HandleFunc("/app/client/app/getSessions", app.App.GetSession)
 	appAppServeMux.HandleFunc("/app/client/app/user/push", app.App.UserPush)
 
 	appAppServeMux.HandleFunc("/app/user/erweima", app.UserErWeiMa)
