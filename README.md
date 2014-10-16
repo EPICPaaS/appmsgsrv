@@ -58,7 +58,7 @@
 * user daniel：当前操作系统登录用户 
 * IP 绑定
 
-启动命令 `./web -v=1 -logtostderr=true`
+启动命令 `./web -v=3 -logtostderr=true`
 
 ### Postman
 
