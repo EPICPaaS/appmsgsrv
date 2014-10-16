@@ -1,29 +1,34 @@
 package session
 
 import (
+	"database/sql"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/golang/glog"
+	"strings"
 	"time"
 )
 
 const (
-	SESSION_STATE_ACTIVE   = "active"
-	SESSION_STATE_INACTIVE = "inactive"
-
+	SESSION_STATE_ACTIVE    = "active"
+	SESSION_STATE_INACTIVE  = "inactive"
 	INSERT_SESSION          = "INSERT INTO `session`(`id`,`type`,`user_id`,`state`,`created`,`updated`)  VALUES (?,?,?,?,?,?) "
 	DELETE_SESSION_BYID     = "DELETE FROM `session` WHERE `id`=?"
 	DELETE_SESSION_BYUSERID = "DELETE FROM `session` WHERE `user_id`=?"
 	UPDATE_SESSION_UPDATED  = "UPDATE `session` SET `updated` = ?  WHERE `id`=? "
-	SELECT_SESSION_ALL      = "SELECT  `id`,`type`,`user_id`,`created`,`updated` FROM SESSION"
+	UPDATE_SESSION_STATE    = "UPDATE `session` SET `state` = ?  WHERE `id`=? "
 	DELETE_SESSION_PAST     = "DELETE  FROM `session` WHERE  `updated` < ?"
 	SET_USERID              = "UPDATE `session` SET  `user_id` = ? WHERE  `id` = ?"
+	SELECT_SESSION_BYSTATE  = "SELECT  `id`,`type`,`user_id`,`created`,`updated` FROM SESSION WHERE `user_id`=?  AND `state`=?"
+	SELECT_SESSION_BYUSERID = "SELECT  `id`,`type`,`user_id`,`created`,`updated` FROM SESSION WHERE `user_id` = ?"
+	SELECT_SESSION_BYID     = "SELECT  `id`,`type`,`user_id`,`created`,`updated` FROM SESSION WHERE `id`=?"
+	SELECT_SESSION_BYIDS    = "SELECT  `id`,`type`,`user_id`,`created`,`updated` FROM SESSION WHERE `id`IN (？)"
 )
 
 type Session struct {
 	Id      string    `json:"id"`
 	Type    string    `json:"type"`
 	UserId  string    `json:"userId"`
-	State   string    `json:"state"`
+	Sate    string    `json:"sate"`
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`
 }
@@ -45,21 +50,42 @@ func GetSessions(uid string, args []string) []*Session {
 	if 0 == length {
 		return ret
 	}
-
+	var rows *sql.Rows
+	var err error
 	if 1 == length {
+
 		first := args[0]
 
 		switch first {
 		case "all":
+			rows, err = db.MySQL.Query(SELECT_SESSION_BYUSERID, uid)
 		case "active":
+			rows, err = db.MySQL.Query(SELECT_SESSION_BYSTATE, uid, "active")
 		case "inactive":
+			rows, err = db.MySQL.Query(SELECT_SESSION_BYSTATE, uid, "inactive")
 		default: // 只有 1 个会话的情况
+			rows, err = db.MySQL.Query(SELECT_SESSION_BYID, first)
 		}
-
+	} else {
+		// 大于 1 一个会话的情况都是指定到了具体的会话 id
+		rows, err = db.MySQL.Query(SELECT_SESSION_BYIDS, strings.Join(args, ","))
+	}
+	if err != nil {
+		glog.Error(err)
 		return ret
 	}
-
-	// 大于 1 一个会话的情况都是指定到了具体的会话 id
+	if err := rows.Err(); err != nil {
+		glog.Error(err)
+		return ret
+	}
+	for rows.Next() {
+		session := &Session{}
+		if err := rows.Scan(&session.Id, &session.Type, &session.UserId, &session.Sate, &session.Created, &session.Updated); err != nil {
+			glog.Error(err)
+			return ret
+		}
+		ret = append(ret, session)
+	}
 
 	return ret
 }
@@ -73,7 +99,7 @@ func CreatSession(session *Session) bool {
 		return false
 	}
 	//var e error
-	_, err = tx.Exec(INSERT_SESSION, session.Id, session.Type, session.UserId, session.State, session.Created, session.Updated)
+	_, err = tx.Exec(INSERT_SESSION, session.Id, session.Type, session.UserId, session.Sate, session.Created, session.Updated)
 	if err != nil {
 
 		glog.Error(err)
@@ -201,6 +227,34 @@ func TickerTaskUpdateSession(sessionId string, tickerFlagStop chan bool) {
 	}
 }
 
+//更新会话状态
+func SetSessionStat(sessionId, state string) bool {
+	tx, err := db.MySQL.Begin()
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+	_, err = tx.Exec(UPDATE_SESSION_STATE, state, sessionId)
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+	//提交操作
+	if err := tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+	return true
+}
+
+//通过userd查询会话session
+func GetSessionsByUserId(userId string) {
+
+}
+
 ///除过时的会话,当更新时间距当前时间超过24 小时，就将该会话移除
 func ScanSession() {
 
@@ -228,5 +282,4 @@ func ScanSession() {
 			glog.Error(err)
 		}
 	}
-
 }
