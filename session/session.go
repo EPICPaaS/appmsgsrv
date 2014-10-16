@@ -41,6 +41,26 @@ var ScanSessionTime = time.NewTicker(168 * time.Hour)
 func GetSessions(uid string, args []string) []*Session {
 	ret := []*Session{}
 
+	length := len(args)
+	if 0 == length {
+		return ret
+	}
+
+	if 1 == length {
+		first := args[0]
+
+		switch first {
+		case "all":
+		case "active":
+		case "inactive":
+		default: // 只有 1 个会话的情况
+		}
+
+		return ret
+	}
+
+	// 大于 1 一个会话的情况都是指定到了具体的会话 id
+
 	return ret
 }
 
