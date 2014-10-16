@@ -150,7 +150,7 @@ func SubscribeHandle(ws *websocket.Conn) {
 				Id:      sessionId,
 				Type:    sessionType,
 				UserId:  userId,
-				Sate:    "initactive",
+				State:   session.SESSION_STATE_INACTIVE,
 				Created: time.Now().Local(),
 				Updated: time.Now().Local(),
 			}
