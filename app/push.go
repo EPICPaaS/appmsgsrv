@@ -100,20 +100,22 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		expire = int(exp.(float64))
 	}
 
-	userNames := []*Name{}
+	names := []*Name{}
 	// 会话分发
 	for _, userName := range toUserNames {
-		names, _ := getNames(userName.(string), sessionArgs)
+		ns, _ := getNames(userName.(string), sessionArgs)
 
-		userNames = append(userNames, names...)
+		names = append(names, ns...)
 	}
 
 	// 推送
-	for _, userName := range userNames {
-		key := userName.toKey()
+	for _, name := range names {
+		key := name.toKey()
 
 		// 看到的接收人应该是具体的目标接收者
-		msg["toUserName"] = userName
+		msg["toUserName"] = name
+
+		msg["activeSessions"] = name.ActiveSessionIds
 
 		msgBytes, err := json.Marshal(msg)
 		if err != nil {
@@ -227,14 +229,16 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 获取推送目标用户 Name 集
-	toUserNames, _ := getNames(toUserName, sessionArgs)
+	names, _ := getNames(toUserName, sessionArgs)
 
 	// 推送
-	for _, userName := range toUserNames {
-		key := userName.toKey()
+	for _, name := range names {
+		key := name.toKey()
 
 		// 看到的接收人应该是具体的目标接收者
-		msg["toUserName"] = userName
+		msg["toUserName"] = name
+
+		msg["activeSessions"] = name.ActiveSessionIds
 
 		msgBytes, err := json.Marshal(msg)
 		if err != nil {
