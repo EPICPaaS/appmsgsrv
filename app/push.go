@@ -65,6 +65,17 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sessionArgs := []string{}
+	_, exists := args["sessions"]
+	if !exists {
+		// 不存在参数的话默认为 all
+		sessionArgs = append(sessionArgs, "all")
+	} else {
+		for _, arg := range args["sessions"].([]interface{}) {
+			sessionArgs = append(sessionArgs, arg.(string))
+		}
+	}
+
 	appId := args["objectContent"].(map[string]interface{})["appId"].(string)
 
 	msg["fromUserName"] = appId + APP_SUFFIX
@@ -77,10 +88,17 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		expire = int(exp.(float64))
 	}
 
-	// 推送分发
+	userNames := []string{}
 	for _, userName := range toUserNames {
+		names, _ := getToUserNames(userName.(string), sessionArgs)
+
+		userNames = append(userNames, names...)
+	}
+
+	// 推送分发
+	for _, userName := range userNames {
 		// userName 就是 gopush 的 key
-		key := userName.(string)
+		key := userName
 
 		// 看到的接收人应该是具体的目标接收者
 		msg["toUserName"] = userName
@@ -313,7 +331,7 @@ func getToUserNames(toUserName string, sessionArgs []string) (userNames []string
 			userNames = append(userNames, toUserId+"_"+session.Id+USER_SUFFIX)
 		}
 
-		// 离线消息使用 id@user
+		// id@user (i.e. for offline msg)
 		userNames = append(userNames, toUserId+USER_SUFFIX)
 
 		return userNames, USER_SUFFIX
