@@ -43,22 +43,20 @@ func main() {
 func starWebsocket(pid int) {
 
 	origin := "http://localhost/"
-	url := "ws://10.180.120.63:6968/sub?key=23622391649370012_Netscape-5-" + strconv.Itoa(pid) + "@user&heartbeat=60"
+	url := "ws://10.180.120.63:6968/sub?key=23622391649337823_Netscape-5-" + strconv.Itoa(pid) + "@user&heartbeat=60"
 	ws, err := websocket.Dial(url, "", origin)
 	checkErr(err)
 
 	msg := make([]byte, 512)
-	n, err := ws.Read(msg)
+	_, err = ws.Read(msg)
 	checkErr(err)
-	fmt.Printf("Received: %s.\n", msg[:n])
 
 	data := []byte("h")
 	ticker := time.NewTicker(30 * time.Second)
 	for _ = range ticker.C {
 		websocket.Message.Send(ws, string(data))
-		n, err := ws.Read(msg)
+		_, err := ws.Read(msg)
 		checkErr(err)
-		fmt.Printf("Received: %s.\n", msg[:n])
 	}
 
 }
