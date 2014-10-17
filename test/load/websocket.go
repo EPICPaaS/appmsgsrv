@@ -67,6 +67,7 @@ func NewRemoveConn(pid int) {
 
 	for {
 		count := rand.Intn(5) + 1
+
 		origin := "http://localhost/"
 		url := "ws://10.180.120.63:6968/sub?key=23622391649370012_Netscape-5-" + strconv.Itoa(pid) + ":" + strconv.Itoa(count) + "@user&heartbeat=60"
 		ws, err := websocket.Dial(url, "", origin)
@@ -79,16 +80,15 @@ func NewRemoveConn(pid int) {
 		data := []byte("h")
 		ticker := time.NewTicker(1 * time.Second)
 		i := 0
-
 		for _ = range ticker.C {
 			websocket.Message.Send(ws, string(data))
 			_, err := ws.Read(msg)
 			checkErr(err)
-			i++
 			if i < count {
 				ws.Close()
 				break
 			}
+			i++
 		}
 	}
 
