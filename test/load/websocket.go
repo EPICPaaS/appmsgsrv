@@ -31,7 +31,7 @@ func main() {
 		}
 	} else if flag == "newRemove" {
 		for i := 0; i < count; i++ {
-			go NewRemoveConn(i, &g)
+			go NewRemoveConn(i)
 		}
 	}
 
@@ -43,7 +43,7 @@ func main() {
 func starWebsocket(pid int) {
 
 	origin := "http://localhost/"
-	url := "ws://192.168.1.111:6968/sub?key=a_Netscape-5-" + strconv.Itoa(pid) + "&heartbeat=60"
+	url := "ws://10.180.120.63:6968/sub?key=23622391649370012_Netscape-5-" + strconv.Itoa(pid) + "@user&heartbeat=60"
 	ws, err := websocket.Dial(url, "", origin)
 	checkErr(err)
 
@@ -63,35 +63,35 @@ func starWebsocket(pid int) {
 
 }
 
-func NewRemoveConn(pid int, g *int) {
+func NewRemoveConn(pid int) {
 
-	count := rand.Intn(10) + 1
-	fmt.Println(count)
-	origin := "http://localhost/"
-	url := "ws://192.168.1.111:6968/sub?key=a_Netscape-5-" + strconv.Itoa(pid) + "&heartbeat=60"
-	ws, err := websocket.Dial(url, "", origin)
-	checkErr(err)
-
-	msg := make([]byte, 512)
-	n, err := ws.Read(msg)
-	checkErr(err)
-	fmt.Printf("Received: %s.\n", msg[:n])
-
-	data := []byte("h")
-	ticker := time.NewTicker(20 * time.Second)
-	i := 0
-	for _ = range ticker.C {
-		websocket.Message.Send(ws, string(data))
-		_, err := ws.Read(msg)
+	for {
+		count := rand.Intn(5) + 1
+		origin := "http://localhost/"
+		url := "ws://10.180.120.63:6968/sub?key=23622391649370012_Netscape-5-" + strconv.Itoa(pid) + "@user&heartbeat=60"
+		ws, err := websocket.Dial(url, "", origin)
 		checkErr(err)
-		i++
-		if i < count {
-			ws.Close()
-			*g++
-			break
-		}
 
+		msg := make([]byte, 512)
+		_, err = ws.Read(msg)
+		checkErr(err)
+
+		data := []byte("h")
+		ticker := time.NewTicker(1 * time.Second)
+		i := 0
+
+		for _ = range ticker.C {
+			websocket.Message.Send(ws, string(data))
+			_, err := ws.Read(msg)
+			checkErr(err)
+			i++
+			if i < count {
+				ws.Close()
+				break
+			}
+		}
 	}
+
 }
 func checkErr(err error) {
 	if err != nil {
