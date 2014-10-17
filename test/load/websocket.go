@@ -68,7 +68,7 @@ func NewRemoveConn(pid int) {
 	for {
 		count := rand.Intn(5) + 1
 		origin := "http://localhost/"
-		url := "ws://10.180.120.63:6968/sub?key=23622391649370012_Netscape-5-" + strconv.Itoa(pid) + "@user&heartbeat=60"
+		url := "ws://10.180.120.63:6968/sub?key=23622391649370012_Netscape-5-" + strconv.Itoa(pid) + ":" + strconv.Itoa(count) + "@user&heartbeat=60"
 		ws, err := websocket.Dial(url, "", origin)
 		checkErr(err)
 
