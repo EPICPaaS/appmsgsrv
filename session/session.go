@@ -2,15 +2,18 @@ package session
 
 import (
 	"database/sql"
-	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/golang/glog"
 	"strings"
 	"time"
+
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/golang/glog"
 )
 
 const (
-	SESSION_STATE_ACTIVE    = "active"
-	SESSION_STATE_INACTIVE  = "inactive"
+	SESSION_STATE_INIT     = "init"
+	SESSION_STATE_ACTIVE   = "active"
+	SESSION_STATE_INACTIVE = "inactive"
+
 	INSERT_SESSION          = "INSERT INTO `session`(`id`,`type`,`user_id`,`state`,`created`,`updated`)  VALUES (?,?,?,?,?,?) "
 	DELETE_SESSION_BYID     = "DELETE FROM `session` WHERE `id`=?"
 	DELETE_SESSION_BYUSERID = "DELETE FROM `session` WHERE `user_id`=?"

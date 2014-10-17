@@ -17,14 +17,15 @@
 package main
 
 import (
-	"code.google.com/p/go.net/websocket"
-	"github.com/EPICPaaS/appmsgsrv/session"
-	"github.com/golang/glog"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"code.google.com/p/go.net/websocket"
+	"github.com/EPICPaaS/appmsgsrv/session"
+	"github.com/golang/glog"
 )
 
 type KeepAliveListener struct {
@@ -150,7 +151,7 @@ func SubscribeHandle(ws *websocket.Conn) {
 				Id:      sessionId,
 				Type:    sessionType,
 				UserId:  userId,
-				State:   session.SESSION_STATE_INACTIVE,
+				State:   session.SESSION_STATE_INIT,
 				Created: time.Now().Local(),
 				Updated: time.Now().Local(),
 			}
