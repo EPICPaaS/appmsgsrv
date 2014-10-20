@@ -22,7 +22,7 @@ type Name struct {
 
 // 转换为推送 key.
 func (n *Name) toKey() string {
-	return n.Id + n.SessionId + n.Suffix
+	return n.SessionId + n.Suffix
 }
 
 // 应用端推送消息给用户.
