@@ -17,15 +17,14 @@
 package main
 
 import (
+	"code.google.com/p/go.net/websocket"
+	"github.com/EPICPaaS/appmsgsrv/session"
+	"github.com/golang/glog"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"code.google.com/p/go.net/websocket"
-	"github.com/EPICPaaS/appmsgsrv/session"
-	"github.com/golang/glog"
 )
 
 type KeepAliveListener struct {
@@ -134,7 +133,7 @@ func SubscribeHandle(ws *websocket.Conn) {
 		return
 	}
 
-	//分割出userid sessionid  type {key}_{browser}-{version}-{rn}@{xx}
+	//分割出userid sessionid  type {userId}_{browser}-{version}-{rn}@{xx}
 	//添加会话记录sessionID
 	var sessionId string = ""
 	strs := strings.Split(key, "@")
@@ -145,7 +144,8 @@ func SubscribeHandle(ws *websocket.Conn) {
 		if len(tmps) > 1 {
 			userId := tmps[0] //此user不一定时userid 若用户为登录则时应用制定的任意数
 			sessionType := ""
-			types := strings.Split(sessionId, "-")
+
+			types := strings.Split(tmps[1], "-")
 			if len(types) > 0 {
 				sessionType = types[0]
 			}
