@@ -84,6 +84,7 @@ func websocketListen(bind string) {
 
 // Subscriber Handle is the websocket handle for sub request.
 func SubscribeHandle(ws *websocket.Conn) {
+
 	addr := ws.Request().RemoteAddr
 	params := ws.Request().URL.Query()
 	// get subscriber key
@@ -133,15 +134,16 @@ func SubscribeHandle(ws *websocket.Conn) {
 		return
 	}
 
+	//分割出userid sessionid  type {key}_{browser}-{version}-{rn}@{xx}
 	//添加会话记录sessionID
 	var sessionId string = ""
 	strs := strings.Split(key, "@")
 	if len(strs) > 0 {
-		//分割出userid sessionid  type {key}_{browser}-{version}-{rn}@{xx}
+
+		sessionId = strs[0]
 		tmps := strings.Split(strs[0], "_")
 		if len(tmps) > 1 {
 			userId := tmps[0] //此user不一定时userid 若用户为登录则时应用制定的任意数
-			sessionId = tmps[1]
 			sessionType := ""
 			types := strings.Split(sessionId, "-")
 			if len(types) > 0 {
