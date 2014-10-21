@@ -83,7 +83,7 @@ func NewRemoveConn(pid int, userId string) {
 			websocket.Message.Send(ws, string(data))
 			_, err := ws.Read(msg)
 			checkErr(err)
-			if i < count {
+			if i > count {
 				ws.Close()
 				break
 			}
