@@ -87,6 +87,7 @@ func NewRemoveConn(pid int, userId string) {
 				ws.Close()
 				break
 			}
+
 			i++
 		}
 	}
