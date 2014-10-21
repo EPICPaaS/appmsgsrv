@@ -31,9 +31,9 @@
 
 使用 `Name` 作为 gopush-cluster 的 key。
 
-* 监听：`数据库记录 id` + `_` + `会话 id` + `@后缀` （监听客户端知道自己的会话）
-* 发送：`数据库记录 id` + `@后缀` （推送时服务端根据参数 `sessions` 拼装会话 id）
-* 获取离线消息：`数据库记录 id` + `@后缀`
+* 监听：`会话 id` + `@后缀` （监听客户端知道自己的会话）
+* 发送：`uid` + `@后缀` （推送时服务端根据参数 `sessions` 拼装会话 id）
+* 获取离线消息：`uid` + `@后缀`
 
 #### @后缀
 
@@ -73,7 +73,7 @@ Postman 是一个 Chrome 扩展，用于开发时调试 HTTP 接口。
 * [《使用 GitBook 写文档》](http://88250.b3log.org/write-doc-via-gitbook)
 * **开发的同时我们也需要同步完善文档**
 * https://github.com/EPICPaaS/youxin-dev-guide
-* [《有信开发指南》](http://88250.gitbooks.io/youxin-dev-guide)
+* [《有信开发指南》](http://epicpaas.gitbooks.io/youxin-dev-guide/)
 
 ## 部署
 

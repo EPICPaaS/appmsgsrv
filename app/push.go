@@ -313,7 +313,8 @@ func buildNames(userIds []string, sessionArgs []string) (names []*Name) {
 		}
 
 		// id@user (i.e. for offline msg)
-		name := &Name{Id: userId, SessionId: "", ActiveSessionIds: activeSessionIds, Suffix: USER_SUFFIX}
+		name := &Name{Id: userId, SessionId: userId /* user_id 作为 session_id */, ActiveSessionIds: activeSessionIds,
+			Suffix: USER_SUFFIX}
 		names = append(names, name)
 	}
 
