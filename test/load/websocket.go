@@ -85,6 +85,7 @@ func NewRemoveConn(pid int, userId string) {
 			checkErr(err)
 			if i > count {
 				ws.Close()
+
 				break
 			}
 
