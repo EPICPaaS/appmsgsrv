@@ -154,14 +154,37 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 	msg["msgType"] = 51
 	msg["content"] = "你创建了群\"" + topic + "\""
 
-	msgBytes, err := json.Marshal(msg)
 	if err != nil {
 		glog.Error("msg Marshal failed ")
 	} else {
-		result := push(creatorId+USER_SUFFIX, msgBytes, 60)
-		if OK != result {
-			glog.Error("Push create qun msg failed ", result)
+		// 获取推送目标用户 Name 集(会话)
+		names, _ := getNames(creatorId, []string{"all"})
+		// 推送
+		for _, name := range names {
+			key := name.toKey()
+
+			// 看到的接收人应该是具体的目标接收者
+			msg["toUserKey"] = key
+			msg["toUserName"] = name.Id + name.Suffix
+
+			msgBytes, err := json.Marshal(msg)
+			if err != nil {
+				baseRes.Ret = ParamErr
+				glog.Error(err)
+
+				return
+			}
+
+			result := push(key, msgBytes, 60)
+			if OK != result {
+				baseRes.Ret = result
+
+				glog.Errorf("Push message failed [%v]", msg)
+
+				// 推送分发过程中失败不立即返回，继续下一个推送
+			}
 		}
+
 	}
 
 	return
