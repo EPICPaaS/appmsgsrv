@@ -150,7 +150,6 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 	msg := map[string]interface{}{}
 	msg["fromUserName"] = qid + QUN_SUFFIX
 	msg["fromDisplayName"] = topic
-	msg["toUserName"] = creatorId + USER_SUFFIX
 	msg["msgType"] = 51
 	msg["content"] = "你创建了群\"" + topic + "\""
 
