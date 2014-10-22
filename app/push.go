@@ -240,6 +240,8 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		// 看到的接收人应该是具体的目标接收者
 		msg["toUserName"] = toUserName
 		msg["toUserKey"] = key
+        
+        name.
 
 		msg["activeSessions"] = name.ActiveSessionIds
 
