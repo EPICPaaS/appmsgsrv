@@ -154,7 +154,7 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 	msg["content"] = "你创建了群\"" + topic + "\""
 
 	// 获取推送目标用户 Name 集(会话)
-	names, _ := getNames(creatorId+USER_SUFFI, []string{"all"})
+	names, _ := getNames(creatorId+USER_SUFFIX, []string{"all"})
 
 	// 推送
 	for _, name := range names {
