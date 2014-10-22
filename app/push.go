@@ -114,7 +114,8 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		key := name.toKey()
 
 		// 看到的接收人应该是具体的目标接收者
-		msg["toUserName"] = key
+		msg["toUserName"] = name.Id + name.Suffix
+		msg["toUserKey"] = key
 
 		msg["activeSessions"] = name.ActiveSessionIds
 
@@ -237,7 +238,8 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		key := name.toKey()
 
 		// 看到的接收人应该是具体的目标接收者
-		msg["toUserName"] = key
+		msg["toUserName"] = toUserName
+		msg["toUserKey"] = key
 
 		msg["activeSessions"] = name.ActiveSessionIds
 
