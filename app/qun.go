@@ -153,35 +153,31 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 	msg["msgType"] = 51
 	msg["content"] = "你创建了群\"" + topic + "\""
 
-	if err != nil {
-		glog.Error("msg Marshal failed ")
-	} else {
-		// 获取推送目标用户 Name 集(会话)
-		names, _ := getNames(creatorId, []string{"all"})
-		// 推送
-		for _, name := range names {
-			key := name.toKey()
+	// 获取推送目标用户 Name 集(会话)
+	names, _ := getNames(creatorId+USER_SUFFI, []string{"all"})
 
-			// 看到的接收人应该是具体的目标接收者
-			msg["toUserKey"] = key
-			msg["toUserName"] = name.Id + name.Suffix
+	// 推送
+	for _, name := range names {
+		key := name.toKey()
 
-			msgBytes, err := json.Marshal(msg)
-			if err != nil {
-				baseRes.Ret = ParamErr
-				glog.Error(err)
+		msg["toUserKey"] = key
+		msg["toUserName"] = name.Id + name.Suffix
 
-				return
-			}
+		msgBytes, err := json.Marshal(msg)
+		if err != nil {
+			baseRes.Ret = ParamErr
+			glog.Error(err)
 
-			result := push(key, msgBytes, 60)
-			if OK != result {
-				baseRes.Ret = result
+			return
+		}
 
-				glog.Errorf("Push message failed [%v]", msg)
+		result := push(key, msgBytes, 60)
+		if OK != result {
+			baseRes.Ret = result
 
-				// 推送分发过程中失败不立即返回，继续下一个推送
-			}
+			glog.Errorf("Push message failed [%v]", msg)
+
+			// 推送分发过程中失败不立即返回，继续下一个推送
 		}
 
 	}
