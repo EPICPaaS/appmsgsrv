@@ -352,14 +352,17 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 	res["quninfo"] = qun
 
 	memberList := args["memberList"].([]interface{})
-	//添加的群成员
 	qunUsers := []QunUser{}
 	now := time.Now()
+	newNikNames := []string{}
 	for _, m := range memberList {
 		member := m.(map[string]interface{})
 		memberId := member["uid"].(string)
+		nikName := member["nickName"].(string)
 		qunUser := QunUser{Id: uuid.New(), QunId: qunId, UserId: memberId, Sort: 0, Role: 0, Created: now, Updated: now}
 		qunUsers = append(qunUsers, qunUser)
+		//构造发送消息用(xxx、xxx、xxx)人
+		newNikNames = append(newNikNames, nikName)
 	}
 	if addQunmember(qunUsers) {
 		members, err := getUsersInQun(qunId)
@@ -371,12 +374,38 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 		}
 		res["memberList"] = members
 		res["memberCount"] = len(members)
-		//给群成员发送消息
-		msgQunUsers := []QunUser{}
-		for _, user := range members {
-            for userTmp := range qunUsers
-		}
 
+		//xxx邀请xxx、xxx、xxx等N人加入了群聊
+		// 给创群人发送消息
+		msg := map[string]interface{}{}
+		msg["fromUserName"] = qunId + QUN_SUFFIX
+		msg["fromDisplayName"] = qun.Name
+		msg["msgType"] = 51
+		msg["content"] = user.NickName + "邀请" + strings.Join(newNikNames, "、") + "等N人加入了群聊"
+
+		for _, menber := range members {
+			//是否排除标志
+			flag := true
+			for _, newMenber := range qunUsers {
+				//排除新成员，发消息给被邀请者
+				if menber.Uid == newMenber.UserId {
+					//您被xxx邀请加入群聊
+					msg["content"] = "您被" + user.NickName + "邀请加入群聊"
+					pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, 600)
+					flag = false
+					break
+				}
+				//自己不用发消息(排除自己)
+				if menber.Uid == user.Uid {
+					flag = false
+					break
+				}
+			}
+
+			if flag {
+				pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, 600)
+			}
+		}
 	} else {
 		glog.Error("add Qun Member   faild")
 		baseRes.ErrMsg = "add Qun Member faild"
@@ -444,11 +473,15 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 	}
 	memberList := args["memberList"].([]interface{})
 	qunUsers := []QunUser{}
+	newNikNames := []string{}
 	for _, m := range memberList {
 		member := m.(map[string]interface{})
 		memberId := member["uid"].(string)
+		nikName := member["nickName"].(string)
 		qunUser := QunUser{QunId: qunId, UserId: memberId}
 		qunUsers = append(qunUsers, qunUser)
+		//构造发送消息用(xxx、xxx、xxx)人
+		newNikNames = append(newNikNames, nikName)
 	}
 	if DelQunMember(qunUsers) {
 		members, err := getUsersInQun(qunId)
@@ -460,6 +493,27 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 		}
 		res["memberList"] = members
 		res["memberCount"] = len(members)
+
+		//xxx将xxx、xxx、xxx等N人移出了群聊
+		// 发送消息群成员
+		msg := map[string]interface{}{}
+		msg["fromUserName"] = qunId + QUN_SUFFIX
+		msg["fromDisplayName"] = qun.Name
+		msg["msgType"] = 51
+		msg["content"] = user.NickName + "将" + strings.Join(newNikNames, "、") + "等N人移除了群聊"
+		for _, member := range members {
+			pushSessions(msg, member.Uid+USER_SUFFIX, []string{"all"}, 600)
+		}
+		//发送给被删除着
+		msg["content"] = "您被" + user.NickName + "移出了群聊"
+		for _, delQunUser := range qunUsers {
+			//自己把自己删除，为退出该群
+			if delQunUser.UserId == user.Uid {
+				msg["content"] = "您退出了群聊"
+			}
+			pushSessions(msg, delQunUser.UserId+USER_SUFFIX, []string{"all"}, 600)
+		}
+
 	} else {
 		glog.Error("delete Qun Member   faild")
 		baseRes.ErrMsg = "delete Qun Member faild"
