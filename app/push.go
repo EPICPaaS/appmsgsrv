@@ -229,35 +229,7 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		expire = int(exp.(float64))
 	}
 
-	// 获取推送目标用户 Name 集
-	names, _ := getNames(toUserName, sessionArgs)
-
-	// 推送
-	for _, name := range names {
-		key := name.toKey()
-
-		msg["toUserName"] = name.Id + name.Suffix
-		msg["toUserKey"] = key
-
-		msg["activeSessions"] = name.ActiveSessionIds
-
-		msgBytes, err := json.Marshal(msg)
-		if err != nil {
-			baseRes.Ret = ParamErr
-			glog.Error(err)
-
-			return
-		}
-
-		result := push(key, msgBytes, expire)
-		if OK != result {
-			baseRes.Ret = result
-
-			glog.Errorf("Push message failed [%v]", msg)
-
-			// 推送分发过程中失败不立即返回，继续下一个推送
-		}
-	}
+	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire)
 
 	res["msgID"] = "msgid"
 	res["clientMsgId"] = msg["clientMsgId"]
@@ -265,6 +237,37 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// 按会话推送.
+func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int) int {
+	names, _ := getNames(toUserName, sessionArgs)
+
+	// 推送
+	for _, name := range names {
+		key := name.toKey()
+
+		msg["toUserKey"] = key
+		msg["toUserName"] = name.Id + name.Suffix
+		msg["activeSessions"] = name.ActiveSessionIds
+
+		msgBytes, err := json.Marshal(msg)
+		if err != nil {
+			glog.Error(err)
+
+			return ParamErr
+		}
+
+		result := push(key, msgBytes, expire)
+		if OK != result {
+			glog.Errorf("Push message failed [%v]", msg)
+
+			// 推送分发过程中失败不立即返回，继续下一个推送
+		}
+	}
+
+	return OK
+}
+
+// 按 key 推送.
 func push(key string, msgBytes []byte, expire int) int {
 	node := myrpc.GetComet(key)
 

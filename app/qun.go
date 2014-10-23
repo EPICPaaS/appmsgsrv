@@ -146,41 +146,14 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 
 	res["memberList"] = members
 
-	//给创群人发送消息
+	// 给创群人发送消息
 	msg := map[string]interface{}{}
 	msg["fromUserName"] = qid + QUN_SUFFIX
 	msg["fromDisplayName"] = topic
 	msg["msgType"] = 51
 	msg["content"] = "你创建了群\"" + topic + "\""
 
-	// 获取推送目标用户 Name 集(会话)
-	names, _ := getNames(creatorId+USER_SUFFIX, []string{"all"})
-
-	// 推送
-	for _, name := range names {
-		key := name.toKey()
-
-		msg["toUserKey"] = key
-		msg["toUserName"] = name.Id + name.Suffix
-
-		msgBytes, err := json.Marshal(msg)
-		if err != nil {
-			baseRes.Ret = ParamErr
-			glog.Error(err)
-
-			return
-		}
-
-		result := push(key, msgBytes, 60)
-		if OK != result {
-			baseRes.Ret = result
-
-			glog.Errorf("Push message failed [%v]", msg)
-
-			// 推送分发过程中失败不立即返回，继续下一个推送
-		}
-
-	}
+	baseRes.Ret = pushSessions(msg, creatorId+USER_SUFFIX, []string{"all"}, 600)
 
 	return
 }
@@ -303,17 +276,9 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 		msg["toUserName"] = user.Uid + USER_SUFFIX
 		msg["msgType"] = 51
 
-		//给修改者发送消息
+		// 给修改者发送消息
 		msg["content"] = "你修改了群名为\"" + topic + "\""
-		msgBytes, err := json.Marshal(msg)
-		if err != nil {
-			glog.Error("msg Marshal failed ")
-		} else {
-			result := push(user.Uid+USER_SUFFIX, msgBytes, 600)
-			if OK != result {
-				glog.Error("Push create qun msg failed ", result)
-			}
-		}
+		pushSessions(msg, user.Uid+USER_SUFFIX, []string{"all"}, 600)
 
 		//给其他群成员发送消息
 		msg["content"] = user.NickName + "修改了群名为\"" + topic + "\""
@@ -323,17 +288,8 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 				if user.Uid == mem.Uid {
 					continue
 				}
-				msg["toUserName"] = mem.Uid + USER_SUFFIX
-				msgBytes, err = json.Marshal(msg)
-				if err != nil {
-					glog.Error("msg Marshal failed ")
-				} else {
-					result := push(mem.Uid+USER_SUFFIX, msgBytes, 600)
-					if OK != result {
-						glog.Error("Push create qun msg failed ", result)
-					}
-				}
 
+				pushSessions(msg, mem.Uid+USER_SUFFIX, []string{"all"}, 600)
 			}
 		}
 	} else {
