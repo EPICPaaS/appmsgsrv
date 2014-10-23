@@ -2,14 +2,15 @@ package app
 
 import (
 	"encoding/json"
-	"io/ioutil"
-	"net/http"
-	"strings"
-	"time"
-
+	"fmt"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
 	"github.com/golang/glog"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 const (
@@ -381,7 +382,8 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 		msg["fromUserName"] = qunId + QUN_SUFFIX
 		msg["fromDisplayName"] = qun.Name
 		msg["msgType"] = 51
-		msg["content"] = user.NickName + "邀请" + strings.Join(newNikNames, "、") + "等N人加入了群聊"
+		contentALL := user.NickName + "邀请" + strings.Join(newNikNames, "、") + "等" + strconv.Itoa(len(newNikNames)) + "人加入了群聊"
+		contentJoin := "您被" + user.NickName + "邀请加入群聊"
 
 		for _, menber := range members {
 			//是否排除标志
@@ -390,7 +392,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 				//排除新成员，发消息给被邀请者
 				if menber.Uid == newMenber.UserId {
 					//您被xxx邀请加入群聊
-					msg["content"] = "您被" + user.NickName + "邀请加入群聊"
+					msg["content"] = contentJoin
 					pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, 600)
 					flag = false
 					break
@@ -403,6 +405,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if flag {
+				msg["content"] = contentALL
 				pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, 600)
 			}
 		}
@@ -465,6 +468,8 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 	qun.CreatorUserName = qun.CreatorId + USER_SUFFIX
 	res["quninfo"] = qun
 	creatorId := qun.CreatorId
+	fmt.Println(creatorId)
+	fmt.Println(user.Uid)
 	if creatorId != user.Uid {
 		glog.Error("delete Qun Member   faild,only qun creater can delete")
 		baseRes.ErrMsg = "delete Qun Member faild,only qun creater can delete"
@@ -500,16 +505,20 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 		msg["fromUserName"] = qunId + QUN_SUFFIX
 		msg["fromDisplayName"] = qun.Name
 		msg["msgType"] = 51
-		msg["content"] = user.NickName + "将" + strings.Join(newNikNames, "、") + "等N人移除了群聊"
+		contentAll := user.NickName + "将" + strings.Join(newNikNames, "、") + "等" + strconv.Itoa(len(newNikNames)) + "人移除了群聊"
+		contentJoin := "您被" + user.NickName + "移出了群聊"
+
+		msg["content"] = contentAll
 		for _, member := range members {
 			pushSessions(msg, member.Uid+USER_SUFFIX, []string{"all"}, 600)
 		}
 		//发送给被删除着
-		msg["content"] = "您被" + user.NickName + "移出了群聊"
 		for _, delQunUser := range qunUsers {
 			//自己把自己删除，为退出该群
 			if delQunUser.UserId == user.Uid {
 				msg["content"] = "您退出了群聊"
+			} else {
+				msg["content"] = contentJoin
 			}
 			pushSessions(msg, delQunUser.UserId+USER_SUFFIX, []string{"all"}, 600)
 		}
