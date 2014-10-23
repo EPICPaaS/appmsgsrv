@@ -396,6 +396,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 	res["quninfo"] = qun
 
 	memberList := args["memberList"].([]interface{})
+	//添加的群成员
 	qunUsers := []QunUser{}
 	now := time.Now()
 	for _, m := range memberList {
@@ -414,6 +415,12 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 		}
 		res["memberList"] = members
 		res["memberCount"] = len(members)
+		//给群成员发送消息
+		msgQunUsers := []QunUser{}
+		for _, user := range members {
+            for userTmp := range qunUsers
+		}
+
 	} else {
 		glog.Error("add Qun Member   faild")
 		baseRes.ErrMsg = "add Qun Member faild"
