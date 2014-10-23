@@ -28,6 +28,20 @@ CREATE TABLE `session` (
 
 delimiter $$
 
+CREATE TABLE `resource` (
+  `id` varchar(64) NOT NULL,
+  `tenant_id` varchar(64) DEFAULT NULL,
+  `name` varchar(45) DEFAULT NULL,
+  `description` varchar(512) DEFAULT NULL,
+  `type` varchar(45) DEFAULT NULL,
+  `content` varchar(255) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
+
+delimiter $$
+
 CREATE TABLE `client` (
   `id` varchar(64) NOT NULL,
   `user_id` varchar(64) DEFAULT NULL,
