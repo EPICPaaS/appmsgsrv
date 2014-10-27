@@ -28,6 +28,19 @@ CREATE TABLE `session` (
 
 delimiter $$
 
+CREATE TABLE `apns_token` (
+  `id` varchar(64) NOT NULL,
+  `user_id` varchar(64) DEFAULT NULL,
+  `device_id` varchar(64) DEFAULT NULL,
+  `apns_token` varchar(64) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
+
+
+delimiter $$
+
 CREATE TABLE `resource` (
   `id` varchar(64) NOT NULL,
   `tenant_id` varchar(64) DEFAULT NULL,
