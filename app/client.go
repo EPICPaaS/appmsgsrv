@@ -329,6 +329,7 @@ func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 	}
 	if insertApnsToken(ApnsToken) {
 		baseRes.Ret = OK
+		baseRes.ErrMsg = "save apns_token success"
 		return
 	} else {
 		baseRes.Ret = InternalErr
