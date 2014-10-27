@@ -2,19 +2,21 @@ package app
 
 import (
 	"encoding/json"
-	"io/ioutil"
-	"net/http"
-	"time"
-
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
 	"github.com/golang/glog"
+	"io/ioutil"
+	"net/http"
+	"time"
 )
 
 const (
 
 	// 获取最新的客户端版本
 	SelectLatestClientVerByType = "SELECT * FROM `client_version` WHERE `type` = ? ORDER BY `ver_code` DESC LIMIT 1"
+	//之久话apns token
+	InsertApnsToken         = "INSERT INTO `apns_token`(`id`,`user_id`,`device_id`,`apns_token`,`created`,`updated`) VALUES(?,?,?,?,?,?)"
+	SelectApnsTokenByUserId = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? "
 )
 
 // 客户端结构.
@@ -56,6 +58,16 @@ type ClientVerUpdateMsg struct {
 	MsgType       int                           `json:"msgType"`
 	Content       string                        `json:"content"`
 	ObjectContent *ClientVerUpdateObjectContent `json:"objectContent"`
+}
+
+//证书
+type ApnsToken struct {
+	Id        string    `json:"id"`
+	UserId    string    `json:"userId"`
+	DeviceId  string    `json:"deviceId"`
+	ApnsToken string    `json:"apnsToken"`
+	Created   time.Time `json:"created"`
+	Updated   time.Time `json:"updated"`
 }
 
 // 登录日志.
@@ -262,6 +274,69 @@ func (*device) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 	res["msg"] = msg
 }
 
+//持久话apns_token
+func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+	// Token 校验
+	token := baseReq["token"].(string)
+	user := getUserByToken(token)
+	if nil == user {
+		baseRes.Ret = AuthErr
+		baseRes.ErrMsg = "Authentication failed"
+		return
+	}
+
+	apnsToken := args["apns_token"].(string)
+	deviceId := baseReq["deviceID"].(string)
+	if len(apnsToken) == 0 || len(deviceId) == 0 {
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	ApnsToken := &ApnsToken{
+		UserId:    user.Uid,
+		DeviceId:  deviceId,
+		ApnsToken: apnsToken,
+		Created:   time.Now().Local(),
+		Updated:   time.Now().Local(),
+	}
+	if insertApnsToken(ApnsToken) {
+		baseRes.Ret = OK
+		return
+	} else {
+		baseRes.Ret = InternalErr
+		baseRes.ErrMsg = "Sava apns_token faild"
+		return
+	}
+}
+
 // 在数据库中查询指定类型客户端的最新的版本.
 func getLatestVerion(deviceType string) (*ClientVersion, error) {
 	row := db.MySQL.QueryRow(SelectLatestClientVerByType, deviceType)
@@ -276,4 +351,58 @@ func getLatestVerion(deviceType string) (*ClientVersion, error) {
 	}
 
 	return &clientVer, nil
+}
+
+//持久话apnstoken
+func insertApnsToken(apnsToken *ApnsToken) bool {
+	tx, err := db.MySQL.Begin()
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	_, err = tx.Exec(InsertApnsToken, uuid.New(), apnsToken.UserId, apnsToken.DeviceId, apnsToken.ApnsToken, apnsToken.Created, apnsToken.Updated)
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+
+	if err := tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	return true
+}
+
+//根据userd获取apnsToken
+func getApnsToken(userId string) ([]ApnsToken, error) {
+
+	ret := []ApnsToken{}
+	glog.Infoln("userId", userId)
+	rows, err := db.MySQL.Query(SelectApnsTokenByUserId, userId)
+	if err != nil {
+		glog.Error(err)
+
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		apnsToken := ApnsToken{}
+		if err := rows.Scan(&apnsToken.Id, &apnsToken.UserId, &apnsToken.DeviceId, &apnsToken.ApnsToken, &apnsToken.Created, &apnsToken.Updated); err != nil {
+			glog.Error(err)
+			return nil, err
+		}
+		ret = append(ret, apnsToken)
+	}
+
+	if err := rows.Err(); err != nil {
+		glog.Error(err)
+		return nil, err
+	}
+	return ret, nil
 }
