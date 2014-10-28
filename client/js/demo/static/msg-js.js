@@ -54,6 +54,7 @@
         }
         this.type = browser;
         this.key = tmp;
+		this.originalKey = options.key;
         this.heartbeat = options.heartbeat || 60;
         this.mid = options.mid || 0;
         this.pmid = options.pmid || 0;
@@ -171,7 +172,7 @@
     GoPushCli.prototype.getOfflineMessage = function () {
         var that = this;
         getScript({
-            url: 'http://' + that.host + ':' + that.port + '/1/msg/get?k=' + that.key + '&t=' + that.type + '&m=' + that.mid + '&p=' + that.pmid,
+            url: 'http://' + that.host + ':' + that.port + '/1/msg/get?k=' + this.originalKey + '&t=' + that.type + '&m=' + that.mid + '&p=' + that.pmid,
             success: function (json) {
                 if (json.ret == 0) {
                     var message;
@@ -187,7 +188,7 @@
                     }
                     if (data && data.msgs) {
                         for (var i = 0, l = data.msgs.length; i < l; ++i) {
-                            message = parseJSON(data.msgs[i]);
+							message =data.msgs[i];
                             if (that.mid < message.mid) {
                                 that.onOfflineMessage(message);
                                 that.mid = message.mid;
