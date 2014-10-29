@@ -54,17 +54,22 @@ func GetResourceById(resourceId string) (*Resource, error) {
 }
 
 // 在数据库中查询资源.
-func GetResourceByTenantId(tenantId string) (*Resource, error) {
-	row := db.MySQL.QueryRow(SelectResourceByTenantIdSQL, tenantId)
+func GetResourceByTenantId(tenantId string) ([]*Resource, error) {
 
-	resource := Resource{}
-	if err := row.Scan(&resource.Id, &resource.TenantId, &resource.Name, &resource.Description, &resource.Type, &resource.Content, &resource.Created, &resource.Updated); err != nil {
-		glog.Error(err)
+	rows, _ := db.MySQL.Query(SelectResourceByTenantIdSQL, tenantId)
 
-		return nil, err
+	ret := []*Resource{}
+	for rows.Next() {
+		resource := &Resource{}
+		if err := rows.Scan(&resource.Id, &resource.TenantId, &resource.Name, &resource.Description, &resource.Type, &resource.Content, &resource.Created, &resource.Updated); err != nil {
+			glog.Error(err)
+
+			return nil, err
+		}
+		ret = append(ret, resource)
 	}
 
-	return &resource, nil
+	return ret, nil
 }
 
 // 数据库中插入资源
