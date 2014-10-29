@@ -233,7 +233,7 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	go session.UpdateSessionUserID(deviceId, userName)
 
 	// 客户端登录记录
-	go Device.loginLog(&Client{UserId: uid, Type: deviceType, DeviceId: deviceId})
+	go Device.loginLog(&Client{UserId: member.Uid, Type: deviceType, DeviceId: deviceId})
 
 	member.UserName = member.Uid + USER_SUFFIX
 
