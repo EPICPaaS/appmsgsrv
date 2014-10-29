@@ -366,7 +366,7 @@ func insertApnsToken(apnsToken *ApnsToken) bool {
 		glog.Error(err)
 		return false
 	}
-	if rows.Next() { //不存在记录才添加
+	if !rows.Next() { //不存在记录才添加
 		tx, err := db.MySQL.Begin()
 		if err != nil {
 			glog.Error(err)
