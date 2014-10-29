@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	//"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
 	"github.com/EPICPaaS/appmsgsrv/session"
+	apns "github.com/anachronistic/apns"
 	"github.com/golang/glog"
 )
 
@@ -228,13 +230,81 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	if nil != exp {
 		expire = int(exp.(float64))
 	}
+	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
+	s, _ := session.GetSessionsByUserId(toUserID)
+	if nil == s {
+		resources, _ := GetResourceByTenantId(user.TenantId)
+		apnsToken, _ := getApnsToken(toUserID)
+		go pushAPNS(msg, resources, apnsToken)
 
+	}
 	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire)
 
 	res["msgID"] = "msgid"
 	res["clientMsgId"] = msg["clientMsgId"]
 
 	return
+}
+
+//推送IOS离线消息
+func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []ApnsToken) {
+
+	var host = "gateway.sandbox.push.apple.com:2195"
+	var certFile = ""
+	var keyFile = ""
+
+	for _, r := range resources {
+		if r.Type == "0" {
+			certFile = r.Content
+		} else if r.Type == "1" {
+			keyFile = r.Content
+		}
+	}
+
+	for _, t := range apnsToken {
+
+		contentMsg := msg["fromDisplayName"].(string) + ":" + msg["content"].(string)
+
+		if len(contentMsg) > 256 {
+			contentMsg = substr(contentMsg, 0, 250) + "..."
+		}
+
+		payload := apns.NewPayload()
+		payload.Alert = contentMsg
+		payload.Badge = 42
+		payload.Sound = "bingbong.aiff"
+		payload.Category = "Test!"
+		payload.ContentAvailable = 1
+
+		pn := apns.NewPushNotification()
+		pn.DeviceToken = t.ApnsToken
+		pn.AddPayload(payload)
+		if nil != msg["customFilelds"] {
+			customFilelds := msg["customFilelds"].(map[string]interface{})
+			for key, value := range customFilelds {
+				pn.Set(key, value)
+			}
+
+		}
+
+		client := apns.NewClient(host, certFile, keyFile)
+		resp := client.Send(pn)
+		alert, _ := pn.PayloadString()
+		if !resp.Success {
+			glog.Errorf("Push message failed [%v],Error[%v]", alert, resp.Error)
+			// 推送分发过程中失败不立即返回，继续下一个推送
+		}
+
+	}
+}
+
+func substr(s string, pos, length int) string {
+	bytes := []byte(s)
+	l := pos + length
+	if l > len(bytes) {
+		l = len(bytes)
+	}
+	return string(bytes[pos:l])
 }
 
 // 按会话推送.
