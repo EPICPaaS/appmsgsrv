@@ -236,6 +236,23 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	//sessionId := "anonymous_" + deviceType + "_" + deviceId
 	//go session.UpdateSessionUserID(sessionId, member.Uid)
 
+	//记录apnsToken
+	apnsTokenStr := args["apnsToken"].(string)
+	if len(apnsToken) > 0 {
+
+		apnsToken := &ApnsToken{
+			UserId:    member.Uid,
+			DeviceId:  deviceId,
+			ApnsToken: apnsTokenStr,
+			Created:   time.Now().Local(),
+			Updated:   time.Now().Local(),
+		}
+		if !insertApnsToken(apnsToken) {
+			baseRes.Ret = InternalErr
+			baseRes.ErrMsg = "Sava apns_token faild"
+			return
+		}
+	}
 	// 客户端登录记录
 	go Device.loginLog(&Client{UserId: member.Uid, Type: deviceType, DeviceId: deviceId})
 
@@ -502,6 +519,7 @@ func (*device) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*新增单位*/
 func addOrg(org *org, tx *sql.Tx) {
 	smt, err := tx.Prepare("insert into org(id, name , short_name, parent_id, tenant_id, sort) values(?,?,?,?,?,?)")
 	if smt != nil {
@@ -517,6 +535,7 @@ func addOrg(org *org, tx *sql.Tx) {
 	smt.Exec(org.id, org.name, org.shortName, org.parentId, org.tenantId, org.sort)
 }
 
+/*修改单位信息*/
 func updateOrg(org *org, tx *sql.Tx) {
 	smt, err := tx.Prepare("update org set name=?, short_name=?, parent_id=?, sort=? where id=?")
 	if smt != nil {
@@ -532,6 +551,7 @@ func updateOrg(org *org, tx *sql.Tx) {
 	smt.Exec(org.name, org.shortName, org.parentId, org.sort, org.id)
 }
 
+/*设置location*/
 func resetLocation2(org *org, location string, tx *sql.Tx) {
 	smt, err := tx.Prepare("update org set location=? where id=?")
 	if smt != nil {
@@ -547,6 +567,7 @@ func resetLocation2(org *org, location string, tx *sql.Tx) {
 	smt.Exec(location, org.id)
 }
 
+/*设置location*/
 func resetLocation(org *org, tx *sql.Tx) {
 	if org.parentId == "" {
 		resetLocation2(org, "00", tx)
@@ -736,6 +757,7 @@ func isExists(id string) (bool, string) {
 	return false, ""
 }
 
+//获取单位信息
 func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", 405)
