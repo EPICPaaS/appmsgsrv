@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/EPICPaaS/appmsgsrv/session"
+	//"github.com/EPICPaaS/appmsgsrv/session"
 	"github.com/golang/glog"
 )
 
@@ -238,7 +238,7 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 
 	//记录apnsToken
 	apnsTokenStr := args["apnsToken"].(string)
-	if len(apnsToken) > 0 {
+	if len(apnsTokenStr) > 0 {
 
 		apnsToken := &ApnsToken{
 			UserId:    member.Uid,

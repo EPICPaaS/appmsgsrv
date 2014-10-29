@@ -361,8 +361,12 @@ func getLatestVerion(deviceType string) (*ClientVersion, error) {
 /*保存apnstoken证书*/
 func insertApnsToken(apnsToken *ApnsToken) bool {
 
-	row := db.MySQL.QueryRow(SelectApnsTokenByUserIdTokens, apnsToken.UserId, apnsToken.ApnsToken)
-	if !row.Next() { //不存在记录才添加
+	rows, err := db.MySQL.Query(SelectApnsTokenByUserIdTokens, apnsToken.UserId, apnsToken.ApnsToken)
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+	if rows.Next() { //不存在记录才添加
 		tx, err := db.MySQL.Begin()
 		if err != nil {
 			glog.Error(err)
