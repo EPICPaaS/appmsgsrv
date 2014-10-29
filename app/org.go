@@ -15,6 +15,7 @@ import (
 	"github.com/golang/glog"
 )
 
+/*成员结构体*/
 type member struct {
 	Uid         string    `json:"uid"`
 	UserName    string    `json:"userName"`
@@ -38,10 +39,12 @@ type member struct {
 	Area        string    `json:"area"`
 }
 
+/*根据userId获取成员信息*/
 func getUserByUid(uid string) *member {
 	return getUserByField("id", uid)
 }
 
+/*根据 email或者name 获取成员信息,传入的code带@符号时是为email*/
 func getUserByCode(code string) *member {
 	isEmail := false
 	if strings.LastIndex(code, "@") > -1 {
@@ -54,6 +57,7 @@ func getUserByCode(code string) *member {
 	return getUserByField(fieldName, code)
 }
 
+/*根据传入的筛选列fieldName和参数fieldArg查询成员*/
 func getUserByField(fieldName, fieldArg string) *member {
 
 	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where " + fieldName + "=?"
@@ -220,7 +224,6 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 		uid, deviceId, deviceType, userName, password)
 
 	// TODO: 登录验证逻辑
-
 	member := getUserByCode(userName)
 	if nil == member {
 		baseRes.ErrMsg = "auth failed"
@@ -229,8 +232,9 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 登录后设置用户关联session
-	go session.UpdateSessionUserID(deviceId, userName)
+	// 登录后设置用户未关联的会话session;  sessionId:{userI_id}_{device_type}-{real_device_id}
+	//sessionId := "anonymous_" + deviceType + "_" + deviceId
+	//go session.UpdateSessionUserID(sessionId, member.Uid)
 
 	// 客户端登录记录
 	go Device.loginLog(&Client{UserId: member.Uid, Type: deviceType, DeviceId: deviceId})
@@ -259,11 +263,15 @@ type BySort struct {
 	memberList members
 }
 
+/*获取成员总数*/
 func (s BySort) Len() int { return len(s.memberList) }
+
+/*交换成员顺序*/
 func (s BySort) Swap(i, j int) {
 	s.memberList[i], s.memberList[j] = s.memberList[j], s.memberList[i]
 }
 
+/*判断两个成员的顺序*/
 func (s BySort) Less(i, j int) bool {
 	return s.memberList[i].Sort < s.memberList[j].Sort
 }
@@ -276,6 +284,7 @@ func sortMemberList(lst []*member) {
 	}
 }
 
+/*根据租户id（TenantId）获取成员*/
 func getUserListByTenantId(id string) members {
 	smt, err := db.MySQL.Prepare("select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where tenant_id=?")
 	if smt != nil {
@@ -307,6 +316,7 @@ func getUserListByTenantId(id string) members {
 	return ret
 }
 
+/*根据单位id（TenantId）获取成员*/
 func getUserListByOrgId(id string) members {
 	smt, err := db.MySQL.Prepare("select `user`.`id`, `user`.`name`, `user`.`nickname`, `user`.`status`, `user`.`avatar`, `user`.`tenant_id`, `user`.`name_py`, `user`.`name_quanpin`, `user`.`mobile`, `user`.`area`,`org_user`.`sort`	from `user`,`org_user` where `user`.`id`=`org_user`.`user_id` and org_id=?")
 	if smt != nil {
@@ -338,6 +348,7 @@ func getUserListByOrgId(id string) members {
 	return ret
 }
 
+/*获取单位的人员信息*/
 func (*device) GetOrgUserList(w http.ResponseWriter, r *http.Request) {
 	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
 
@@ -366,6 +377,7 @@ func (*device) GetOrgUserList(w http.ResponseWriter, r *http.Request) {
 	res["memberList"] = memberList
 }
 
+/*单位数据结构体*/
 type org struct {
 	id        string
 	name      string
@@ -376,6 +388,7 @@ type org struct {
 	sort      int
 }
 
+/*修改用户信息*/
 func updateUser(member *member, tx *sql.Tx) error {
 	st, err := tx.Prepare("update user set name=?, nickname=?, avastar=?, name_py=?, name_quanpin=?, status=?, rand=?, password=?, tenant_id=?, updated=?, email=? where id=?")
 	if err != nil {
@@ -387,6 +400,7 @@ func updateUser(member *member, tx *sql.Tx) error {
 	return err
 }
 
+/*同步人员*/
 func (*device) SyncUser(w http.ResponseWriter, r *http.Request) {
 	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
 	tx, err := db.MySQL.Begin()
@@ -435,6 +449,7 @@ func (*device) SyncUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*同步单位*/
 func (*device) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
 	tx, err := db.MySQL.Begin()
@@ -662,6 +677,7 @@ func isUserExists(id string) bool {
 	return false
 }
 
+/*判断两个用户是否为常联系人*/
 func isStar(fromUid, toUId string) bool {
 	smt, err := db.MySQL.Prepare("select 1 from user_user where from_user_id=? and to_user_id=?")
 	if smt != nil {

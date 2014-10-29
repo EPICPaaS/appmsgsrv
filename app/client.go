@@ -14,7 +14,7 @@ const (
 
 	// 获取最新的客户端版本
 	SelectLatestClientVerByType = "SELECT * FROM `client_version` WHERE `type` = ? ORDER BY `ver_code` DESC LIMIT 1"
-	//之久话apns token
+	//持久话apns_token
 	InsertApnsToken         = "INSERT INTO `apns_token`(`id`,`user_id`,`device_id`,`apns_token`,`created`,`updated`) VALUES(?,?,?,?,?,?)"
 	SelectApnsTokenByUserId = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? "
 )
@@ -60,7 +60,7 @@ type ClientVerUpdateMsg struct {
 	ObjectContent *ClientVerUpdateObjectContent `json:"objectContent"`
 }
 
-//证书
+//apns_token证书
 type ApnsToken struct {
 	Id        string    `json:"id"`
 	UserId    string    `json:"userId"`
@@ -123,6 +123,7 @@ func (*device) loginLog(client *Client) {
 	}
 }
 
+/*插入登陆日志*/
 func insertLoginLog(client *Client) {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
@@ -148,6 +149,7 @@ func insertLoginLog(client *Client) {
 	}
 }
 
+/*修改登陆日志*/
 func updateLoginLog(client *Client) {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
@@ -175,6 +177,7 @@ func updateLoginLog(client *Client) {
 	}
 }
 
+/*获取用户设备id（deviceID）*/
 func getDeviceIds(userId string) []string {
 	ret := []string{}
 
@@ -217,7 +220,7 @@ func getDeviceIds(userId string) []string {
 	return ret
 }
 
-// 移动端检查更新.
+//移动端检查更新.
 func (*device) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", 405)
@@ -274,7 +277,7 @@ func (*device) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 	res["msg"] = msg
 }
 
-//持久话apns_token
+/*持久话apns_token*/
 func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != "POST" {
@@ -354,7 +357,7 @@ func getLatestVerion(deviceType string) (*ClientVersion, error) {
 	return &clientVer, nil
 }
 
-//持久话apnstoken
+/*保存apnstoken证书*/
 func insertApnsToken(apnsToken *ApnsToken) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
@@ -379,7 +382,7 @@ func insertApnsToken(apnsToken *ApnsToken) bool {
 	return true
 }
 
-//根据userd获取apnsToken
+/*根据userd获取apnsToken证书*/
 func getApnsToken(userId string) ([]ApnsToken, error) {
 
 	ret := []ApnsToken{}

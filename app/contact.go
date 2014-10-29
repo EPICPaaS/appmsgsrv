@@ -29,7 +29,7 @@ type UserUser struct {
 	Updated    time.Time `json:"updated"`
 }
 
-// 添加联系人.
+/*添加或删除联系人 ， 当请求参数starFriend为1时添加联系人，否则删除*/
 func (*device) AddOrRemoveContact(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", 405)

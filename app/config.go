@@ -31,6 +31,7 @@ var (
 )
 
 const (
+	/*后缀信息*/
 	TENANT_SUFFIX = "@tenant"
 	ORG_SUFFIX    = "@org"
 	QUN_SUFFIX    = "@qun"
