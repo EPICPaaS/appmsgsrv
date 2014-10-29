@@ -15,8 +15,9 @@ const (
 	// 获取最新的客户端版本
 	SelectLatestClientVerByType = "SELECT * FROM `client_version` WHERE `type` = ? ORDER BY `ver_code` DESC LIMIT 1"
 	//持久话apns_token
-	InsertApnsToken         = "INSERT INTO `apns_token`(`id`,`user_id`,`device_id`,`apns_token`,`created`,`updated`) VALUES(?,?,?,?,?,?)"
-	SelectApnsTokenByUserId = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? "
+	InsertApnsToken               = "INSERT INTO `apns_token`(`id`,`user_id`,`device_id`,`apns_token`,`created`,`updated`) VALUES(?,?,?,?,?,?)"
+	SelectApnsTokenByUserId       = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? "
+	SelectApnsTokenByUserIdTokens = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? AND `apns_token`=?"
 )
 
 // 客户端结构.
@@ -316,21 +317,21 @@ func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apnsToken := args["apns_token"].(string)
+	apnsTokenStr := args["apns_token"].(string)
 	deviceId := baseReq["deviceID"].(string)
-	if len(apnsToken) == 0 || len(deviceId) == 0 {
+	if len(apnsTokenStr) == 0 || len(deviceId) == 0 {
 		baseRes.Ret = ParamErr
 		return
 	}
 
-	ApnsToken := &ApnsToken{
+	apnsToken := &ApnsToken{
 		UserId:    user.Uid,
 		DeviceId:  deviceId,
-		ApnsToken: apnsToken,
+		ApnsToken: apnsTokenStr,
 		Created:   time.Now().Local(),
 		Updated:   time.Now().Local(),
 	}
-	if insertApnsToken(ApnsToken) {
+	if insertApnsToken(apnsToken) {
 		baseRes.Ret = OK
 		baseRes.ErrMsg = "save apns_token success"
 		return
@@ -359,26 +360,33 @@ func getLatestVerion(deviceType string) (*ClientVersion, error) {
 
 /*保存apnstoken证书*/
 func insertApnsToken(apnsToken *ApnsToken) bool {
-	tx, err := db.MySQL.Begin()
+
+	rows, err := db.MySQL.Query(SelectApnsTokenByUserIdTokens, apnsToken.UserId, apnsToken.ApnsToken)
 	if err != nil {
 		glog.Error(err)
 		return false
 	}
-
-	_, err = tx.Exec(InsertApnsToken, uuid.New(), apnsToken.UserId, apnsToken.DeviceId, apnsToken.ApnsToken, apnsToken.Created, apnsToken.Updated)
-	if err != nil {
-		glog.Error(err)
-		if err := tx.Rollback(); err != nil {
+	if !rows.Next() { //不存在记录才添加
+		tx, err := db.MySQL.Begin()
+		if err != nil {
 			glog.Error(err)
+			return false
 		}
-		return false
-	}
 
-	if err := tx.Commit(); err != nil {
-		glog.Error(err)
-		return false
-	}
+		_, err = tx.Exec(InsertApnsToken, uuid.New(), apnsToken.UserId, apnsToken.DeviceId, apnsToken.ApnsToken, apnsToken.Created, apnsToken.Updated)
+		if err != nil {
+			glog.Error(err)
+			if err := tx.Rollback(); err != nil {
+				glog.Error(err)
+			}
+			return false
+		}
 
+		if err := tx.Commit(); err != nil {
+			glog.Error(err)
+			return false
+		}
+	}
 	return true
 }
 
