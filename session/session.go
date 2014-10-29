@@ -128,7 +128,7 @@ func UpdateSessionUserID(sessionId, userId string) bool {
 		glog.Error(err)
 		return false
 	}
-	_, err = tx.Exec(SET_USERID, sessionId, userId)
+	_, err = tx.Exec(SET_USERID, userId, sessionId)
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
@@ -254,8 +254,15 @@ func SetSessionStat(sessionId, state string) bool {
 }
 
 //通过userd查询会话session
-func GetSessionsByUserId(userId string) {
+func GetSessionsByUserId(userId string) (*Session, error) {
+	row := db.MySQL.QueryRow(SELECT_SESSION_BYUSERID, userId)
+	session := Session{}
+	if err := row.Scan(&session.Id, &session.Type, &session.UserId, &session.State, &session.Created, &session.Updated); err != nil {
+		glog.Error(err)
+		return nil, err
+	}
 
+	return &session, nil
 }
 
 ///除过时的会话,当更新时间距当前时间超过24 小时，就将该会话移除
