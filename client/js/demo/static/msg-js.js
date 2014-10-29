@@ -5,7 +5,7 @@
 (function () {
 
     var getScript = function (options) {
-        // JSONP
+        // JSONP结构
         var callback = 'callback_' + Math.floor(new Date().getTime() * Math.random()).toString(36);
         var head = document.getElementsByTagName("head")[0];
         var script = document.createElement('script');
@@ -82,6 +82,7 @@
     GoPushCli.prototype.start = function () {
         var that = this;
         getScript({
+			//获取订阅节点
             url: 'http://' + that.host + ':' + that.port + '/1/server/get?k=' + that.key + '&p=' + that.proto,
             success: function (json) {
                 if (json.ret == 0) {
@@ -101,6 +102,7 @@
 
     GoPushCli.prototype.initWebSocket = function (node) {
         var that = this;
+		//订阅
         that.ws = new ReconnectingWebSocket('ws://' + node[0] + ':' + parseInt(node[1]) + '/sub?key=' + that.key + '&heartbeat=' + that.heartbeat);
         //that.ws = new ReconnectingWebSocket('ws://' + node[0] + ':81/sub?key=' + that.key + '&heartbeat=' + that.heartbeat);
         that.ws.onopen = function () {
@@ -125,7 +127,7 @@
                     that.onError('解析返回JSON失败');
                     return;
                 }
-                if (message.gid == 0) {
+                if (message.gid == 0) {//gid为消息分组ID（0：表示私信，1：表示公共信息）。
                     if (that.mid < message.mid) {
                         that.mid = message.mid;
                     } else {
@@ -172,11 +174,14 @@
     GoPushCli.prototype.getOfflineMessage = function () {
         var that = this;
         getScript({
+			//获取离线消息
             url: 'http://' + that.host + ':' + that.port + '/1/msg/get?k=' + this.originalKey + '&t=' + that.type + '&m=' + that.mid + '&p=' + that.pmid,
             success: function (json) {
                 if (json.ret == 0) {
                     var message;
                     var data = json.data;
+					
+					//pmsgs为老版本gopush返回的消息（1.0 之前的版本）
                     if (data && data.pmsgs) {
                         for (var i = 0, l = data.pmsgs.length; i < l; ++i) {
                             message = parseJSON(data.pmsgs[i]);
