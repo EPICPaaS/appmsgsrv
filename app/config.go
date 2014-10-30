@@ -68,6 +68,7 @@ type Config struct {
 	RedisMaxStore        int               `goconf:"redis:store"`
 	RedisKetamaBase      int               `goconf:"redis:ketama.base"`
 	TokenExpire          int               `goconf:"token:expire"`
+	ApnsType             string            `goconf:"apns:type"`
 }
 
 // InitConfig init configuration file.
