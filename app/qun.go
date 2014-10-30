@@ -210,6 +210,7 @@ func (*device) GetUsersInQun(w http.ResponseWriter, r *http.Request) {
 	res["memberList"] = members
 	res["memberCount"] = len(members)
 
+	//获取群信息
 	qun, err := getQunById(qid)
 	if err != nil {
 		baseRes.ErrMsg = err.Error()
@@ -285,6 +286,7 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 		members, err := getUsersInQun(qunId)
 		if err == nil {
 			for _, mem := range members {
+				//排除修改者
 				if user.Uid == mem.Uid {
 					continue
 				}
@@ -361,7 +363,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 		nikName := member["nickName"].(string)
 		qunUser := QunUser{Id: uuid.New(), QunId: qunId, UserId: memberId, Sort: 0, Role: 0, Created: now, Updated: now}
 		qunUsers = append(qunUsers, qunUser)
-		//构造发送消息用(xxx、xxx、xxx)人
+		//构造发送消息用(xxx、xxx、xxx人)
 		newNikNames = append(newNikNames, nikName)
 	}
 	if addQunmember(qunUsers) {
@@ -376,7 +378,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 		res["memberCount"] = len(members)
 
 		//xxx邀请xxx、xxx、xxx等N人加入了群聊
-		// 给创群人发送消息
+		// 给群成员发送消息
 		msg := map[string]interface{}{}
 		msg["fromUserName"] = qunId + QUN_SUFFIX
 		msg["fromDisplayName"] = qun.Name
@@ -480,7 +482,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 	//退出群聊操作
 	if len(memberList) == 1 && memberList[0].(map[string]interface{})["uid"].(string) == user.Uid {
 		outFlag = true
-	} else { // 删除操作需检验是否时创建着
+	} else { // 删除操作需检验是否是创建者
 		creatorId := qun.CreatorId
 		if creatorId != user.Uid {
 			glog.Error("delete Qun Member   faild,only qun creater can delete")
