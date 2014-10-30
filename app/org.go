@@ -590,6 +590,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 		return
 	}
 
+	// FIXME: 李旭东
 	loc := ""
 	hasBrother := false
 	for row.Next() {
@@ -597,7 +598,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 		hasBrother = true
 		break
 	}
-
+	/*如果有兄弟部门，则通过上一个兄弟部门location（用于本地树结构关系）计算出自己的location ; 没有则通过父亲的计算location*/
 	if hasBrother {
 		resetLocation2(org, caculateLocation(loc), tx)
 	} else {
@@ -628,6 +629,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 	}
 }
 
+/*计算出location，用于树的层级关系*/
 func caculateLocation(loc string) string {
 	rs := []rune(loc)
 	lt := len(rs)
@@ -650,6 +652,7 @@ func caculateLocation(loc string) string {
 	}
 }
 
+/*递增出下一个同级location*/
 func nextLocation(first, second string) string {
 	if second == "9" {
 		second = "a"
@@ -672,6 +675,7 @@ func nextLocation(first, second string) string {
 	return first + second
 }
 
+/*通过userId判断该用户是否存在*/
 func isUserExists(id string) bool {
 	smt, err := db.MySQL.Prepare("select 1 from user where id=?")
 	if smt != nil {
@@ -729,6 +733,7 @@ func isStar(fromUid, toUId string) bool {
 	return row.Next()
 }
 
+/*判断单位是否存在，且返回他的父节点id*/
 func isExists(id string) (bool, string) {
 	smt, err := db.MySQL.Prepare("select parent_id from org where id=?")
 	if smt != nil {
@@ -757,7 +762,7 @@ func isExists(id string) (bool, string) {
 	return false, ""
 }
 
-//获取单位信息
+//获取当前用户的单位信息（完整的单位部门树）和用户好友
 func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", 405)
@@ -816,6 +821,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//查询出该租户（组织）的所有部门
 	row, err := smt.Query(currentUser.TenantId)
 	if row != nil {
 		defer row.Close()
@@ -842,6 +848,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 		unitMap[ele.Uid] = ele
 	}
 
+	//构造部门树结构
 	rootList := []*member{}
 	for _, val := range unitMap {
 		if val.parentId == "" {
@@ -861,6 +868,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	sortMemberList(rootList)
 	tenant.MemberList = rootList
 	tenant.MemberCount = len(rootList)
+	/*获取用户所属租户（单位）信息*/
 	smt, err = db.MySQL.Prepare("select id, code, name from tenant where id=?")
 	if smt != nil {
 		defer smt.Close()
@@ -890,6 +898,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 		tenant.UserName = tenant.Uid + TENANT_SUFFIX
 		break
 	}
+	/*查出用户所属部门*/
 	smt, err = db.MySQL.Prepare("select org_id from org_user where user_id=?")
 	if smt != nil {
 		defer smt.Close()
@@ -926,6 +935,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	res["starMemberList"] = starMemberList
 }
 
+/*在用户所在租户（单位）搜索用户，根据传入的searchKey*/
 func (*device) SearchUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", 405)
@@ -987,6 +997,7 @@ func (*device) SearchUser(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+/*获取用户所有好友信息*/
 func getStarUser(userId string) members {
 	ret := members{}
 	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where id in (select to_user_id from user_user where from_user_id=?)"
@@ -1023,6 +1034,7 @@ func getStarUser(userId string) members {
 	return ret
 }
 
+/*通过name搜索用户，返回搜索结果（带分页），和结果条数*/
 func searchUser(tenantId, nickName string, offset, limit int) (members, int) {
 	ret := members{}
 	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where tenant_id=? and nickname like ? limit ?, ?"
