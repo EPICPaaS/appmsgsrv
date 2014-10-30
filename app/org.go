@@ -237,13 +237,14 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	//go session.UpdateSessionUserID(sessionId, member.Uid)
 
 	//记录apnsToken
-	apnsTokenStr := args["apnsToken"].(string)
-	if len(apnsTokenStr) > 0 {
+	apnsTokenStr := args["apnsToken"]
+
+	if apnsTokenStr != nil && len(apnsTokenStr.(string)) > 0 {
 
 		apnsToken := &ApnsToken{
 			UserId:    member.Uid,
 			DeviceId:  deviceId,
-			ApnsToken: apnsTokenStr,
+			ApnsToken: apnsTokenStr.(string),
 			Created:   time.Now().Local(),
 			Updated:   time.Now().Local(),
 		}
