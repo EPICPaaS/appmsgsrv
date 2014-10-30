@@ -126,6 +126,7 @@ func UpdateResource(resource *Resource) (*Resource, bool) {
 	return resource, true
 }
 
+//删除资源
 func DeleteResourceById(resourceId string) bool {
 	tx, err := db.MySQL.Begin()
 

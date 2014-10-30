@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-/*
+/*请求参数
 baseRequest: {
     "uid": "",
     "deviceID": "",
@@ -18,6 +18,7 @@ baseRequest: {
 }
 state:"active"
 sessionId:"1111"
+设置会话状态（active/inactive）
 */
 func SessionStat(w http.ResponseWriter, r *http.Request) {
 
@@ -89,6 +90,7 @@ baseRequest: {
     "deviceType": "", // iOS / Android
     "token": ""
 }
+获取用户会话session
 */
 func (*app) GetSession(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
