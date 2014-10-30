@@ -252,6 +252,9 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 	var host = "gateway.sandbox.push.apple.com:2195"
 	var certFile = ""
 	var keyFile = ""
+	if Conf.ApnsType == "product" {
+		host = "gateway.push.apple.com:2195"
+	}
 
 	for _, r := range resources {
 		if r.Type == "0" {
@@ -291,9 +294,10 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 		resp := client.Send(pn)
 		alert, _ := pn.PayloadString()
 		if !resp.Success {
-			glog.Errorf("Push message failed [%v],Error[%v]", alert, resp.Error)
+			glog.Errorf("Push message failed [%v],Error[%v],Host[%v]", alert, resp.Error, host)
 			// 推送分发过程中失败不立即返回，继续下一个推送
 		}
+		glog.Info("Push message successed [%v],Content[%v],Host[%v]", t.ApnsToken, alert, host)
 
 	}
 }
