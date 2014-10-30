@@ -19,10 +19,12 @@ package main
 import (
 	"bufio"
 	"errors"
+	"github.com/EPICPaaS/appmsgsrv/session"
 	"github.com/golang/glog"
 	"io"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -234,6 +236,35 @@ func SubscribeTCPHandle(conn net.Conn, args []string) {
 		glog.Errorf("<%s> user_key:\"%s\" add conn error(%v)", addr, key, err)
 		return
 	}
+
+	//链接添加成功 {userI_id}_{device_type}-{real_device_id}@{xx}
+	var sessionId string = ""
+	strs := strings.Split(key, "@")
+	if len(strs) > 0 {
+		sessionId = strs[0]
+		tmps := strings.Split(strs[0], "_")
+		if len(tmps) > 1 {
+			userId := tmps[0] //此user不一定时userid 若用户为登录则时应用制定的任意数
+			sessionType := ""
+			types := strings.Split(tmps[1], "-")
+			if len(types) > 0 {
+				sessionType = types[0]
+			}
+			sessionObj := &session.Session{
+				Id:      sessionId,
+				Type:    sessionType,
+				UserId:  userId,
+				State:   session.SESSION_STATE_INIT,
+				Created: time.Now().Local(),
+				Updated: time.Now().Local(),
+			}
+			session.CreatSession(sessionObj)
+		}
+	}
+	//开始定时更新会话更新时间
+	var tickerFlagStop = make(chan bool, 1)
+	go session.TickerTaskUpdateSession(sessionId, tickerFlagStop)
+
 	// blocking wait client heartbeat
 	reply := []byte{0}
 	// reply := make([]byte, HeartbeatLen)
@@ -269,10 +300,18 @@ func SubscribeTCPHandle(conn net.Conn, args []string) {
 		}
 		end = time.Now().UnixNano()
 	}
+
+	//结束定时更新会话定时任务
+	tickerFlagStop <- true
+
 	// remove exists conn
 	if err := c.RemoveConn(key, connElem); err != nil {
 		glog.Errorf("<%s> user_key:\"%s\" remove conn error(%s)", addr, key, err)
 	}
+
+	//移除会话session
+	session.RemoveSessionById(sessionId)
+
 	return
 }
 

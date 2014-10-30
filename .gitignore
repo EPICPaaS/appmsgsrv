@@ -22,5 +22,10 @@ _testmain.go
 *.exe
 
 /web/web
+/web/main
 /message/message
+/message/main
 /comet/comet
+/comet/main
+
+/client/java/gopush-cli-java-master/target
