@@ -40,7 +40,7 @@
         
         // 构建会话 id： {key}_{browser}_{version}_{rn}@{xx}  
         var tmp = options.key;
-        var browser = navigator.appName;
+        var browser = navigator.appCodeName;//navigator.appName;
         var b_version = navigator.appVersion;
         var version = parseFloat(b_version);
         var rn = Math.round(Math.random() * 999); //三位随机数
