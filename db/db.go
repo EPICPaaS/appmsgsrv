@@ -1,4 +1,4 @@
-package app
+package db
 
 import (
 	"database/sql"
@@ -19,6 +19,14 @@ func InitDB() {
 
 	if nil != err {
 		glog.Error(err)
+		os.Exit(-1)
+	}
+
+	// 实际测试一次
+	test := 0
+	if err := MySQL.QueryRow("SELECT 1").Scan(&test); err != nil {
+		glog.Error(err)
+
 		os.Exit(-1)
 	}
 

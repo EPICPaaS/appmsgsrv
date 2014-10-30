@@ -28,6 +28,47 @@ CREATE TABLE `session` (
 
 delimiter $$
 
+CREATE TABLE `apns_token` (
+  `id` varchar(64) NOT NULL,
+  `user_id` varchar(64) DEFAULT NULL,
+  `device_id` varchar(64) DEFAULT NULL,
+  `apns_token` varchar(64) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
+
+
+delimiter $$
+
+CREATE TABLE `resource` (
+  `id` varchar(64) NOT NULL,
+  `tenant_id` varchar(64) DEFAULT NULL,
+  `name` varchar(45) DEFAULT NULL,
+  `description` varchar(512) DEFAULT NULL,
+  `type` varchar(45) DEFAULT NULL,
+  `content` varchar(255) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
+
+delimiter $$
+
+CREATE TABLE `client` (
+  `id` varchar(64) NOT NULL,
+  `user_id` varchar(64) DEFAULT NULL,
+  `type` varchar(45) DEFAULT NULL,
+  `device_id` varchar(255) DEFAULT NULL COMMENT '多个的话以 , 分隔',
+  `latest_login_time` datetime DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
+
+
+delimiter $$
+
 CREATE TABLE `client_version` (
   `id` varchar(64) NOT NULL,
   `type` varchar(45) DEFAULT NULL,

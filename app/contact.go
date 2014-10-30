@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
 	"github.com/golang/glog"
 	"io/ioutil"
@@ -28,7 +29,7 @@ type UserUser struct {
 	Updated    time.Time `json:"updated"`
 }
 
-// 添加联系人.
+/*添加或删除联系人 ， 当请求参数starFriend为1时添加联系人，否则删除*/
 func (*device) AddOrRemoveContact(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", 405)
@@ -103,7 +104,7 @@ func (*device) AddOrRemoveContact(w http.ResponseWriter, r *http.Request) {
 
 // 数据库中插入联系人记录.
 func createContact(userUser *UserUser) bool {
-	tx, err := MySQL.Begin()
+	tx, err := db.MySQL.Begin()
 
 	if err != nil {
 		glog.Error(err)
@@ -134,7 +135,7 @@ func createContact(userUser *UserUser) bool {
 
 // 在数据库中删除联系人记录.
 func deleteContact(fromUserId, toUserId string) bool {
-	tx, err := MySQL.Begin()
+	tx, err := db.MySQL.Begin()
 
 	if err != nil {
 		glog.Error(err)

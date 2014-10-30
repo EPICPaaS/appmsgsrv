@@ -31,6 +31,7 @@ var (
 )
 
 const (
+	/*后缀信息*/
 	TENANT_SUFFIX = "@tenant"
 	ORG_SUFFIX    = "@org"
 	QUN_SUFFIX    = "@qun"
@@ -47,9 +48,6 @@ type Config struct {
 	HttpBind             []string          `goconf:"base:http.bind:,"`
 	AdminBind            []string          `goconf:"base:admin.bind:,"`
 	AppBind              []string          `goconf:"base:app.bind:,"`
-	AppDBURL             string            `goconf:"base:app.dbURL"`
-	AppDBMaxIdleConns    int               `goconf:"base:app.dbMaxIdleConns"`
-	AppDBMaxOpenConns    int               `goconf:"base:app.dbMaxOpenConns"`
 	MaxProc              int               `goconf:"base:maxproc"`
 	PprofBind            []string          `goconf:"base:pprof.bind:,"`
 	User                 string            `goconf:"base:user"`
@@ -70,6 +68,7 @@ type Config struct {
 	RedisMaxStore        int               `goconf:"redis:store"`
 	RedisKetamaBase      int               `goconf:"redis:ketama.base"`
 	TokenExpire          int               `goconf:"token:expire"`
+	ApnsType             string            `goconf:"apns:type"`
 }
 
 // InitConfig init configuration file.

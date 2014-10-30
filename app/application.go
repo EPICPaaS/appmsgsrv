@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/golang/glog"
 	"time"
 )
@@ -27,7 +28,7 @@ type application struct {
 
 // 根据 id 查询应用记录.
 func getApplication(appId string) (*application, error) {
-	row := MySQL.QueryRow(SelectApplicationById, appId)
+	row := db.MySQL.QueryRow(SelectApplicationById, appId)
 
 	application := application{}
 
@@ -43,7 +44,7 @@ func getApplication(appId string) (*application, error) {
 
 // 根据 token 查询应用记录.
 func getApplicationByToken(token string) (*application, error) {
-	row := MySQL.QueryRow(SelectApplicationByToken, token)
+	row := db.MySQL.QueryRow(SelectApplicationByToken, token)
 
 	application := application{}
 

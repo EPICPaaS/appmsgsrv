@@ -10,9 +10,12 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/EPICPaaS/appmsgsrv/db"
+	//"github.com/EPICPaaS/appmsgsrv/session"
 	"github.com/golang/glog"
 )
 
+/*成员结构体*/
 type member struct {
 	Uid         string    `json:"uid"`
 	UserName    string    `json:"userName"`
@@ -36,10 +39,12 @@ type member struct {
 	Area        string    `json:"area"`
 }
 
+/*根据userId获取成员信息*/
 func getUserByUid(uid string) *member {
 	return getUserByField("id", uid)
 }
 
+/*根据 email或者name 获取成员信息,传入的code带@符号时是为email*/
 func getUserByCode(code string) *member {
 	isEmail := false
 	if strings.LastIndex(code, "@") > -1 {
@@ -52,11 +57,12 @@ func getUserByCode(code string) *member {
 	return getUserByField(fieldName, code)
 }
 
+/*根据传入的筛选列fieldName和参数fieldArg查询成员*/
 func getUserByField(fieldName, fieldArg string) *member {
 
 	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where " + fieldName + "=?"
 
-	smt, err := MySQL.Prepare(sql)
+	smt, err := db.MySQL.Prepare(sql)
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -208,15 +214,16 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 
 	baseReq := args["baseRequest"].(map[string]interface{})
 
-	uid := baseReq["uid"]
-	deviceId := baseReq["deviceID"]
+	uid := baseReq["uid"].(string)
+	deviceId := baseReq["deviceID"].(string)
+	deviceType := baseReq["deviceType"].(string)
 	userName := args["userName"].(string)
 	password := args["password"].(string)
 
-	glog.V(5).Infof("uid [%s], deviceId [%s], userName [%s], password [%s]", uid, deviceId, userName, password)
+	glog.V(5).Infof("uid [%s], deviceId [%s], deviceType [%s], userName [%s], password [%s]",
+		uid, deviceId, deviceType, userName, password)
 
 	// TODO: 登录验证逻辑
-
 	member := getUserByCode(userName)
 	if nil == member {
 		baseRes.ErrMsg = "auth failed"
@@ -224,6 +231,30 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
+	// 登录后设置用户未关联的会话session;  sessionId:{userI_id}_{device_type}-{real_device_id}
+	//sessionId := "anonymous_" + deviceType + "_" + deviceId
+	//go session.UpdateSessionUserID(sessionId, member.Uid)
+
+	//记录apnsToken
+	apnsTokenStr := args["apnsToken"].(string)
+	if len(apnsTokenStr) > 0 {
+
+		apnsToken := &ApnsToken{
+			UserId:    member.Uid,
+			DeviceId:  deviceId,
+			ApnsToken: apnsTokenStr,
+			Created:   time.Now().Local(),
+			Updated:   time.Now().Local(),
+		}
+		if !insertApnsToken(apnsToken) {
+			baseRes.Ret = InternalErr
+			baseRes.ErrMsg = "Sava apns_token faild"
+			return
+		}
+	}
+	// 客户端登录记录
+	go Device.loginLog(&Client{UserId: member.Uid, Type: deviceType, DeviceId: deviceId})
 
 	member.UserName = member.Uid + USER_SUFFIX
 
@@ -249,11 +280,15 @@ type BySort struct {
 	memberList members
 }
 
+/*获取成员总数*/
 func (s BySort) Len() int { return len(s.memberList) }
+
+/*交换成员顺序*/
 func (s BySort) Swap(i, j int) {
 	s.memberList[i], s.memberList[j] = s.memberList[j], s.memberList[i]
 }
 
+/*判断两个成员的顺序*/
 func (s BySort) Less(i, j int) bool {
 	return s.memberList[i].Sort < s.memberList[j].Sort
 }
@@ -266,8 +301,9 @@ func sortMemberList(lst []*member) {
 	}
 }
 
+/*根据租户id（TenantId）获取成员*/
 func getUserListByTenantId(id string) members {
-	smt, err := MySQL.Prepare("select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where tenant_id=?")
+	smt, err := db.MySQL.Prepare("select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where tenant_id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -297,8 +333,9 @@ func getUserListByTenantId(id string) members {
 	return ret
 }
 
+/*根据单位id（TenantId）获取成员*/
 func getUserListByOrgId(id string) members {
-	smt, err := MySQL.Prepare("select `user`.`id`, `user`.`name`, `user`.`nickname`, `user`.`status`, `user`.`avatar`, `user`.`tenant_id`, `user`.`name_py`, `user`.`name_quanpin`, `user`.`mobile`, `user`.`area`,`org_user`.`sort`	from `user`,`org_user` where `user`.`id`=`org_user`.`user_id` and org_id=?")
+	smt, err := db.MySQL.Prepare("select `user`.`id`, `user`.`name`, `user`.`nickname`, `user`.`status`, `user`.`avatar`, `user`.`tenant_id`, `user`.`name_py`, `user`.`name_quanpin`, `user`.`mobile`, `user`.`area`,`org_user`.`sort`	from `user`,`org_user` where `user`.`id`=`org_user`.`user_id` and org_id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -328,6 +365,7 @@ func getUserListByOrgId(id string) members {
 	return ret
 }
 
+/*获取单位的人员信息*/
 func (*device) GetOrgUserList(w http.ResponseWriter, r *http.Request) {
 	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
 
@@ -356,6 +394,7 @@ func (*device) GetOrgUserList(w http.ResponseWriter, r *http.Request) {
 	res["memberList"] = memberList
 }
 
+/*单位数据结构体*/
 type org struct {
 	id        string
 	name      string
@@ -366,6 +405,7 @@ type org struct {
 	sort      int
 }
 
+/*修改用户信息*/
 func updateUser(member *member, tx *sql.Tx) error {
 	st, err := tx.Prepare("update user set name=?, nickname=?, avastar=?, name_py=?, name_quanpin=?, status=?, rand=?, password=?, tenant_id=?, updated=?, email=? where id=?")
 	if err != nil {
@@ -377,9 +417,10 @@ func updateUser(member *member, tx *sql.Tx) error {
 	return err
 }
 
+/*同步人员*/
 func (*device) SyncUser(w http.ResponseWriter, r *http.Request) {
 	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
-	tx, err := MySQL.Begin()
+	tx, err := db.MySQL.Begin()
 
 	body := ""
 	res := map[string]interface{}{"baseResponse": baseRes}
@@ -425,9 +466,10 @@ func (*device) SyncUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*同步单位*/
 func (*device) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
-	tx, err := MySQL.Begin()
+	tx, err := db.MySQL.Begin()
 
 	body := ""
 	res := map[string]interface{}{"baseResponse": baseRes}
@@ -477,6 +519,7 @@ func (*device) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*新增单位*/
 func addOrg(org *org, tx *sql.Tx) {
 	smt, err := tx.Prepare("insert into org(id, name , short_name, parent_id, tenant_id, sort) values(?,?,?,?,?,?)")
 	if smt != nil {
@@ -492,6 +535,7 @@ func addOrg(org *org, tx *sql.Tx) {
 	smt.Exec(org.id, org.name, org.shortName, org.parentId, org.tenantId, org.sort)
 }
 
+/*修改单位信息*/
 func updateOrg(org *org, tx *sql.Tx) {
 	smt, err := tx.Prepare("update org set name=?, short_name=?, parent_id=?, sort=? where id=?")
 	if smt != nil {
@@ -507,6 +551,7 @@ func updateOrg(org *org, tx *sql.Tx) {
 	smt.Exec(org.name, org.shortName, org.parentId, org.sort, org.id)
 }
 
+/*设置location*/
 func resetLocation2(org *org, location string, tx *sql.Tx) {
 	smt, err := tx.Prepare("update org set location=? where id=?")
 	if smt != nil {
@@ -522,6 +567,7 @@ func resetLocation2(org *org, location string, tx *sql.Tx) {
 	smt.Exec(location, org.id)
 }
 
+/*设置location*/
 func resetLocation(org *org, tx *sql.Tx) {
 	if org.parentId == "" {
 		resetLocation2(org, "00", tx)
@@ -544,6 +590,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 		return
 	}
 
+	// FIXME: 李旭东
 	loc := ""
 	hasBrother := false
 	for row.Next() {
@@ -551,7 +598,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 		hasBrother = true
 		break
 	}
-
+	/*如果有兄弟部门，则通过上一个兄弟部门location（用于本地树结构关系）计算出自己的location ; 没有则通过父亲的计算location*/
 	if hasBrother {
 		resetLocation2(org, caculateLocation(loc), tx)
 	} else {
@@ -582,6 +629,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 	}
 }
 
+/*计算出location，用于树的层级关系*/
 func caculateLocation(loc string) string {
 	rs := []rune(loc)
 	lt := len(rs)
@@ -604,6 +652,7 @@ func caculateLocation(loc string) string {
 	}
 }
 
+/*递增出下一个同级location*/
 func nextLocation(first, second string) string {
 	if second == "9" {
 		second = "a"
@@ -626,8 +675,9 @@ func nextLocation(first, second string) string {
 	return first + second
 }
 
+/*通过userId判断该用户是否存在*/
 func isUserExists(id string) bool {
-	smt, err := MySQL.Prepare("select 1 from user where id=?")
+	smt, err := db.MySQL.Prepare("select 1 from user where id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -652,8 +702,9 @@ func isUserExists(id string) bool {
 	return false
 }
 
+/*判断两个用户是否为常联系人*/
 func isStar(fromUid, toUId string) bool {
-	smt, err := MySQL.Prepare("select 1 from user_user where from_user_id=? and to_user_id=?")
+	smt, err := db.MySQL.Prepare("select 1 from user_user where from_user_id=? and to_user_id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -682,8 +733,9 @@ func isStar(fromUid, toUId string) bool {
 	return row.Next()
 }
 
+/*判断单位是否存在，且返回他的父节点id*/
 func isExists(id string) (bool, string) {
-	smt, err := MySQL.Prepare("select parent_id from org where id=?")
+	smt, err := db.MySQL.Prepare("select parent_id from org where id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -710,6 +762,7 @@ func isExists(id string) (bool, string) {
 	return false, ""
 }
 
+//获取当前用户的单位信息（完整的单位部门树）和用户好友
 func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", 405)
@@ -755,7 +808,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	glog.V(1).Infof("Uid [%s], DeviceId [%s], userName [%s], password [%s]",
 		uid, deviceId, userName, password)
 
-	smt, err := MySQL.Prepare("select id, name,  parent_id, sort from org where tenant_id=?")
+	smt, err := db.MySQL.Prepare("select id, name,  parent_id, sort from org where tenant_id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -768,6 +821,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//查询出该租户（组织）的所有部门
 	row, err := smt.Query(currentUser.TenantId)
 	if row != nil {
 		defer row.Close()
@@ -794,6 +848,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 		unitMap[ele.Uid] = ele
 	}
 
+	//构造部门树结构
 	rootList := []*member{}
 	for _, val := range unitMap {
 		if val.parentId == "" {
@@ -813,7 +868,8 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	sortMemberList(rootList)
 	tenant.MemberList = rootList
 	tenant.MemberCount = len(rootList)
-	smt, err = MySQL.Prepare("select id, code, name from tenant where id=?")
+	/*获取用户所属租户（单位）信息*/
+	smt, err = db.MySQL.Prepare("select id, code, name from tenant where id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -842,7 +898,8 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 		tenant.UserName = tenant.Uid + TENANT_SUFFIX
 		break
 	}
-	smt, err = MySQL.Prepare("select org_id from org_user where user_id=?")
+	/*查出用户所属部门*/
+	smt, err = db.MySQL.Prepare("select org_id from org_user where user_id=?")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -878,6 +935,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	res["starMemberList"] = starMemberList
 }
 
+/*在用户所在租户（单位）搜索用户，根据传入的@searchKey，并支持分页（@offset，@limit）*/
 func (*device) SearchUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", 405)
@@ -939,11 +997,12 @@ func (*device) SearchUser(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+/*获取用户所有好友信息*/
 func getStarUser(userId string) members {
 	ret := members{}
 	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where id in (select to_user_id from user_user where from_user_id=?)"
 
-	smt, err := MySQL.Prepare(sql)
+	smt, err := db.MySQL.Prepare(sql)
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -975,11 +1034,12 @@ func getStarUser(userId string) members {
 	return ret
 }
 
+/*通过name搜索用户，返回搜索结果（带分页），和结果条数*/
 func searchUser(tenantId, nickName string, offset, limit int) (members, int) {
 	ret := members{}
 	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where tenant_id=? and nickname like ? limit ?, ?"
 
-	smt, err := MySQL.Prepare(sql)
+	smt, err := db.MySQL.Prepare(sql)
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -1009,7 +1069,7 @@ func searchUser(tenantId, nickName string, offset, limit int) (members, int) {
 	}
 
 	sql = "select count(*) from user where nickname like ?"
-	smt, err = MySQL.Prepare(sql)
+	smt, err = db.MySQL.Prepare(sql)
 	if smt != nil {
 		defer smt.Close()
 	} else {
