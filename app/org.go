@@ -935,7 +935,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	res["starMemberList"] = starMemberList
 }
 
-/*在用户所在租户（单位）搜索用户，根据传入的searchKey*/
+/*在用户所在租户（单位）搜索用户，根据传入的searchKey，并支持分页*/
 func (*device) SearchUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", 405)
