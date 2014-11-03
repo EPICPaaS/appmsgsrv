@@ -419,26 +419,53 @@ func updateUser(member *member, tx *sql.Tx) error {
 }
 
 /*添加用户信息*/
-func addUser(member *member, tx *sql.Tx) error {
-	st, err := tx.Prepare("insert into user(id,name,nickname,avastar,name_py,name_quanpin,status,rand,password,tenant_id,email,mobile,area,created,updated)values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+func addUser(member *member) bool {
+
+	tx, err := db.MySQL.Begin()
 	if err != nil {
-		return err
+		glog.Error(err)
+		return false
 	}
-
 	member.Uid = uuid.New()
-	_, err = st.Exec(member.Uid, member.Name, member.NickName, member.Avatar, member.PYInitial, member.PYQuanPin, member.Status, member.rand, member.Password, member.TenantId, member.Email, member.Mobile, member.Area, time.Now(), time.Now())
+	_, err = tx.Exec("insert into user(id,name,nickname,avatar,name_py,name_quanpin,status,password,tenant_id,email,mobile,area,created,updated)values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", member.Uid, member.Name, member.NickName, member.Avatar, member.PYInitial, member.PYQuanPin, member.Status, member.Password, member.TenantId, member.Email, member.Mobile, member.Area, time.Now(), time.Now())
+	if err != nil {
+		glog.Error(err)
 
-	return err
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+	//提交操作
+	if err := tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+	return true
 }
 
 //保存人员与单位关系
-func addOrgUser(orgId, userId string, tx *sql.Tx) error {
-	st, err := tx.Prepare("insert into org_user(id,org_id,user_id) values(?,?,?)")
+func addOrgUser(orgId, userId string) bool {
+
+	tx, err := db.MySQL.Begin()
 	if err != nil {
-		return err
+		glog.Error(err)
+		return false
 	}
-	_, err = st.Exec(uuid.New(), orgId, userId)
-	return err
+
+	_, err = tx.Exec("insert into org_user(id,org_id,user_id) values(?,?,?)", uuid.New(), orgId, userId)
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+	if err := tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+	return true
 }
 
 /*同步人员*/
@@ -484,32 +511,37 @@ func (*app) SyncUser(w http.ResponseWriter, r *http.Request) {
 
 	orgId := args["orgId"].(string)
 	memberMap := args["member"].(map[string]interface{})
+
 	menberObj := &member{
 		Uid:       memberMap["uid"].(string),
 		UserName:  memberMap["userName"].(string),
 		Name:      memberMap["name"].(string),
 		NickName:  memberMap["nickName"].(string),
-		PYInitial: memberMap["pYInitial)"].(string),
-		PYQuanPin: memberMap["pYQuanPin"].(string),
+		PYInitial: memberMap["nickName"].(string),
+		PYQuanPin: memberMap["pYInitial"].(string),
 		Status:    memberMap["status"].(string),
 		Avatar:    memberMap["avatar"].(string),
-		rand:      memberMap["rand"].(int),
 		Password:  memberMap["password"].(string),
 		TenantId:  memberMap["tenantId"].(string),
 		Email:     memberMap["email"].(string),
 		Mobile:    memberMap["mobile"].(string),
 		Area:      memberMap["area"].(string),
 	}
+
 	exists := isUserExists(menberObj.Uid)
 	if exists {
 		//有则更新
 		updateUser(menberObj, tx)
 	} else {
 		//新增
-		addUser(menberObj, tx)
+		resFlag := addUser(menberObj)
 		//添加单位人员关系
 		if len(orgId) > 0 {
-			addOrgUser(orgId, menberObj.Uid, tx)
+			resFlag = addOrgUser(orgId, menberObj.Uid)
+		}
+		if !resFlag {
+			baseRes["ret"] = InternalErr
+			baseRes["errMsg"] = "sysnUser  failure"
 		}
 	}
 
