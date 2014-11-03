@@ -442,7 +442,7 @@ func addOrgUser(orgId, userId string, tx *sql.Tx) error {
 }
 
 /*同步人员*/
-func (*device) SyncUser(w http.ResponseWriter, r *http.Request) {
+func (*app) SyncUser(w http.ResponseWriter, r *http.Request) {
 
 	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
 	tx, err := db.MySQL.Begin()
