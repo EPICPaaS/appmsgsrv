@@ -418,8 +418,31 @@ func updateUser(member *member, tx *sql.Tx) error {
 	return err
 }
 
+/*添加用户信息*/
+func addUser(member *member, tx *sql.Tx) error {
+	st, err := tx.Prepare("insert into user(id,name,nickname,avastar,name_py,name_quanpin,status,rand,password,tenant_id,email,mobile,area,created,updated)values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+	if err != nil {
+		return err
+	}
+
+	res, err := st.Exec(uuid.New(), member.Name, member.NickName, member.Avatar, member.PYInitial, member.PYQuanPin, member.Status, member.rand, member.Password, member.TenantId, member.Email, member.Mobile, member.Area, time.Now(), time.Now())
+	member.Uid = res.LastInsertId()
+	return err
+}
+
+//保存人员与单位关系
+func addOrgUser(orgId, userId string) error {
+	st, err := tx.Prepare("insert into org_user(id,org_id,user_id) values(?,?,?)")
+	if err != nil {
+		return err
+	}
+	_, err = st.Exec(uuid.New(), orgId, userId)
+	return err
+}
+
 /*同步人员*/
 func (*device) SyncUser(w http.ResponseWriter, r *http.Request) {
+
 	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
 	tx, err := db.MySQL.Begin()
 
@@ -437,20 +460,56 @@ func (*device) SyncUser(w http.ResponseWriter, r *http.Request) {
 		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
+
 	body = string(bodyBytes)
 
-	member := member{}
-	if err := json.Unmarshal(bodyBytes, &member); err != nil {
-		baseRes["errMsg"] = err.Error()
-		baseRes["ret"] = ParamErr
+	var args map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
 		return
 	}
 
+	//应用校验
+	baseReq := args["baseRequest"].(map[string]interface{})
+	token := baseReq["token"].(string)
+	_, err = getApplicationByToken(token)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		baseRes.ErrMsg = "Authorization failure"
+		return
+	}
+
+	orgId := args["orgId"].(string)
+	member := args["member"].(map[string]interface{})
+	menberObj := member{
+		Uid:       member["uid"].(string),
+		UserName:  member["userName"].(string),
+		Name:      member["name"].(string),
+		NickName:  member["nickName"].(string),
+		PYInitial: member["pYInitial)"].(string),
+		PYQuanPin: member["pYQuanPin"].(string),
+		Status:    member["status"].(int),
+		Avatar:    member["avatar"].(string),
+		rand:      member["rand"].(int),
+		Password:  member["password"].(string),
+		TenantId:  member["tenantId"].(string),
+		Email:     member["email"].(string),
+		Mobile:    member["mobile"].(string),
+		Area:      member["area"].(string),
+	}
 	exists := isUserExists(member.Uid)
 	if exists {
-		updateUser(&member, tx)
+		//有则更新
+		updateUser(&menberObj, tx)
 	} else {
-
+		//新增
+		addUser(&menberObj, tx)
+		//添加单位人员关系
+		if len(orgId) > 0 {
+			addOrgUser(orgId, menberObj.Uid)
+		}
 	}
 
 	rerr := recover()
