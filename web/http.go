@@ -61,7 +61,7 @@ func StartHTTP() {
 	appAppServeMux.HandleFunc("/app/client/device/getOrgInfo", app.Device.GetOrgInfo)
 	appAppServeMux.HandleFunc("/app/client/device/getOrgUserList", app.Device.GetOrgUserList)
 	appAppServeMux.HandleFunc("/app/client/device/syncOrg", app.Device.SyncOrg)
-	appAppServeMux.HandleFunc("/app/client/device/syncUser", app.Device.SyncUser)
+	appAppServeMux.HandleFunc("/app/client/app/syncUser", app.App.SyncUser)
 	appAppServeMux.HandleFunc("/app/client/device/search", app.Device.SearchUser)
 	appAppServeMux.HandleFunc("/app/client/device/create-qun", app.Device.CreateQun)
 	appAppServeMux.HandleFunc("/app/client/device/getQunMembers", app.Device.GetUsersInQun)
