@@ -3,14 +3,14 @@ package app
 import (
 	"database/sql"
 	"encoding/json"
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/EPICPaaS/go-uuid/uuid"
 	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
 	"text/template"
 	"time"
-
-	"github.com/EPICPaaS/appmsgsrv/db"
 	//"github.com/EPICPaaS/appmsgsrv/session"
 	"github.com/golang/glog"
 )
@@ -425,13 +425,14 @@ func addUser(member *member, tx *sql.Tx) error {
 		return err
 	}
 
-	res, err := st.Exec(uuid.New(), member.Name, member.NickName, member.Avatar, member.PYInitial, member.PYQuanPin, member.Status, member.rand, member.Password, member.TenantId, member.Email, member.Mobile, member.Area, time.Now(), time.Now())
-	member.Uid = res.LastInsertId()
+	member.Uid = uuid.New()
+	_, err = st.Exec(member.Uid, member.Name, member.NickName, member.Avatar, member.PYInitial, member.PYQuanPin, member.Status, member.rand, member.Password, member.TenantId, member.Email, member.Mobile, member.Area, time.Now(), time.Now())
+
 	return err
 }
 
 //保存人员与单位关系
-func addOrgUser(orgId, userId string) error {
+func addOrgUser(orgId, userId string, tx *sql.Tx) error {
 	st, err := tx.Prepare("insert into org_user(id,org_id,user_id) values(?,?,?)")
 	if err != nil {
 		return err
@@ -466,8 +467,8 @@ func (*device) SyncUser(w http.ResponseWriter, r *http.Request) {
 	var args map[string]interface{}
 
 	if err := json.Unmarshal(bodyBytes, &args); err != nil {
-		baseRes.ErrMsg = err.Error()
-		baseRes.Ret = ParamErr
+		baseRes["errMsg"] = err.Error()
+		baseRes["ret"] = ParamErr
 		return
 	}
 
@@ -476,39 +477,39 @@ func (*device) SyncUser(w http.ResponseWriter, r *http.Request) {
 	token := baseReq["token"].(string)
 	_, err = getApplicationByToken(token)
 	if nil != err {
-		baseRes.Ret = AuthErr
-		baseRes.ErrMsg = "Authorization failure"
+		baseRes["ret"] = AuthErr
+		baseRes["errMsg"] = "Authorization failure"
 		return
 	}
 
 	orgId := args["orgId"].(string)
-	member := args["member"].(map[string]interface{})
-	menberObj := member{
-		Uid:       member["uid"].(string),
-		UserName:  member["userName"].(string),
-		Name:      member["name"].(string),
-		NickName:  member["nickName"].(string),
-		PYInitial: member["pYInitial)"].(string),
-		PYQuanPin: member["pYQuanPin"].(string),
-		Status:    member["status"].(int),
-		Avatar:    member["avatar"].(string),
-		rand:      member["rand"].(int),
-		Password:  member["password"].(string),
-		TenantId:  member["tenantId"].(string),
-		Email:     member["email"].(string),
-		Mobile:    member["mobile"].(string),
-		Area:      member["area"].(string),
+	memberMap := args["member"].(map[string]interface{})
+	menberObj := &member{
+		Uid:       memberMap["uid"].(string),
+		UserName:  memberMap["userName"].(string),
+		Name:      memberMap["name"].(string),
+		NickName:  memberMap["nickName"].(string),
+		PYInitial: memberMap["pYInitial)"].(string),
+		PYQuanPin: memberMap["pYQuanPin"].(string),
+		Status:    memberMap["status"].(string),
+		Avatar:    memberMap["avatar"].(string),
+		rand:      memberMap["rand"].(int),
+		Password:  memberMap["password"].(string),
+		TenantId:  memberMap["tenantId"].(string),
+		Email:     memberMap["email"].(string),
+		Mobile:    memberMap["mobile"].(string),
+		Area:      memberMap["area"].(string),
 	}
-	exists := isUserExists(member.Uid)
+	exists := isUserExists(menberObj.Uid)
 	if exists {
 		//有则更新
-		updateUser(&menberObj, tx)
+		updateUser(menberObj, tx)
 	} else {
 		//新增
-		addUser(&menberObj, tx)
+		addUser(menberObj, tx)
 		//添加单位人员关系
 		if len(orgId) > 0 {
-			addOrgUser(orgId, menberObj.Uid)
+			addOrgUser(orgId, menberObj.Uid, tx)
 		}
 	}
 
