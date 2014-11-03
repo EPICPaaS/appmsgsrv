@@ -38,6 +38,15 @@ type member struct {
 	Mobile      string    `json:"mobile"`
 	Area        string    `json:"area"`
 }
+type Tennat struct {
+	Id         string    `json:"id"`
+	Code       string    `json:"code"`
+	Name       string    `json:"name"`
+	Status     int       `json:"status"`
+	CustomerId string    `json:"customerId"`
+	Created    time.Time `json:"created"`
+	Updated    time.Time `json:"updated"`
+}
 
 /*根据userId获取成员信息*/
 func getUserByUid(uid string) *member {
@@ -560,7 +569,7 @@ func (*app) SyncUser(w http.ResponseWriter, r *http.Request) {
 }
 
 /*同步单位*/
-func (*device) SyncOrg(w http.ResponseWriter, r *http.Request) {
+func (*app) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
 	tx, err := db.MySQL.Begin()
 
@@ -578,13 +587,30 @@ func (*device) SyncOrg(w http.ResponseWriter, r *http.Request) {
 		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
+
 	body = string(bodyBytes)
 
-	org := org{}
-	if err := json.Unmarshal(bodyBytes, &org); err != nil {
+	var args map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
 		baseRes["errMsg"] = err.Error()
 		baseRes["ret"] = ParamErr
 		return
+	}
+
+	//应用校验
+	baseReq := args["baseRequest"].(map[string]interface{})
+	token := baseReq["token"].(string)
+	_, err = getApplicationByToken(token)
+	if nil != err {
+		baseRes["ret"] = AuthErr
+		baseRes["errMsg"] = "authfailure"
+		return
+	}
+
+	org := org{}
+	if err := json.Unmarshal([]byte(args["org"].(string)), org); err != nil {
+		baseRes["errMsg"] = err.Error()
+		baseRes["ret"] = ParamErr
 	}
 
 	exists, parentId := isExists(org.id)
@@ -638,10 +664,15 @@ func updateOrg(org *org, tx *sql.Tx) {
 	}
 
 	if err != nil {
+		glog.Error(err)
 		return
 	}
 
-	smt.Exec(org.name, org.shortName, org.parentId, org.sort, org.id)
+	_, err = smt.Exec(org.name, org.shortName, org.parentId, org.sort, org.id)
+	if err != nil {
+		glog.Error(err)
+		return
+	}
 }
 
 /*设置location*/
@@ -1188,4 +1219,94 @@ func searchUser(tenantId, nickName string, offset, limit int) (members, int) {
 		}
 	}
 	return ret, cnt
+}
+
+/*同步租户*/
+func (*app) SyncTenant(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		res["ret"] = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+	token := baseReq["token"].(string)
+
+	//应用校验
+	_, err = getApplicationByToken(token)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		baseRes.ErrMsg = "auth failure"
+		return
+	}
+
+	tennat := args["tennat"].(Tennat)
+	if saveTennat(&tennat) {
+		baseRes.Ret = InternalErr
+		baseRes.ErrMsg = "synchronize tennat failure "
+		return
+	}
+	return
+}
+
+/*添加租户*/
+func saveTennat(tennat *Tennat) bool {
+	tx, err := db.MySQL.Begin()
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+	//新增
+	if len(tennat.Id) == 0 {
+		tennat.Id = uuid.New()
+		_, err = tx.Exec("insert into tannet(id,code,name,status,customer_id,created,updated) values(?,?,?,?,?,?,?)", tennat.Id, tennat.Name, tennat.Code, tennat.Status, tennat.CustomerId, time.Now().Local(), time.Now().Local())
+
+	} else if isExistTennat(tennat.Id) { //修改
+		_, err = tx.Exec("update tennat set code = ?,name=?,status=?,customer_id=?,created=?,updated=? where id =?) values(?,?,?,?,?,?,?)", tennat.Name, tennat.Code, tennat.Status, tennat.CustomerId, tennat.Created, time.Now().Local(), tennat.Id)
+	}
+
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+
+	if err = tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	return true
+}
+
+//判断租户是否存在
+func isExistTennat(id string) bool {
+	rows, err := db.MySQL.Query("select * from tennat where id =?", id)
+	if err != nil {
+		glog.Error()
+		return false
+	}
+	return rows.Next()
 }
