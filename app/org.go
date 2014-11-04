@@ -38,7 +38,7 @@ type member struct {
 	Mobile      string    `json:"mobile"`
 	Area        string    `json:"area"`
 }
-type Tennat struct {
+type Tenant struct {
 	Id         string    `json:"id"`
 	Code       string    `json:"code"`
 	Name       string    `json:"name"`
@@ -580,6 +580,7 @@ func (*app) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		baseRes["errMsg"] = err.Error()
 		baseRes["ret"] = InternalErr
+		glog.Error(err)
 	}
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -594,6 +595,7 @@ func (*app) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(bodyBytes, &args); err != nil {
 		baseRes["errMsg"] = err.Error()
 		baseRes["ret"] = ParamErr
+		glog.Error(err)
 		return
 	}
 
@@ -604,15 +606,19 @@ func (*app) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	if nil != err {
 		baseRes["ret"] = AuthErr
 		baseRes["errMsg"] = "authfailure"
+		glog.Error(err)
 		return
 	}
 
-	org := org{}
-	if err := json.Unmarshal([]byte(args["org"].(string)), org); err != nil {
-		baseRes["errMsg"] = err.Error()
-		baseRes["ret"] = ParamErr
+	orgMap := args["org"].(map[string]interface{})
+	org := org{
+		id:        orgMap["id"].(string),
+		name:      orgMap["name"].(string),
+		shortName: orgMap["shortName"].(string),
+		parentId:  orgMap["parentId"].(string),
+		tenantId:  orgMap["tenantId"].(string),
+		sort:      int(orgMap["sort"].(float64)),
 	}
-
 	exists, parentId := isExists(org.id)
 	if exists && parentId == org.parentId {
 		updateOrg(&org, tx)
@@ -639,19 +645,27 @@ func (*app) SyncOrg(w http.ResponseWriter, r *http.Request) {
 }
 
 /*新增单位*/
-func addOrg(org *org, tx *sql.Tx) {
-	smt, err := tx.Prepare("insert into org(id, name , short_name, parent_id, tenant_id, sort) values(?,?,?,?,?,?)")
-	if smt != nil {
-		defer smt.Close()
-	} else {
-		return
-	}
+func addOrg(org *org, tx *sql.Tx) bool {
 
+	tx, err := db.MySQL.Begin()
 	if err != nil {
-		return
+		glog.Error(err)
+		return false
 	}
-
-	smt.Exec(org.id, org.name, org.shortName, org.parentId, org.tenantId, org.sort)
+	org.id = uuid.New()
+	_, err = tx.Exec("insert into org(id, name , short_name, parent_id, tenant_id, sort) values(?,?,?,?,?,?)", org.id, org.name, org.shortName, org.parentId, org.tenantId, org.sort)
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+	if err = tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+	return true
 }
 
 /*修改单位信息*/
@@ -668,35 +682,40 @@ func updateOrg(org *org, tx *sql.Tx) {
 		return
 	}
 
-	_, err = smt.Exec(org.name, org.shortName, org.parentId, org.sort, org.id)
-	if err != nil {
-		glog.Error(err)
-		return
-	}
+	smt.Exec(org.name, org.shortName, org.parentId, org.sort, org.id)
+
 }
 
 /*设置location*/
-func resetLocation2(org *org, location string, tx *sql.Tx) {
-	smt, err := tx.Prepare("update org set location=? where id=?")
-	if smt != nil {
-		defer smt.Close()
-	} else {
-		return
-	}
-
+func resetLocation2(org *org, location string) bool {
+	tx, err := db.MySQL.Begin()
 	if err != nil {
-		return
+		glog.Error(err)
+		return false
 	}
 
-	smt.Exec(location, org.id)
+	_, err = tx.Exec("update org set location=? where id=?", location, org.id)
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+
+	if err = tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+	return true
 }
 
 /*设置location*/
 func resetLocation(org *org, tx *sql.Tx) {
 	if org.parentId == "" {
-		resetLocation2(org, "00", tx)
+		resetLocation2(org, "00")
 	}
-	smt, err := tx.Prepare("select location from org where parent_id=? order by location desc")
+	smt, err := tx.Prepare("select location  from org where parent_id=? and id !=? order by location desc")
 	if smt != nil {
 		defer smt.Close()
 	} else {
@@ -707,7 +726,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 		return
 	}
 
-	row, err := smt.Query(org.parentId)
+	row, err := smt.Query(org.parentId, org.id)
 	if row != nil {
 		defer row.Close()
 	} else {
@@ -724,8 +743,9 @@ func resetLocation(org *org, tx *sql.Tx) {
 	}
 	/*如果有兄弟部门，则通过上一个兄弟部门location（用于本地树结构关系）计算出自己的location ; 没有则通过父亲的计算location*/
 	if hasBrother {
-		resetLocation2(org, caculateLocation(loc), tx)
+		resetLocation2(org, caculateLocation(loc))
 	} else {
+
 		smt, err = tx.Prepare("select location from org where id=?")
 		if smt != nil {
 			defer smt.Close()
@@ -749,7 +769,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 			break
 		}
 
-		resetLocation2(org, caculateLocation(loc+"$$"), tx)
+		resetLocation2(org, caculateLocation(loc+"$$"))
 	}
 }
 
@@ -763,14 +783,15 @@ func caculateLocation(loc string) string {
 	if lt > 2 {
 		prefix = string(rs[:(lt - 2)])
 		first = string(rs[(lt - 2):(lt - 1)])
-		second = string(rs[lt-2:])
+		second = string(rs[lt-1:])
 	} else {
 		first = string(rs[0])
 		second = string(rs[1])
 	}
 
-	if first == "$" {
-		return "00"
+	// FIXME: 李旭东
+	if first == "$" { // 通过父亲生成location
+		return prefix + "00"
 	} else {
 		return prefix + nextLocation(first, second)
 	}
@@ -1259,9 +1280,22 @@ func (*app) SyncTenant(w http.ResponseWriter, r *http.Request) {
 		baseRes.ErrMsg = "auth failure"
 		return
 	}
+	tennatMap := args["tennat"].(map[string]interface{})
+	if len(tennatMap) == 0 {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
 
-	tennat := args["tennat"].(Tennat)
-	if saveTennat(&tennat) {
+	tenant := &Tenant{
+		Id:         tennatMap["id"].(string),
+		Code:       tennatMap["code"].(string),
+		Name:       tennatMap["name"].(string),
+		CustomerId: tennatMap["customerId"].(string),
+		Status:     int(tennatMap["status"].(float64)),
+	}
+
+	if !saveTennat(tenant) {
 		baseRes.Ret = InternalErr
 		baseRes.ErrMsg = "synchronize tennat failure "
 		return
@@ -1270,19 +1304,20 @@ func (*app) SyncTenant(w http.ResponseWriter, r *http.Request) {
 }
 
 /*添加租户*/
-func saveTennat(tennat *Tennat) bool {
+func saveTennat(tenant *Tenant) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
 		glog.Error(err)
 		return false
 	}
-	//新增
-	if len(tennat.Id) == 0 {
-		tennat.Id = uuid.New()
-		_, err = tx.Exec("insert into tannet(id,code,name,status,customer_id,created,updated) values(?,?,?,?,?,?,?)", tennat.Id, tennat.Name, tennat.Code, tennat.Status, tennat.CustomerId, time.Now().Local(), time.Now().Local())
 
-	} else if isExistTennat(tennat.Id) { //修改
-		_, err = tx.Exec("update tennat set code = ?,name=?,status=?,customer_id=?,created=?,updated=? where id =?) values(?,?,?,?,?,?,?)", tennat.Name, tennat.Code, tennat.Status, tennat.CustomerId, tennat.Created, time.Now().Local(), tennat.Id)
+	//修改
+	if isExistTennat(tenant.Id) {
+		_, err = tx.Exec("update tenant set code = ?,name=?,status=?,customer_id=?,created=?,updated=? where id =?", tenant.Name, tenant.Code, tenant.Status, tenant.CustomerId, tenant.Created, time.Now().Local(), tenant.Id)
+	} else {
+		tenant.Id = uuid.New() //新增
+		_, err = tx.Exec("insert into tenant(id,code,name,status,customer_id,created,updated) values(?,?,?,?,?,?,?)", tenant.Id, tenant.Name, tenant.Code, tenant.Status, tenant.CustomerId, time.Now().Local(), time.Now().Local())
+
 	}
 
 	if err != nil {
@@ -1303,9 +1338,9 @@ func saveTennat(tennat *Tennat) bool {
 
 //判断租户是否存在
 func isExistTennat(id string) bool {
-	rows, err := db.MySQL.Query("select * from tennat where id =?", id)
+	rows, err := db.MySQL.Query("select * from tenant where id =?", id)
 	if err != nil {
-		glog.Error()
+		glog.Error(err)
 		return false
 	}
 	return rows.Next()
