@@ -367,6 +367,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 		newNikNames = append(newNikNames, nikName)
 	}
 	if addQunmember(qunUsers) {
+
 		members, err := getUsersInQun(qunId)
 		if err != nil {
 			baseRes.ErrMsg = err.Error()
@@ -396,7 +397,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 			if menber.Uid == user.Uid {
 				msg["content"] = contentCreate
 				pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, 600)
-				break
+				continue
 			}
 			//是否排除标志
 			flag := true
