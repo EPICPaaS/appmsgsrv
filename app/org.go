@@ -480,7 +480,7 @@ func addOrgUser(orgId, userId string) bool {
 /*同步人员*/
 func (*app) SyncUser(w http.ResponseWriter, r *http.Request) {
 
-	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
+	baseRes := map[string]interface{}{"ret": OK, "errMsg": "syncUser  success"}
 	tx, err := db.MySQL.Begin()
 
 	body := ""
@@ -570,7 +570,7 @@ func (*app) SyncUser(w http.ResponseWriter, r *http.Request) {
 
 /*同步单位*/
 func (*app) SyncOrg(w http.ResponseWriter, r *http.Request) {
-	baseRes := map[string]interface{}{"ret": OK, "errMsg": ""}
+	baseRes := map[string]interface{}{"ret": OK, "errMsg": "syncOrg succeed"}
 	tx, err := db.MySQL.Begin()
 
 	body := ""
