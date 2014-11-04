@@ -299,6 +299,8 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 		}
 		glog.Info("Push message successed [%v],Content[%v],Host[%v]", t.ApnsToken, alert, host)
 
+		// TODO: APNs 回调处理
+
 	}
 }
 
