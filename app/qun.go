@@ -15,7 +15,7 @@ import (
 
 const (
 	// 群插入 SQL.
-	InsertQunSQL = "INSERT INTO `qun` (`id`, `creator_id`, `name`, `description`, `max_member`, `avatar`, `created`, `updated`) VALUES " +
+	InsertQunSQL = "INSERT INTO `qun` (`id`, `creator_id`, `name`, `description`, `max_member`, `avatar`, `tenant_id`, `created`, `updated`) VALUES " +
 		"(?, ?, ?, ?, ?, ?, ?, ?)"
 	// 群-用户关联插入 SQL.
 	InsertQunUserSQL = "INSERT INTO `qun_user` (`id`, `qun_id`, `user_id`, `sort`, `role`, `created`, `updated`) SELECT ?, ?, ?, ?, ?, ?, ? FROM DUAL WHERE NOT EXISTS (SELECT 1 from `qun_user` WHERE `qun_id`= ? AND `user_id`= ?)"
