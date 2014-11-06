@@ -79,6 +79,10 @@ func StartHTTP() {
 	appAppServeMux.HandleFunc("/app/client/app/setSessionState", app.SessionStat)
 	appAppServeMux.HandleFunc("/app/client/app/getSessions", app.App.GetSession)
 	appAppServeMux.HandleFunc("/app/client/app/user/push", apiCallStat(app.App.UserPush))
+	appAppServeMux.HandleFunc("/app/client/app/getOrgUserList", app.App.GetOrgUserList)
+	appAppServeMux.HandleFunc("/app/client/app/getOrgList", app.App.GetOrgList)
+	appAppServeMux.HandleFunc("/app/client/app/addOrgUser", app.App.AddOrgUser)
+	appAppServeMux.HandleFunc("/app/client/app/removeOrgUser", app.App.RemoveOrgUser)
 
 	appAppServeMux.HandleFunc("/app/user/erweima", app.UserErWeiMa)
 
