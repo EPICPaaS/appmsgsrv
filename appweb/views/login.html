@@ -1,0 +1,83 @@
+{{template "base/base.html" .}}
+{{template "base/base_common.html" .}}
+{{define "meta"}}
+     <title>有信网页版</title>
+{{end}}
+
+{{define "addCSS"}}
+ 
+{{end}}
+
+{{define "addJS"}}
+<script type="text/javascript">
+$(document).ready(function() {
+	
+
+});
+function doLogin() {
+	var queryString = $('#loginForm').serializeArray(); 
+	var queryObj = {};
+	$.each(queryString ,function(index, value) {
+		queryObj[value["name"]] = value["value"];						 
+	});
+	
+	$.ajax({
+		url : "/login",
+		type : "POST",
+		data : queryObj,
+		dataType : 'json',
+		async : true,
+		contentType : "application/x-www-form-urlencoded; charset=UTF-8",
+		success : function(data,textStatus, jqXHR) {
+		     alert("请求成功"+JSON.stringify(data))
+		},
+		error:function(XMLHttpRequest, textStatus, errorThrown) {
+			alert("与服务器连接失败"+XMLHttpRequest.responseText);
+		}
+	});
+}
+</script>
+{{end}}
+
+{{define "body"}}
+  <div class="container" style="width: 500px; margin-top:100px">		
+		<form class="form-horizontal" role="form"  id="loginForm" action="/login" method="POST">
+		  <div class="form-group" >
+		    <label class="col-sm-2 control-label">租户</label>
+		    <div class="col-sm-10">
+		     <select class="form-control" name="tenantId">
+			   {{range .Tenants}}
+			      <option value="{{.Id}}">{{.Name}}</option>
+			   {{end}}
+			</select>
+		    </div>
+		  </div>
+		  <div class="form-group" >
+		    <label class="col-sm-2 control-label">用户名</label>
+		    <div class="col-sm-10">
+		      <input class="form-control" name="userName" placeholder="Account">
+		    </div>
+		  </div>
+		  <div class="form-group">
+		    <label class="col-sm-2 control-label">密码</label>
+		    <div class="col-sm-10">
+		      <input type="password" class="form-control" name="pasword" placeholder="Password">
+		    </div>
+		  </div>
+		  <div class="form-group">
+		    <div class="col-sm-offset-2 col-sm-10">
+		      <div class="checkbox">
+		        <label>
+		          <input type="checkbox">记住我
+		        </label>
+		      </div>
+		    </div>
+		  </div>
+		  <div class="form-group">
+		    <div class="col-sm-offset-2 col-sm-10">
+		      <button type="button" class="btn btn-info" onclick="doLogin()">登陆</button>
+		    </div>
+		  </div>
+		</form>
+	</div>
+{{end}}
