@@ -8,6 +8,7 @@ CREATE TABLE `application` (
   `status` int(11) DEFAULT NULL,
   `sort` int(11) DEFAULT NULL,
   `level` int(11) DEFAULT NULL,
+  `tenant_id` varchar(64) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -127,6 +128,7 @@ CREATE TABLE `qun` (
   `description` varchar(255) NOT NULL DEFAULT '',
   `max_member` int(11) NOT NULL DEFAULT '0',
   `avatar` varchar(255) NOT NULL DEFAULT '',
+  `tenant_id` varchar(64) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -154,6 +156,7 @@ CREATE TABLE `tenant` (
   `code` varchar(64) NOT NULL DEFAULT '',
   `name` varchar(128) NOT NULL DEFAULT '',
   `status` int(11) NOT NULL DEFAULT '0',
+  `customer_id` varchar(64) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)

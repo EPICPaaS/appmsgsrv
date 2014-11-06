@@ -2,20 +2,21 @@ package app
 
 import (
 	"encoding/json"
-	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/EPICPaaS/go-uuid/uuid"
+	"github.com/golang/glog"
 )
 
 const (
 	// 群插入 SQL.
-	InsertQunSQL = "INSERT INTO `qun` (`id`, `creator_id`, `name`, `description`, `max_member`, `avatar`, `created`, `updated`) VALUES " +
-		"(?, ?, ?, ?, ?, ?, ?, ?)"
+	InsertQunSQL = "INSERT INTO `qun` (`id`, `creator_id`, `name`, `description`, `max_member`, `avatar`, `tenant_id`, `created`, `updated`) VALUES " +
+		"(?, ?, ?, ?, ?, ?, ?, ?, ?)"
 	// 群-用户关联插入 SQL.
 	InsertQunUserSQL = "INSERT INTO `qun_user` (`id`, `qun_id`, `user_id`, `sort`, `role`, `created`, `updated`) SELECT ?, ?, ?, ?, ?, ?, ? FROM DUAL WHERE NOT EXISTS (SELECT 1 from `qun_user` WHERE `qun_id`= ? AND `user_id`= ?)"
 
@@ -40,6 +41,7 @@ type Qun struct {
 	Description     string    `json:"description"`
 	MaxMember       int       `json:"maxMember"`
 	Avatar          string    `json:"avatar"`
+	TenantId        string    `json:"tenantId"`
 	Created         time.Time `json:"created"`
 	Updated         time.Time `json:"updated"`
 }
@@ -104,7 +106,8 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 	topic := args["topic"].(string)
 
 	qid := uuid.New()
-	qun := Qun{Id: qid, CreatorId: creatorId, Name: topic, Description: "", MaxMember: 100, Avatar: "", Created: now, Updated: now}
+	qun := Qun{Id: qid, CreatorId: creatorId, Name: topic, Description: "", MaxMember: 100, Avatar: "",
+		TenantId: user.TenantId, Created: now, Updated: now}
 
 	memberList := args["memberList"].([]interface{})
 	qunUsers := []QunUser{}
@@ -599,7 +602,8 @@ func createQun(qun *Qun, qunUsers []QunUser) bool {
 	}
 
 	// 创建群记录
-	_, err = tx.Exec(InsertQunSQL, qun.Id, qun.CreatorId, qun.Name, qun.Description, qun.MaxMember, qun.Avatar, qun.Created, qun.Updated)
+	_, err = tx.Exec(InsertQunSQL, qun.Id, qun.CreatorId, qun.Name, qun.Description, qun.MaxMember, qun.Avatar,
+		qun.TenantId, qun.Created, qun.Updated)
 	if err != nil {
 		glog.Error(err)
 
