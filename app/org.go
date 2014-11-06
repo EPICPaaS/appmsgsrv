@@ -398,10 +398,232 @@ func (*device) GetOrgUserList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orgId := input["uid"].(string)
+	orgId := input["orgid"].(string)
 	memberList := getUserListByOrgId(orgId)
 	res["memberCount"] = len(memberList)
 	res["memberList"] = memberList
+}
+
+/*获取单位的人员信息*/
+func (*app) GetOrgUserList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+
+	// Token 校验
+	token := baseReq["token"].(string)
+	application, err := getApplicationByToken(token)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		return
+	}
+
+	orgId := args["orgid"].(string)
+	memberList := getUserListByOrgId(orgId)
+	res["memberCount"] = len(memberList)
+	res["memberList"] = memberList
+}
+
+/*获取人员的单位集*/
+func (*app) GetOrgList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+
+	// Token 校验
+	token := baseReq["token"].(string)
+	application, err := getApplicationByToken(token)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		return
+	}
+
+	userId := args["uid"].(string)
+	orgList := getOrgListByUserId(userId)
+	res["orgCount"] = len(orgList)
+	res["orgList"] = orgList
+}
+
+func getOrgListByUserId(userId string) []*org {
+	rows, _ := db.MySQL.Query("select id ,name,short_name,parent_id,location,tenant_id,sort from org where id in (select org_id from org_user where user_id = ?)  ", userId)
+
+	ret := []*org{}
+	for rows.Next() {
+		resource := &org{}
+		if err := rows.Scan(&resource.id, &resource.name, &resource.shortName, &resource.parentId, &resource.location, &resource.tenantId, &resource.sort); err != nil {
+			glog.Error(err)
+
+			return nil
+		}
+		ret = append(ret, resource)
+	}
+
+	return ret
+}
+
+/*添加用户-组织关联关系*/
+func (*app) AddOrgUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+
+	// Token 校验
+	token := baseReq["token"].(string)
+	application, err := getApplicationByToken(token)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		return
+	}
+
+	orgId := args["orgid"].(string)
+	userId := args["uid"].(string)
+	b := addOrgUser(orgId, userId)
+	res["successed"] = b
+}
+
+/*移除用户-组织关联关系*/
+func (*app) RemoveOrgUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+
+	// Token 校验
+	token := baseReq["token"].(string)
+	application, err := getApplicationByToken(token)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		return
+	}
+
+	orgId := args["orgid"].(string)
+	userId := args["uid"].(string)
+	b := removeOrgUser(orgId, userId)
+	res["successed"] = b
+}
+
+func removeOrgUser(orgId, userId string) bool {
+	tx, err := db.MySQL.Begin()
+
+	if err != nil {
+		glog.Error(err)
+
+		return false
+	}
+
+	_, err = tx.Exec("delete form org_user where org_id = ? and user_id = ?", orgId, userId)
+	if err != nil {
+		glog.Error(err)
+
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+
+		return false
+	}
+
+	if err := tx.Commit(); err != nil {
+		glog.Error(err)
+
+		return false
+	}
+
+	return true
 }
 
 /*单位数据结构体*/
