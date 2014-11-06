@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+	{{template "base/head.html" .}}
+	{{template "meta" .}}
+	{{template "addCSS" }}
+</head>
+<body id="front">
+	<div id="wrapper">
+		{{template "top" .}}
+		<div id="main" class="container">
+			{{template "body" .}}
+	    </div>
+	</div>
+	{{template "footer" .}}
+	{{template "addJS"}}
+</body>
+</html>
