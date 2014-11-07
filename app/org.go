@@ -12,6 +12,7 @@ import (
 	"text/template"
 	"time"
 	//"github.com/EPICPaaS/appmsgsrv/session"
+	//"fmt"
 	"github.com/golang/glog"
 )
 
@@ -398,21 +399,242 @@ func (*device) GetOrgUserList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orgId := input["uid"].(string)
+	orgId := input["orgid"].(string)
 	memberList := getUserListByOrgId(orgId)
 	res["memberCount"] = len(memberList)
 	res["memberList"] = memberList
 }
 
+/*获取单位的人员信息*/
+func (*app) GetOrgUserList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+
+	// Token 校验
+	token := baseReq["token"].(string)
+	application, err := getApplicationByToken(token)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		return
+	}
+
+	orgId := args["orgid"].(string)
+	memberList := getUserListByOrgId(orgId)
+	res["memberCount"] = len(memberList)
+	res["memberList"] = memberList
+}
+
+/*获取人员的单位集*/
+func (*app) GetOrgList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+
+	// Token 校验
+	token := baseReq["token"].(string)
+	application, err := getApplicationByToken(token)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		return
+	}
+
+	userId := args["uid"].(string)
+	orgList := getOrgListByUserId(userId)
+	res["orgCount"] = len(orgList)
+	res["orgList"] = orgList
+}
+
+func getOrgListByUserId(userId string) []*org {
+	rows, _ := db.MySQL.Query("select * from `org`  where  `org`.`id`  in  (select `org_user`.`org_id`  from `org_user` where `org_user`.`user_id` = ?) ", userId)
+
+	ret := []*org{}
+	for rows.Next() {
+		resource := &org{}
+		if err := rows.Scan(&resource.ID, &resource.Name, &resource.ShortName, &resource.ParentId, &resource.Location, &resource.TenantId, &resource.Sort); err != nil {
+			glog.Error(err)
+
+			return nil
+		}
+		ret = append(ret, resource)
+	}
+	return ret
+}
+
+/*添加用户-组织关联关系*/
+func (*app) AddOrgUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+
+	// Token 校验
+	token := baseReq["token"].(string)
+	application, err := getApplicationByToken(token)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		return
+	}
+
+	orgId := args["orgid"].(string)
+	userId := args["uid"].(string)
+	b := addOrgUser(orgId, userId)
+	res["successed"] = b
+}
+
+/*移除用户-组织关联关系*/
+func (*app) RemoveOrgUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+
+	// Token 校验
+	token := baseReq["token"].(string)
+	application, err := getApplicationByToken(token)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		return
+	}
+
+	orgId := args["orgid"].(string)
+	userId := args["uid"].(string)
+	b := removeOrgUser(orgId, userId)
+	res["successed"] = b
+}
+
+func removeOrgUser(orgId, userId string) bool {
+	tx, err := db.MySQL.Begin()
+
+	if err != nil {
+		glog.Error(err)
+
+		return false
+	}
+
+	_, err = tx.Exec("delete from org_user where org_id = ? and user_id = ?", orgId, userId)
+	if err != nil {
+		glog.Error(err)
+
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+
+		return false
+	}
+
+	if err := tx.Commit(); err != nil {
+		glog.Error(err)
+
+		return false
+	}
+
+	return true
+}
+
 /*单位数据结构体*/
 type org struct {
-	id        string
-	name      string
-	shortName string
-	parentId  string
-	tenantId  string
-	location  string
-	sort      int
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ShortName string `json:"shortName"`
+	ParentId  string `json:"parentId"`
+	TenantId  string `json:"tenantId"`
+	Location  string `json:"location"`
+	Sort      int    `json:"sort"`
 }
 
 /*修改用户信息*/
@@ -612,15 +834,15 @@ func (*app) SyncOrg(w http.ResponseWriter, r *http.Request) {
 
 	orgMap := args["org"].(map[string]interface{})
 	org := org{
-		id:        orgMap["id"].(string),
-		name:      orgMap["name"].(string),
-		shortName: orgMap["shortName"].(string),
-		parentId:  orgMap["parentId"].(string),
-		tenantId:  orgMap["tenantId"].(string),
-		sort:      int(orgMap["sort"].(float64)),
+		ID:        orgMap["id"].(string),
+		Name:      orgMap["name"].(string),
+		ShortName: orgMap["shortName"].(string),
+		ParentId:  orgMap["parentId"].(string),
+		TenantId:  orgMap["tenantId"].(string),
+		Sort:      int(orgMap["sort"].(float64)),
 	}
-	exists, parentId := isExists(org.id)
-	if exists && parentId == org.parentId {
+	exists, parentId := isExists(org.ID)
+	if exists && parentId == org.ParentId {
 		updateOrg(&org, tx)
 	} else if exists {
 		updateOrg(&org, tx)
@@ -652,8 +874,8 @@ func addOrg(org *org, tx *sql.Tx) bool {
 		glog.Error(err)
 		return false
 	}
-	org.id = uuid.New()
-	_, err = tx.Exec("insert into org(id, name , short_name, parent_id, tenant_id, sort) values(?,?,?,?,?,?)", org.id, org.name, org.shortName, org.parentId, org.tenantId, org.sort)
+	org.ID = uuid.New()
+	_, err = tx.Exec("insert into org(id, name , short_name, parent_id, tenant_id, sort) values(?,?,?,?,?,?)", org.ID, org.Name, org.ShortName, org.ParentId, org.TenantId, org.Sort)
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
@@ -682,7 +904,7 @@ func updateOrg(org *org, tx *sql.Tx) {
 		return
 	}
 
-	smt.Exec(org.name, org.shortName, org.parentId, org.sort, org.id)
+	smt.Exec(org.Name, org.ShortName, org.ParentId, org.Sort, org.ID)
 
 }
 
@@ -694,7 +916,7 @@ func resetLocation2(org *org, location string) bool {
 		return false
 	}
 
-	_, err = tx.Exec("update org set location=? where id=?", location, org.id)
+	_, err = tx.Exec("update org set location=? where id=?", location, org.ID)
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
@@ -712,7 +934,7 @@ func resetLocation2(org *org, location string) bool {
 
 /*设置location*/
 func resetLocation(org *org, tx *sql.Tx) {
-	if org.parentId == "" {
+	if org.ParentId == "" {
 		resetLocation2(org, "00")
 	}
 	smt, err := tx.Prepare("select location  from org where parent_id=? and id !=? order by location desc")
@@ -726,7 +948,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 		return
 	}
 
-	row, err := smt.Query(org.parentId, org.id)
+	row, err := smt.Query(org.ParentId, org.ID)
 	if row != nil {
 		defer row.Close()
 	} else {
@@ -757,7 +979,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 			return
 		}
 
-		row, _ := smt.Query(org.parentId)
+		row, _ := smt.Query(org.ParentId)
 		if row != nil {
 			defer row.Close()
 		} else {

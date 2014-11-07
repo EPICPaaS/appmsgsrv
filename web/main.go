@@ -18,14 +18,15 @@ package main
 
 import (
 	"flag"
+	"runtime"
+	"time"
+
 	"github.com/EPICPaaS/appmsgsrv/app"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/appmsgsrv/perf"
 	"github.com/EPICPaaS/appmsgsrv/process"
 	"github.com/EPICPaaS/appmsgsrv/ver"
 	"github.com/golang/glog"
-	"runtime"
-	"time"
 )
 
 func main() {

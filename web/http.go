@@ -19,9 +19,12 @@ package main
 import (
 	"net"
 	"net/http"
+	"reflect"
+	"runtime"
 	"time"
 
 	"github.com/EPICPaaS/appmsgsrv/app"
+	"github.com/b3log/wide/util"
 	"github.com/golang/glog"
 )
 
@@ -53,16 +56,14 @@ func StartHTTP() {
 	// 应用消息服务
 	appAppServeMux := http.NewServeMux()
 	appAppServeMux.Handle("/app/static/", http.StripPrefix("/app/static/", http.FileServer(http.Dir("static"))))
-	appAppServeMux.HandleFunc("/app/client/device/login", app.Device.Login)
-	appAppServeMux.HandleFunc("/app/client/device/push", app.Device.Push)
+
+	appAppServeMux.HandleFunc("/app/client/device/login", apiCallStat(app.Device.Login))
+	appAppServeMux.HandleFunc("/app/client/device/push", apiCallStat(app.Device.Push))
 	appAppServeMux.HandleFunc("/app/client/device/addOrRemoveContact", app.Device.AddOrRemoveContact)
 	appAppServeMux.HandleFunc("/app/client/device/getMember", app.Device.GetMemberByUserName)
 	appAppServeMux.HandleFunc("/app/client/device/checkUpdate", app.Device.CheckUpdate)
 	appAppServeMux.HandleFunc("/app/client/device/getOrgInfo", app.Device.GetOrgInfo)
 	appAppServeMux.HandleFunc("/app/client/device/getOrgUserList", app.Device.GetOrgUserList)
-	appAppServeMux.HandleFunc("/app/client/app/syncOrg", app.App.SyncOrg)
-	appAppServeMux.HandleFunc("/app/client/app/syncUser", app.App.SyncUser)
-	appAppServeMux.HandleFunc("/app/client/app/syncTenant", app.App.SyncTenant)
 	appAppServeMux.HandleFunc("/app/client/device/search", app.Device.SearchUser)
 	appAppServeMux.HandleFunc("/app/client/device/create-qun", app.Device.CreateQun)
 	appAppServeMux.HandleFunc("/app/client/device/getQunMembers", app.Device.GetUsersInQun)
@@ -70,11 +71,18 @@ func StartHTTP() {
 	appAppServeMux.HandleFunc("/app/client/device/addQunMember", app.Device.AddQunMember)
 	appAppServeMux.HandleFunc("/app/client/device/delQunMember", app.Device.DelQunMember)
 	appAppServeMux.HandleFunc("/app/client/device/addApnsToken", app.Device.AddApnsToken)
-	//消息会话服务
-	appAppServeMux.HandleFunc("/app/client/app/setSessionState", app.SessionStat)
 	appAppServeMux.HandleFunc("/app/client/device/setSessionState", app.SessionStat)
+
+	appAppServeMux.HandleFunc("/app/client/app/syncOrg", app.App.SyncOrg)
+	appAppServeMux.HandleFunc("/app/client/app/syncUser", app.App.SyncUser)
+	appAppServeMux.HandleFunc("/app/client/app/syncTenant", app.App.SyncTenant)
+	appAppServeMux.HandleFunc("/app/client/app/setSessionState", app.SessionStat)
 	appAppServeMux.HandleFunc("/app/client/app/getSessions", app.App.GetSession)
-	appAppServeMux.HandleFunc("/app/client/app/user/push", app.App.UserPush)
+	appAppServeMux.HandleFunc("/app/client/app/user/push", apiCallStat(app.App.UserPush))
+	appAppServeMux.HandleFunc("/app/client/app/getOrgUserList", app.App.GetOrgUserList)
+	appAppServeMux.HandleFunc("/app/client/app/getOrgList", app.App.GetOrgList)
+	appAppServeMux.HandleFunc("/app/client/app/addOrgUser", app.App.AddOrgUser)
+	appAppServeMux.HandleFunc("/app/client/app/removeOrgUser", app.App.RemoveOrgUser)
 
 	appAppServeMux.HandleFunc("/app/user/erweima", app.UserErWeiMa)
 
@@ -105,4 +113,69 @@ func httpListen(mux *http.ServeMux, bind string) {
 		glog.Errorf("server.Serve() error(%v)", err)
 		panic(err)
 	}
+}
+
+// apiCallStat 包装了一些请求的公共处理以及 API 调用统计.
+//
+//  1. panic recover
+//  2. request stopwatch
+//  3. API calls statistics
+func apiCallStat(f func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	handler := stat(f)
+	handler = stopwatch(handler)
+	handler = panicRecover(handler)
+
+	return handler
+}
+
+// common wraps the HTTP Handler for some common processes.
+//
+//  1. panic recover
+//  2. request stopwatch
+func common(f func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	handler := panicRecover(f)
+	handler = stopwatch(handler)
+
+	return handler
+}
+
+// stat 包装了请求统计处理.
+//
+//  1. 调用统计
+func stat(handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		handlerName := getFunctionName(handler)
+
+		glog.V(3).Info(handlerName)
+
+		// TODO: 这里做调用统计持久化
+
+		handler(w, r)
+	}
+}
+
+// stopwatch wraps the request stopwatch process.
+func stopwatch(handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		defer func() {
+			glog.V(5).Infof("[%s] [%s]", r.RequestURI, time.Since(start))
+		}()
+
+		handler(w, r)
+	}
+}
+
+// panicRecover wraps the panic recover process.
+func panicRecover(handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer util.Recover()
+
+		handler(w, r)
+	}
+}
+
+func getFunctionName(function interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(function).Pointer()).Name()
 }

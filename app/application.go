@@ -1,6 +1,7 @@
 package app
 
 import (
+	"database/sql"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/golang/glog"
 	"time"
@@ -15,15 +16,16 @@ const (
 
 // 应用结构.
 type application struct {
-	Id      string    `json:"id"`
-	Name    string    `json:"name"`
-	Token   string    `json:"token"`
-	Type    string    `json:"type"`
-	Status  int       `json:"status"`
-	Sort    int       `json:"sort"`
-	Level   int       `json:"level"`
-	Created time.Time `json:"created"`
-	Updated time.Time `json:"updated"`
+	Id       string         `json:"id"`
+	Name     string         `json:"name"`
+	Token    string         `json:"token"`
+	Type     string         `json:"type"`
+	Status   int            `json:"status"`
+	Sort     int            `json:"sort"`
+	Level    int            `json:"level"`
+	TenantId sql.NullString `json:tenantId`
+	Created  time.Time      `json:"created"`
+	Updated  time.Time      `json:"updated"`
 }
 
 // 根据 id 查询应用记录.
@@ -49,7 +51,7 @@ func getApplicationByToken(token string) (*application, error) {
 	application := application{}
 
 	if err := row.Scan(&application.Id, &application.Name, &application.Token, &application.Type, &application.Status,
-		&application.Sort, &application.Level, &application.Created, &application.Updated); err != nil {
+		&application.Sort, &application.Level, &application.TenantId, &application.Created, &application.Updated); err != nil {
 		glog.Error(err)
 
 		return nil, err
