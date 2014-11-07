@@ -12,6 +12,7 @@ import (
 	"text/template"
 	"time"
 	//"github.com/EPICPaaS/appmsgsrv/session"
+	//"fmt"
 	"github.com/golang/glog"
 )
 
@@ -493,19 +494,18 @@ func (*app) GetOrgList(w http.ResponseWriter, r *http.Request) {
 }
 
 func getOrgListByUserId(userId string) []*org {
-	rows, _ := db.MySQL.Query("select id ,name,short_name,parent_id,location,tenant_id,sort from org where id in (select org_id from org_user where user_id = ?)  ", userId)
+	rows, _ := db.MySQL.Query("select * from `org`  where  `org`.`id`  in  (select `org_user`.`org_id`  from `org_user` where `org_user`.`user_id` = ?) ", userId)
 
 	ret := []*org{}
 	for rows.Next() {
 		resource := &org{}
-		if err := rows.Scan(&resource.id, &resource.name, &resource.shortName, &resource.parentId, &resource.location, &resource.tenantId, &resource.sort); err != nil {
+		if err := rows.Scan(&resource.ID, &resource.Name, &resource.ShortName, &resource.ParentId, &resource.Location, &resource.TenantId, &resource.Sort); err != nil {
 			glog.Error(err)
 
 			return nil
 		}
 		ret = append(ret, resource)
 	}
-
 	return ret
 }
 
@@ -606,7 +606,7 @@ func removeOrgUser(orgId, userId string) bool {
 		return false
 	}
 
-	_, err = tx.Exec("delete form org_user where org_id = ? and user_id = ?", orgId, userId)
+	_, err = tx.Exec("delete from org_user where org_id = ? and user_id = ?", orgId, userId)
 	if err != nil {
 		glog.Error(err)
 
@@ -628,13 +628,13 @@ func removeOrgUser(orgId, userId string) bool {
 
 /*单位数据结构体*/
 type org struct {
-	id        string
-	name      string
-	shortName string
-	parentId  string
-	tenantId  string
-	location  string
-	sort      int
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ShortName string `json:"shortName"`
+	ParentId  string `json:"parentId"`
+	TenantId  string `json:"tenantId"`
+	Location  string `json:"location"`
+	Sort      int    `json:"sort"`
 }
 
 /*修改用户信息*/
@@ -834,15 +834,15 @@ func (*app) SyncOrg(w http.ResponseWriter, r *http.Request) {
 
 	orgMap := args["org"].(map[string]interface{})
 	org := org{
-		id:        orgMap["id"].(string),
-		name:      orgMap["name"].(string),
-		shortName: orgMap["shortName"].(string),
-		parentId:  orgMap["parentId"].(string),
-		tenantId:  orgMap["tenantId"].(string),
-		sort:      int(orgMap["sort"].(float64)),
+		ID:        orgMap["id"].(string),
+		Name:      orgMap["name"].(string),
+		ShortName: orgMap["shortName"].(string),
+		ParentId:  orgMap["parentId"].(string),
+		TenantId:  orgMap["tenantId"].(string),
+		Sort:      int(orgMap["sort"].(float64)),
 	}
-	exists, parentId := isExists(org.id)
-	if exists && parentId == org.parentId {
+	exists, parentId := isExists(org.ID)
+	if exists && parentId == org.ParentId {
 		updateOrg(&org, tx)
 	} else if exists {
 		updateOrg(&org, tx)
@@ -874,8 +874,8 @@ func addOrg(org *org, tx *sql.Tx) bool {
 		glog.Error(err)
 		return false
 	}
-	org.id = uuid.New()
-	_, err = tx.Exec("insert into org(id, name , short_name, parent_id, tenant_id, sort) values(?,?,?,?,?,?)", org.id, org.name, org.shortName, org.parentId, org.tenantId, org.sort)
+	org.ID = uuid.New()
+	_, err = tx.Exec("insert into org(id, name , short_name, parent_id, tenant_id, sort) values(?,?,?,?,?,?)", org.ID, org.Name, org.ShortName, org.ParentId, org.TenantId, org.Sort)
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
@@ -904,7 +904,7 @@ func updateOrg(org *org, tx *sql.Tx) {
 		return
 	}
 
-	smt.Exec(org.name, org.shortName, org.parentId, org.sort, org.id)
+	smt.Exec(org.Name, org.ShortName, org.ParentId, org.Sort, org.ID)
 
 }
 
@@ -916,7 +916,7 @@ func resetLocation2(org *org, location string) bool {
 		return false
 	}
 
-	_, err = tx.Exec("update org set location=? where id=?", location, org.id)
+	_, err = tx.Exec("update org set location=? where id=?", location, org.ID)
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
@@ -934,7 +934,7 @@ func resetLocation2(org *org, location string) bool {
 
 /*设置location*/
 func resetLocation(org *org, tx *sql.Tx) {
-	if org.parentId == "" {
+	if org.ParentId == "" {
 		resetLocation2(org, "00")
 	}
 	smt, err := tx.Prepare("select location  from org where parent_id=? and id !=? order by location desc")
@@ -948,7 +948,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 		return
 	}
 
-	row, err := smt.Query(org.parentId, org.id)
+	row, err := smt.Query(org.ParentId, org.ID)
 	if row != nil {
 		defer row.Close()
 	} else {
@@ -979,7 +979,7 @@ func resetLocation(org *org, tx *sql.Tx) {
 			return
 		}
 
-		row, _ := smt.Query(org.parentId)
+		row, _ := smt.Query(org.ParentId)
 		if row != nil {
 			defer row.Close()
 		} else {
