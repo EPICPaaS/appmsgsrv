@@ -1,0 +1,26 @@
+{{template "base/base.html" .}}
+{{template "base/base_common.html" .}}
+{{define "meta"}}
+     <title>有信网页版</title>
+{{end}}
+
+{{define "addCSS"}}
+ 
+{{end}}
+
+{{define "addJS"}}
+<script type="text/javascript">
+$(document).ready(function() {
+	
+
+});
+</script>
+{{end}}
+
+{{define "body"}}
+<div>
+   {{range .orgs}}
+     <span>部门：{{.Name}}</span>
+   {{end}}
+</div>
+{{end}}

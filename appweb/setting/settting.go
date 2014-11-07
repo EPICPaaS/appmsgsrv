@@ -10,8 +10,10 @@ import (
 func init() {
 	// 注册模型
 	orm.Debug = true
-	orm.RegisterModel(new(models.User), new(models.Tenant))
+	orm.RegisterModel(new(models.User), new(models.Tenant), new(models.Org))
 	RegisterDB()
+	InitSession()
+	beego.InsertFilter("/index", beego.BeforeExec, models.IsUserLogin)
 
 }
 
@@ -32,4 +34,14 @@ func RegisterDB() {
 	if err != nil {
 		beego.Error(err)
 	}
+}
+
+func InitSession() {
+	beego.SessionOn = true
+	beego.SessionProvider = "memory"
+	beego.SessionGCMaxLifetime = 600 //60 seconds
+	beego.SessionName = "yxUser"
+	beego.SessionCookieLifeTime = 600 //60 seconds
+	beego.SessionAutoSetCookie = true
+	beego.SessionSavePath = "/"
 }

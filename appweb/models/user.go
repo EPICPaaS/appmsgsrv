@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/context"
 	"github.com/astaxie/beego/orm"
 	_ "github.com/go-sql-driver/mysql"
 	"time"
@@ -42,4 +43,12 @@ func GetUserByNameTenantId(userName, tenantId string) *User {
 		return &users[0]
 	}
 	return nil
+}
+
+//验证用户是否登陆
+var IsUserLogin = func(ctx *context.Context) {
+	user := ctx.Input.Session("user")
+	if user == nil && ctx.Request.RequestURI != "/login" {
+		ctx.Redirect(302, "/")
+	}
 }

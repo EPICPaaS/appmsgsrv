@@ -1,0 +1,138 @@
+@charset "utf-8";
+/* CSS Document */
+
+/**
+ * Copyright  远信科技, All Rights Reserved.
+ */
+
+/**
+ * @fileoverview 这是产品首页的css文件
+ *
+ * @author: Zhigang.li
+ * @author <a href="http://vanessa.b3log.org">Liyuan Li</a>
+ * @version 1.0.0.3, Feb 24, 2014
+ */
+body {
+    background: #369dcc;
+    margin: 0;
+    font-family: '微软雅黑';
+    color: #FFF;
+	background:url(/static/images/loginb.png)  no-repeat;
+	
+}
+div{
+	box-sizing: border-box;
+	}
+
+.wrapper {
+    margin: 0 auto;
+    width: 620px;
+    overflow: hidden;
+}
+.logo{
+	background: url(/static/images/logo.png) center center no-repeat;
+	height:150px;
+	width:600px;
+	}
+.org{
+	height:24px;
+	}
+.selectOrg{
+	float:left;
+	margin-left:35px;
+	width:110px;
+	height:24px;
+	text-align:center;
+	font-size:14px;
+	cursor:pointer;
+	line-height:23px;
+	background:url(/static/images/selectOrg.png) center bottom no-repeat;
+	}
+.orgName{
+	float:left;
+	height:24px;
+	}
+.loginForm {
+	height:51px;
+	width:620px;
+	background: url(/static/images/loginForm.png) no-repeat center center;
+	overflow:hidden;
+	}
+.parameter{
+	width:569px;
+	height:51px;
+	float:left;
+	padding-top:8px;
+	padding-left:15px;
+	}
+.icon{
+	width:30px;
+	height:35px;
+	display:block;
+	float:left;
+	}
+.icon-user{
+	background:#FFF url(/static/images/one4.jpg) no-repeat center center;
+	}
+.icon-pwd{
+	background:#FFF url(/static/images/one5.jpg) no-repeat center center;
+	}
+.form-input{
+	display:block;
+	float:left;
+	width:236px;
+	box-sizing: border-box;
+	border:0px;
+	height:35px;
+	padding: 5px ;
+	}
+.login-btn{
+	height:51px;
+	width:51px;
+	float:left;
+	cursor:pointer;
+	text-align:center;
+	line-height:45px;
+	}
+.slide {
+    width: 1440px;
+	background:#633;
+}
+
+.bg-top,
+.bg-bottom {
+    top: 0;
+    width: 100%;
+    position: fixed;
+    z-index: -15;
+}
+.bg-bottom {
+    bottom: 0;
+    top: auto;
+}
+
+.org-panel {
+	display:none;
+	width:220px;
+	height:270px;
+	float:left;
+	left:50%;
+	margin-left:-130px;
+	margin-top:-200px;
+	position:absolute;
+	z-index:10px;
+	overflow-y:auto;
+	background-color:#FFF;
+	border:#CCC solid 1px;
+	}
+.org-panel ol ,li {
+	list-style:none;
+	padding:0px;
+	color:#666;
+	}
+.org-panel ol li {
+	height:25px;
+	text-indent:20px;
+	line-height:25px;
+	cursor:pointer;
+	}
