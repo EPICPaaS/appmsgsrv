@@ -1,7 +1,7 @@
 package models
 
 import (
-	//"fmt"
+	"fmt"
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
 	_ "github.com/go-sql-driver/mysql"
@@ -34,12 +34,14 @@ func GetMyQun(userId string) *[]Qun {
 	if len(userId) == 0 {
 		return nil
 	}
+
 	o := orm.NewOrm()
 	quns := &[]Qun{}
-	_, err := o.Raw("select * from qun where id in (SELECT qun_id from qun_user where user_id = '?')", userId).QueryRows(quns)
+	_, err := o.Raw("select * from qun where id in (SELECT qun_id from qun_user where user_id = ?)", userId).QueryRows(quns)
 	if err != nil {
 		beego.Error(err)
 		return nil
 	}
+	fmt.Println(userId, "群：", quns)
 	return quns
 }

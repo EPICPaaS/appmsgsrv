@@ -101,15 +101,18 @@ func GetOrgUsersById(orgId string) *[]User {
 		users := &[]User{}
 		//拼接查询语句
 		selectUser := bytes.Buffer{}
-		selectUser.WriteString("select from user where ")
+		selectUser.WriteString("select  * from user where id in (select user_id from org_user where ")
 		ls := len(*orgs) - 1
 		for i, org := range *orgs {
-			selectUser.WriteString(" id =" + org.Id)
+			selectUser.WriteString(" org_id =" + org.Id)
 			if i != ls {
 				selectUser.WriteString(" or ")
+			} else {
+				selectUser.WriteString(" )")
 			}
 		}
-		_, err := o.Raw("select  * from user where id in (select user_id from org_user where ? )", selectUser.String()).QueryRows(users)
+
+		_, err := o.Raw(selectUser.String()).QueryRows(users)
 
 		if err != nil {
 			beego.Error(err)

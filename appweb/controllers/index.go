@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"github.com/EPICPaaS/appmsgsrv/appweb/models"
 	"github.com/astaxie/beego"
 )
@@ -14,7 +13,6 @@ func (this *IndexController) Get() {
 	this.TplNames = "index.html"
 	user := this.GetSession("user").(*models.User)
 	orgs := models.GetRootOrg(user.TenantId)
-	fmt.Println(orgs)
 	this.Data["orgs"] = orgs
 }
 
