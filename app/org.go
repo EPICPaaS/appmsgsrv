@@ -70,7 +70,7 @@ func getUserByCode(code string) *member {
 /*根据传入的筛选列fieldName和参数fieldArg查询成员*/
 func getUserByField(fieldName, fieldArg string) *member {
 
-	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where " + fieldName + "=?"
+	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin,password, mobile, area from user where " + fieldName + "=?"
 
 	smt, err := db.MySQL.Prepare(sql)
 	if smt != nil {
@@ -92,7 +92,7 @@ func getUserByField(fieldName, fieldArg string) *member {
 
 	for row.Next() {
 		rec := member{}
-		err = row.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin, &rec.Mobile, &rec.Area)
+		err = row.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin, &rec.Password, &rec.Mobile, &rec.Area)
 		if err != nil {
 			glog.Error(err)
 		}
@@ -281,6 +281,64 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	res["token"] = token
+	res["member"] = member
+}
+
+//网页客户端登录
+func (*appWeb) WebLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		res["ret"] = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+	var args map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+	uid := baseReq["uid"].(string)
+	deviceType := baseReq["deviceType"].(string)
+	userName := args["userName"].(string)
+	password := args["password"].(string)
+
+	glog.V(5).Infof("uid [%s], deviceType [%s], userName [%s], password [%s]",
+		uid, deviceType, userName, password)
+
+	// TODO: 登录验证逻辑
+	member := getUserByCode(userName)
+
+	if nil == member || member.Password != password {
+		baseRes.ErrMsg = "auth failed"
+		baseRes.Ret = ParamErr
+
+		return
+	}
+
+	member.UserName = member.Uid + USER_SUFFIX
+	res["uid"] = member.Uid
+
+	token, err := genToken(member)
+	if nil != err {
+		glog.Error(err)
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = InternalErr
+		return
+	}
 	res["token"] = token
 	res["member"] = member
 }
@@ -657,7 +715,6 @@ func addUser(member *member) bool {
 		glog.Error(err)
 		return false
 	}
-	member.Uid = uuid.New()
 	_, err = tx.Exec("insert into user(id,name,nickname,avatar,name_py,name_quanpin,status,password,tenant_id,email,mobile,area,created,updated)values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", member.Uid, member.Name, member.NickName, member.Avatar, member.PYInitial, member.PYQuanPin, member.Status, member.Password, member.TenantId, member.Email, member.Mobile, member.Area, time.Now(), time.Now())
 	if err != nil {
 		glog.Error(err)
@@ -745,11 +802,10 @@ func (*app) SyncUser(w http.ResponseWriter, r *http.Request) {
 
 	menberObj := &member{
 		Uid:       memberMap["uid"].(string),
-		UserName:  memberMap["userName"].(string),
 		Name:      memberMap["name"].(string),
 		NickName:  memberMap["nickName"].(string),
-		PYInitial: memberMap["nickName"].(string),
-		PYQuanPin: memberMap["pYInitial"].(string),
+		PYInitial: memberMap["pYInitial"].(string),
+		PYQuanPin: memberMap["pYQuanPin"].(string),
 		Status:    memberMap["status"].(string),
 		Avatar:    memberMap["avatar"].(string),
 		Password:  memberMap["password"].(string),
@@ -874,7 +930,6 @@ func addOrg(org *org, tx *sql.Tx) bool {
 		glog.Error(err)
 		return false
 	}
-	org.ID = uuid.New()
 	_, err = tx.Exec("insert into org(id, name , short_name, parent_id, tenant_id, sort) values(?,?,?,?,?,?)", org.ID, org.Name, org.ShortName, org.ParentId, org.TenantId, org.Sort)
 	if err != nil {
 		glog.Error(err)
@@ -1535,10 +1590,9 @@ func saveTennat(tenant *Tenant) bool {
 
 	//修改
 	if isExistTennat(tenant.Id) {
-		_, err = tx.Exec("update tenant set code = ?,name=?,status=?,customer_id=?,created=?,updated=? where id =?", tenant.Name, tenant.Code, tenant.Status, tenant.CustomerId, tenant.Created, time.Now().Local(), tenant.Id)
+		_, err = tx.Exec("update tenant set code = ?,name=?,status=?,customer_id=?,created=?,updated=? where id =?", tenant.Code, tenant.Name, tenant.Status, tenant.CustomerId, tenant.Created, time.Now().Local(), tenant.Id)
 	} else {
-		tenant.Id = uuid.New() //新增
-		_, err = tx.Exec("insert into tenant(id,code,name,status,customer_id,created,updated) values(?,?,?,?,?,?,?)", tenant.Id, tenant.Name, tenant.Code, tenant.Status, tenant.CustomerId, time.Now().Local(), time.Now().Local())
+		_, err = tx.Exec("insert into tenant(id,code,name,status,customer_id,created,updated) values(?,?,?,?,?,?,?)", tenant.Id, tenant.Code, tenant.Name, tenant.Status, tenant.CustomerId, time.Now().Local(), time.Now().Local())
 
 	}
 
