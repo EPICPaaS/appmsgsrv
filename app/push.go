@@ -246,6 +246,104 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+//  网页断推送消息.
+//  1. 单推（@user）
+//  2. 群推（@qun）
+//  3. 组织机构推（部门 @org，单位 @tenant）
+func (*device) WebPush(w http.ResponseWriter, r *http.Request) {
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+
+	// Token 校验
+	token := baseReq["token"].(string)
+	user := getUserByToken(token)
+
+	if nil == user {
+		baseRes.Ret = AuthErr
+		return
+	}
+
+	msg := args["msg"].(map[string]interface{})
+	fromUserName := msg["fromUserName"].(string)
+	fromUserID := fromUserName[:strings.Index(fromUserName, "@")]
+	toUserName := msg["toUserName"].(string)
+	toUserID := toUserName[:strings.Index(toUserName, "@")]
+	sessionArgs := []string{}
+	_, exists := args["sessions"]
+	if !exists {
+		// 不存在参数的话默认为 all
+		sessionArgs = append(sessionArgs, "all")
+	} else {
+		for _, arg := range args["sessions"].([]interface{}) {
+			sessionArgs = append(sessionArgs, arg.(string))
+		}
+	}
+
+	if strings.HasSuffix(toUserName, USER_SUFFIX) { // 如果是推人
+		m := getUserByUid(fromUserID)
+		msg["fromDisplayName"] = m.NickName
+
+	} else if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 如果是推群
+
+		m := getUserByUid(fromUserID)
+		qun, err := getQunById(toUserID)
+
+		if nil != err {
+			baseRes.Ret = InternalErr
+			return
+		}
+
+		msg["content"] = fromUserName + "|" + m.Name + "|" + m.NickName + "&&" + msg["content"].(string)
+		msg["fromDisplayName"] = qun.Name
+		msg["fromUserName"] = toUserName
+	} else { // TODO: 组织机构（部门/单位）推送消息体处理
+
+	}
+
+	// 消息过期时间（单位：秒）
+	exp := msg["expire"]
+	expire := 600
+	if nil != exp {
+		expire = int(exp.(float64))
+	}
+
+	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
+	s, _ := session.GetSessionsByUserId(toUserID)
+	if nil == s {
+		resources, _ := GetResourceByTenantId(user.TenantId)
+		apnsToken, _ := getApnsToken(toUserID)
+		go pushAPNS(msg, resources, apnsToken)
+
+	}
+	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire)
+
+	res["msgID"] = "msgid"
+	res["clientMsgId"] = msg["clientMsgId"]
+
+	return
+}
+
 //推送IOS离线消息
 func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []ApnsToken) {
 
