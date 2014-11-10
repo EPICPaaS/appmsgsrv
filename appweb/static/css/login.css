@@ -123,7 +123,6 @@ div{
 	z-index:10px;
 	overflow-y:auto;
 	background-color:#FFF;
-	border:#CCC solid 1px;
 	}
 .org-panel ol ,li {
 	list-style:none;
@@ -136,3 +135,6 @@ div{
 	line-height:25px;
 	cursor:pointer;
 	}
+.org-panel ol li:hover{
+	color:#CC0033 ;
+}

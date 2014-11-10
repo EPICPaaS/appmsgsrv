@@ -12,13 +12,13 @@
 <script type="text/javascript">
 $(document).ready(function() {
 	$("#selectOrg").click(function() {
-        $("#orgPanel").slideDown("slow");
+        $("#orgPanel").slideDown("200");
     })
    
     $(".unit").click(function() {
 	    tenaName=$(this).text();
 	    tenantId=$(this).attr("data-value");
-	    $("#orgPanel").slideUp("slow");
+	    $("#orgPanel").slideUp("300");
 	    $("#tenaName").text(tenaName)
 	    $("#tenantId").val(tenantId)
     });
