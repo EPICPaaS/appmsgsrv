@@ -12,7 +12,7 @@ import (
 	"text/template"
 	"time"
 	//"github.com/EPICPaaS/appmsgsrv/session"
-	//"fmt"
+	"fmt"
 	"github.com/golang/glog"
 )
 
@@ -287,58 +287,52 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 
 //网页客户端登录
 func (*appWeb) WebLogin(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method Not Allowed", 405)
-		return
-	}
+
 	baseRes := baseResponse{OK, ""}
-	body := ""
 	res := map[string]interface{}{"baseResponse": &baseRes}
-	defer RetPWriteJSON(w, r, res, &body, time.Now())
+	var callback *string
 
-	bodyBytes, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
-		return
-	}
-	body = string(bodyBytes)
-	var args map[string]interface{}
-	if err := json.Unmarshal(bodyBytes, &args); err != nil {
-		baseRes.ErrMsg = err.Error()
-		baseRes.Ret = ParamErr
-		return
-	}
+	defer func() {
+		// 返回结果格式化
+		resJsonStr := ""
+		if resJson, err := json.Marshal(res); err != nil {
+			baseRes.ErrMsg = err.Error()
+			baseRes.Ret = InternalErr
+		} else {
+			resJsonStr = string(resJson)
+		}
+		fmt.Fprintln(w, *callback, "(", resJsonStr, ")")
+	}()
 
-	baseReq := args["baseRequest"].(map[string]interface{})
-	uid := baseReq["uid"].(string)
-	deviceType := baseReq["deviceType"].(string)
-	userName := args["userName"].(string)
-	password := args["password"].(string)
+	//获取请求数据
+	r.ParseForm()
+	tmp := r.FormValue("callbackparam")
+	callback = &tmp
+	uid := r.FormValue("baseRequest[uid]")
+	deviceType := r.FormValue("baseRequest[deviceType]")
+	userName := r.FormValue("userName")
+	password := r.FormValue("password")
 
 	glog.V(5).Infof("uid [%s], deviceType [%s], userName [%s], password [%s]",
 		uid, deviceType, userName, password)
 
 	// TODO: 登录验证逻辑
-	member := getUserByCode(userName)
-
+	member := getUserByUid(uid)
 	if nil == member || member.Password != password {
 		baseRes.ErrMsg = "auth failed"
 		baseRes.Ret = ParamErr
-
 		return
 	}
 
 	member.UserName = member.Uid + USER_SUFFIX
 	res["uid"] = member.Uid
-
 	token, err := genToken(member)
 	if nil != err {
-		glog.Error(err)
 		baseRes.ErrMsg = err.Error()
 		baseRes.Ret = InternalErr
 		return
 	}
+
 	res["token"] = token
 	res["member"] = member
 }

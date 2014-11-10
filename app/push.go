@@ -3,15 +3,16 @@ package app
 import (
 	"encoding/json"
 	//"fmt"
-	"io/ioutil"
-	"net/http"
-	"strings"
-	"time"
-
+	"fmt"
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
 	"github.com/EPICPaaS/appmsgsrv/session"
 	apns "github.com/anachronistic/apns"
 	"github.com/golang/glog"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // 推送 Name.
@@ -250,60 +251,64 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 //  1. 单推（@user）
 //  2. 群推（@qun）
 //  3. 组织机构推（部门 @org，单位 @tenant）
-func (*device) WebPush(w http.ResponseWriter, r *http.Request) {
+func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 
 	baseRes := baseResponse{OK, ""}
-	body := ""
 	res := map[string]interface{}{"baseResponse": &baseRes}
-	defer RetPWriteJSON(w, r, res, &body, time.Now())
+	var callback *string
+	defer func() {
+		// 返回结果格式化
+		resJsonStr := ""
+		if resJson, err := json.Marshal(res); err != nil {
+			baseRes.ErrMsg = err.Error()
+			baseRes.Ret = InternalErr
+		} else {
+			resJsonStr = string(resJson)
+		}
+		fmt.Fprintln(w, *callback, "(", resJsonStr, ")")
+	}()
 
-	bodyBytes, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
-		return
-	}
-	body = string(bodyBytes)
+	var err error
+	var msg = make(map[string]interface{})
 
-	var args map[string]interface{}
-
-	if err := json.Unmarshal(bodyBytes, &args); err != nil {
-		baseRes.ErrMsg = err.Error()
-		baseRes.Ret = ParamErr
-		return
-	}
-
-	baseReq := args["baseRequest"].(map[string]interface{})
+	//获取请求数据
+	r.ParseForm()
 
 	// Token 校验
-	token := baseReq["token"].(string)
+	token := r.FormValue("baseRequest[token]")
 	user := getUserByToken(token)
-
 	if nil == user {
 		baseRes.Ret = AuthErr
+		baseRes.ErrMsg = "Authorization failure"
 		return
 	}
 
-	msg := args["msg"].(map[string]interface{})
-	fromUserName := msg["fromUserName"].(string)
+	tmp := r.FormValue("callbackparam")
+	callback = &tmp
+	msg["clientMsgId"] = r.FormValue("msg[clientMsgId]")
+	msg["msgType"], err = strconv.Atoi(r.FormValue("msg[msgType]"))
+	if err != nil {
+		baseRes.Ret = ParamErr
+		baseRes.ErrMsg = "msgType not is int"
+		return
+	}
+	fromUserName := r.FormValue("msg[fromUserName]")
 	fromUserID := fromUserName[:strings.Index(fromUserName, "@")]
-	toUserName := msg["toUserName"].(string)
+	toUserName := r.FormValue("msg[toUserName]")
 	toUserID := toUserName[:strings.Index(toUserName, "@")]
 	sessionArgs := []string{}
-	_, exists := args["sessions"]
-	if !exists {
+	sessions := r.FormValue("sessions")
+	if len(sessions) == 0 {
 		// 不存在参数的话默认为 all
 		sessionArgs = append(sessionArgs, "all")
 	} else {
-		for _, arg := range args["sessions"].([]interface{}) {
-			sessionArgs = append(sessionArgs, arg.(string))
-		}
+		sessionArgs = strings.Split(sessions, ",")
 	}
 
 	if strings.HasSuffix(toUserName, USER_SUFFIX) { // 如果是推人
 		m := getUserByUid(fromUserID)
 		msg["fromDisplayName"] = m.NickName
-
+		msg["content"] = r.FormValue("msg[content]")
 	} else if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 如果是推群
 
 		m := getUserByUid(fromUserID)
@@ -314,7 +319,7 @@ func (*device) WebPush(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		msg["content"] = fromUserName + "|" + m.Name + "|" + m.NickName + "&&" + msg["content"].(string)
+		msg["content"] = fromUserName + "|" + m.Name + "|" + m.NickName + "&&" + r.FormValue("msg[content]")
 		msg["fromDisplayName"] = qun.Name
 		msg["fromUserName"] = toUserName
 	} else { // TODO: 组织机构（部门/单位）推送消息体处理
@@ -322,10 +327,14 @@ func (*device) WebPush(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 消息过期时间（单位：秒）
-	exp := msg["expire"]
+	exp := r.FormValue("msg[expire]")
 	expire := 600
-	if nil != exp {
-		expire = int(exp.(float64))
+	if len(exp) > 0 {
+		expire, err = strconv.Atoi(exp)
+		if err != nil {
+			baseRes.Ret = ParamErr
+			return
+		}
 	}
 
 	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
@@ -339,9 +348,7 @@ func (*device) WebPush(w http.ResponseWriter, r *http.Request) {
 	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire)
 
 	res["msgID"] = "msgid"
-	res["clientMsgId"] = msg["clientMsgId"]
-
-	return
+	res["clientMsgId"] = r.FormValue("msg[clientMsgId]")
 }
 
 //推送IOS离线消息
