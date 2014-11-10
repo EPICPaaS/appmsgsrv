@@ -484,15 +484,15 @@ func buildNames(userIds []string, sessionArgs []string) (names []*Name) {
 			}
 		}
 
-		for _, s := range sessions {
-			name := &Name{Id: userId, SessionId: s.Id, ActiveSessionIds: activeSessionIds, Suffix: USER_SUFFIX}
-			names = append(names, name)
-		}
-
 		// id@user (i.e. for offline msg)发送离线消息使用
 		name := &Name{Id: userId, SessionId: userId /* user_id 作为 session_id */, ActiveSessionIds: activeSessionIds,
 			Suffix: USER_SUFFIX}
 		names = append(names, name)
+
+		for _, s := range sessions {
+			name := &Name{Id: userId, SessionId: s.Id, ActiveSessionIds: activeSessionIds, Suffix: USER_SUFFIX}
+			names = append(names, name)
+		}
 	}
 
 	return names
