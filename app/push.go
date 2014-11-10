@@ -3,15 +3,16 @@ package app
 import (
 	"encoding/json"
 	//"fmt"
-	"io/ioutil"
-	"net/http"
-	"strings"
-	"time"
-
+	"fmt"
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
 	"github.com/EPICPaaS/appmsgsrv/session"
 	apns "github.com/anachronistic/apns"
 	"github.com/golang/glog"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // 推送 Name.
@@ -246,6 +247,110 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+//  网页断推送消息.
+//  1. 单推（@user）
+//  2. 群推（@qun）
+//  3. 组织机构推（部门 @org，单位 @tenant）
+func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
+
+	baseRes := baseResponse{OK, ""}
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	var callback *string
+	defer func() {
+		// 返回结果格式化
+		resJsonStr := ""
+		if resJson, err := json.Marshal(res); err != nil {
+			baseRes.ErrMsg = err.Error()
+			baseRes.Ret = InternalErr
+		} else {
+			resJsonStr = string(resJson)
+		}
+		fmt.Fprintln(w, *callback, "(", resJsonStr, ")")
+	}()
+
+	var err error
+	var msg = make(map[string]interface{})
+
+	//获取请求数据
+	r.ParseForm()
+
+	// Token 校验
+	token := r.FormValue("baseRequest[token]")
+	user := getUserByToken(token)
+	if nil == user {
+		baseRes.Ret = AuthErr
+		baseRes.ErrMsg = "Authorization failure"
+		return
+	}
+
+	tmp := r.FormValue("callbackparam")
+	callback = &tmp
+	msg["clientMsgId"] = r.FormValue("msg[clientMsgId]")
+	msg["msgType"], err = strconv.Atoi(r.FormValue("msg[msgType]"))
+	if err != nil {
+		baseRes.Ret = ParamErr
+		baseRes.ErrMsg = "msgType not is int"
+		return
+	}
+	fromUserName := r.FormValue("msg[fromUserName]")
+	fromUserID := fromUserName[:strings.Index(fromUserName, "@")]
+	toUserName := r.FormValue("msg[toUserName]")
+	toUserID := toUserName[:strings.Index(toUserName, "@")]
+	sessionArgs := []string{}
+	sessions := r.FormValue("sessions")
+	if len(sessions) == 0 {
+		// 不存在参数的话默认为 all
+		sessionArgs = append(sessionArgs, "all")
+	} else {
+		sessionArgs = strings.Split(sessions, ",")
+	}
+
+	if strings.HasSuffix(toUserName, USER_SUFFIX) { // 如果是推人
+		m := getUserByUid(fromUserID)
+		msg["fromDisplayName"] = m.NickName
+		msg["content"] = r.FormValue("msg[content]")
+	} else if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 如果是推群
+
+		m := getUserByUid(fromUserID)
+		qun, err := getQunById(toUserID)
+
+		if nil != err {
+			baseRes.Ret = InternalErr
+			return
+		}
+
+		msg["content"] = fromUserName + "|" + m.Name + "|" + m.NickName + "&&" + r.FormValue("msg[content]")
+		msg["fromDisplayName"] = qun.Name
+		msg["fromUserName"] = toUserName
+	} else { // TODO: 组织机构（部门/单位）推送消息体处理
+
+	}
+
+	// 消息过期时间（单位：秒）
+	exp := r.FormValue("msg[expire]")
+	expire := 600
+	if len(exp) > 0 {
+		expire, err = strconv.Atoi(exp)
+		if err != nil {
+			baseRes.Ret = ParamErr
+			return
+		}
+	}
+
+	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
+	s, _ := session.GetSessionsByUserId(toUserID)
+	if nil == s {
+		resources, _ := GetResourceByTenantId(user.TenantId)
+		apnsToken, _ := getApnsToken(toUserID)
+		go pushAPNS(msg, resources, apnsToken)
+
+	}
+	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire)
+
+	res["msgID"] = "msgid"
+	res["clientMsgId"] = r.FormValue("msg[clientMsgId]")
+}
+
 //推送IOS离线消息
 func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []ApnsToken) {
 
@@ -386,15 +491,15 @@ func buildNames(userIds []string, sessionArgs []string) (names []*Name) {
 			}
 		}
 
-		for _, s := range sessions {
-			name := &Name{Id: userId, SessionId: s.Id, ActiveSessionIds: activeSessionIds, Suffix: USER_SUFFIX}
-			names = append(names, name)
-		}
-
 		// id@user (i.e. for offline msg)发送离线消息使用
 		name := &Name{Id: userId, SessionId: userId /* user_id 作为 session_id */, ActiveSessionIds: activeSessionIds,
 			Suffix: USER_SUFFIX}
 		names = append(names, name)
+
+		for _, s := range sessions {
+			name := &Name{Id: userId, SessionId: s.Id, ActiveSessionIds: activeSessionIds, Suffix: USER_SUFFIX}
+			names = append(names, name)
+		}
 	}
 
 	return names

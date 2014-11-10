@@ -12,7 +12,7 @@ import (
 	"text/template"
 	"time"
 	//"github.com/EPICPaaS/appmsgsrv/session"
-	//"fmt"
+	"fmt"
 	"github.com/golang/glog"
 )
 
@@ -70,7 +70,7 @@ func getUserByCode(code string) *member {
 /*根据传入的筛选列fieldName和参数fieldArg查询成员*/
 func getUserByField(fieldName, fieldArg string) *member {
 
-	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin, mobile, area from user where " + fieldName + "=?"
+	sql := "select id, name, nickname, status, avatar, tenant_id, name_py, name_quanpin,password, mobile, area from user where " + fieldName + "=?"
 
 	smt, err := db.MySQL.Prepare(sql)
 	if smt != nil {
@@ -92,7 +92,7 @@ func getUserByField(fieldName, fieldArg string) *member {
 
 	for row.Next() {
 		rec := member{}
-		err = row.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin, &rec.Mobile, &rec.Area)
+		err = row.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin, &rec.Password, &rec.Mobile, &rec.Area)
 		if err != nil {
 			glog.Error(err)
 		}
@@ -278,6 +278,58 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 		baseRes.ErrMsg = err.Error()
 		baseRes.Ret = InternalErr
 
+		return
+	}
+
+	res["token"] = token
+	res["member"] = member
+}
+
+//网页客户端登录
+func (*appWeb) WebLogin(w http.ResponseWriter, r *http.Request) {
+
+	baseRes := baseResponse{OK, ""}
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	var callback *string
+
+	defer func() {
+		// 返回结果格式化
+		resJsonStr := ""
+		if resJson, err := json.Marshal(res); err != nil {
+			baseRes.ErrMsg = err.Error()
+			baseRes.Ret = InternalErr
+		} else {
+			resJsonStr = string(resJson)
+		}
+		fmt.Fprintln(w, *callback, "(", resJsonStr, ")")
+	}()
+
+	//获取请求数据
+	r.ParseForm()
+	tmp := r.FormValue("callbackparam")
+	callback = &tmp
+	uid := r.FormValue("baseRequest[uid]")
+	deviceType := r.FormValue("baseRequest[deviceType]")
+	userName := r.FormValue("userName")
+	password := r.FormValue("password")
+
+	glog.V(5).Infof("uid [%s], deviceType [%s], userName [%s], password [%s]",
+		uid, deviceType, userName, password)
+
+	// TODO: 登录验证逻辑
+	member := getUserByUid(uid)
+	if nil == member || member.Password != password {
+		baseRes.ErrMsg = "auth failed"
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	member.UserName = member.Uid + USER_SUFFIX
+	res["uid"] = member.Uid
+	token, err := genToken(member)
+	if nil != err {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = InternalErr
 		return
 	}
 
@@ -657,7 +709,6 @@ func addUser(member *member) bool {
 		glog.Error(err)
 		return false
 	}
-	member.Uid = uuid.New()
 	_, err = tx.Exec("insert into user(id,name,nickname,avatar,name_py,name_quanpin,status,password,tenant_id,email,mobile,area,created,updated)values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", member.Uid, member.Name, member.NickName, member.Avatar, member.PYInitial, member.PYQuanPin, member.Status, member.Password, member.TenantId, member.Email, member.Mobile, member.Area, time.Now(), time.Now())
 	if err != nil {
 		glog.Error(err)
@@ -745,11 +796,10 @@ func (*app) SyncUser(w http.ResponseWriter, r *http.Request) {
 
 	menberObj := &member{
 		Uid:       memberMap["uid"].(string),
-		UserName:  memberMap["userName"].(string),
 		Name:      memberMap["name"].(string),
 		NickName:  memberMap["nickName"].(string),
-		PYInitial: memberMap["nickName"].(string),
-		PYQuanPin: memberMap["pYInitial"].(string),
+		PYInitial: memberMap["pYInitial"].(string),
+		PYQuanPin: memberMap["pYQuanPin"].(string),
 		Status:    memberMap["status"].(string),
 		Avatar:    memberMap["avatar"].(string),
 		Password:  memberMap["password"].(string),
@@ -874,7 +924,6 @@ func addOrg(org *org, tx *sql.Tx) bool {
 		glog.Error(err)
 		return false
 	}
-	org.ID = uuid.New()
 	_, err = tx.Exec("insert into org(id, name , short_name, parent_id, tenant_id, sort) values(?,?,?,?,?,?)", org.ID, org.Name, org.ShortName, org.ParentId, org.TenantId, org.Sort)
 	if err != nil {
 		glog.Error(err)
@@ -1535,10 +1584,9 @@ func saveTennat(tenant *Tenant) bool {
 
 	//修改
 	if isExistTennat(tenant.Id) {
-		_, err = tx.Exec("update tenant set code = ?,name=?,status=?,customer_id=?,created=?,updated=? where id =?", tenant.Name, tenant.Code, tenant.Status, tenant.CustomerId, tenant.Created, time.Now().Local(), tenant.Id)
+		_, err = tx.Exec("update tenant set code = ?,name=?,status=?,customer_id=?,created=?,updated=? where id =?", tenant.Code, tenant.Name, tenant.Status, tenant.CustomerId, tenant.Created, time.Now().Local(), tenant.Id)
 	} else {
-		tenant.Id = uuid.New() //新增
-		_, err = tx.Exec("insert into tenant(id,code,name,status,customer_id,created,updated) values(?,?,?,?,?,?,?)", tenant.Id, tenant.Name, tenant.Code, tenant.Status, tenant.CustomerId, time.Now().Local(), time.Now().Local())
+		_, err = tx.Exec("insert into tenant(id,code,name,status,customer_id,created,updated) values(?,?,?,?,?,?,?)", tenant.Id, tenant.Code, tenant.Name, tenant.Status, tenant.CustomerId, time.Now().Local(), time.Now().Local())
 
 	}
 
