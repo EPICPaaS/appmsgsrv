@@ -5,42 +5,175 @@
 {{end}}
 
 {{define "addCSS"}}
- 
+ <style type="text/css">
+    #content{
+        width: 600px;
+        height: 400px;
+        overflow: auto;
+        font-size: 12px;
+        background: #eee;
+        padding: 5px 10px;
+        margin-bottom: 5px;
+        border: 1px solid #888;
+        box-sizing: border-box;
+        font-family: "微软雅黑";
+        word-wrap: break-word;
+    }
+    #message{
+        width: 525px;
+        padding: 3px;
+        font-size: 12px;
+        font-family: "微软雅黑";
+        box-sizing: border-box;
+    }
+    #api{
+        display: none;
+    }
+</style>
 {{end}}
 
 {{define "addJS"}}
+<script src="/static/js/msg-js.js"></script>
 <script type="text/javascript">
-$(document).ready(function() {
-	var data={}
-	data["parentId"]="23622391649369951"
-	qingqiu("/GetMyQun", data)
+    var token
+    $(document).ready(function(){
+        loginGopush()
+    });
+	
+    var channel = new GoPushCli({
 
-});
+        host: '192.168.2.22',
+        port: 8090,
+        key: '{{.User.Id}}@user',
+        onOfflineMessage: function (data) {
+           
+			addContent("[离线]来自["+decodeURIComponent(data.msg.fromDisplayName)+"]的消息："+decodeURIComponent(data.msg.content));
+        },
+        onOnlineMessage: function (data) {
+			var msg;
+			if (window.JSON && window.JSON.parse) {
+                 msg= JSON.parse(decodeURIComponent(data.msg));
+            }
+            msg =  eval('(' + decodeURIComponent(data.msg) + ')');
+            addContent("[在线]来自["+decodeURIComponent(msg.fromDisplayName)+"]的消息："+decodeURIComponent(msg.content));
+        },
+        onError: function (message) {
+            addContent(message);
+        },
+        onOpen: function (message) {
+            addContent('初始化完成');
+        },
+        onClose: function (message) {
+            addContent('连接断开');
+        }
+    });
 
-var qingqiu = function(url , data){
-	alert(data)
-		$.ajax({
-		url : url,
-		type : "POST",
-		data : data,
-		dataType : 'json',
-		async : true,
-		contentType : "application/x-www-form-urlencoded; charset=UTF-8",
-		success : function(data,textStatus, jqXHR) {
-			alert(JSON.stringify(data))
-		},
-		error:function(XMLHttpRequest, textStatus, errorThrown) {
-			alert("与服务器连接失败"+XMLHttpRequest.responseText);
+    var addContent = function (content) {
+        var element = document.getElementById('content');
+        element.innerHTML += content + '<br />';
+        element.scrollTop = element.scrollHeight;
+    }
+
+ 
+    document.getElementById('chat').onsubmit = function () {
+        if (document.getElementById('message').value == '') {
+            return false;
+        }
+        setTimeout(function () {
+            document.getElementById('message').value = '';
+        });
+    };
+
+    document.getElementById('close').onclick = function () {
+        channel.destory();
+    };
+
+    channel.start();
+	//登陆消息系统（gopush）
+	var loginGopush = function() {
+		var toUserName = $("#toUserName").val()+"@user"
+	    data ={
+		    "baseRequest" : {
+		        "uid": "{{.User.Id}}",
+		        "deviceType": "web"
+		    },
+			"userName": "{{.User.Name}}",
+		    "password": "{{.User.Password}}"
 		}
-	});
-}
+		ajaxJsonp("http://192.168.2.22:8093/app/client/appweb/login",data,"loginCallback")
+	}
+	//消息回调函数
+	var loginCallback = function(data){
+		if (data.baseResponse.ret==0){
+			token = data.token
+			addContent("已登陆消息系统")
+		}else{
+			addContent("登陆消息系统失败："+data.baseResponse.errMsg)
+		}
+		
+	}
+	//发送消息
+	var sendMsg = function () {
+		var toUserName = $("#toUserName").val()+"@user"
+		var content = $("#message").val()
+		addContent(content)
+	    data ={
+			"baseRequest": {
+				"uid": "{{.User.Id}}",
+				"token": token
+			},
+			"sessions":"all",
+			"msg": {
+				"fromUserName": "{{.User.Id}}@user",
+				"toUserName": toUserName,
+				"msgType": 1,
+				"content": content,
+				"clientMsgId": 1407734409242
+			}
+		}
+		
+		ajaxJsonp("http://192.168.2.22:8093/app/client/appweb/push",data,"sendMsgCallback")
+       
+	}
+	//消息回调函数
+	var sendMsgCallback = function(json){
+		/*if (data.baseResponse.ret==0){
+			
+		}else{
+			  addContent("发送消息失败:"+data.baseResponse.errMsg);
+		}*/
+	}
+	
+	var ajaxJsonp = function (url , data , callback){
+		$.ajax({
+            type : "get",
+            async:false,
+			data:data,
+            url : url,
+            dataType : "jsonp",
+            jsonp: "callbackparam",//传递给请求处理程序或页面的，用以获得jsonp回调函数名的参数名(默认为:callback)
+            jsonpCallback:callback,//自定义的jsonp回调函数名称，默认为jQuery自动生成的随机函数名
+            success : function(json){
+               // alert(json);
+            },
+            error:function(){
+                alert('fail');
+            }
+        });
+	}
 </script>
 {{end}}
 
 {{define "body"}}
-<div>
-   {{range .orgs}}
-     <span>部门：{{.Name}}</span>
-   {{end}}
-</div>
+<div id="content"></div>
+<form id="chat" method="post" action="http://10.180.120.63:8091/1/admin/push/private?key=a&expire=600">
+    <select id = "toUserName">
+	{{range .users}}
+	   <option value = {{.Id}}>{{.Nickname}}</option>
+	{{end}}
+	</select>
+    <input id="message" type="text" autocomplete="off" placeholder="想要说什么" />
+</form>
+<input id="sendMsg" type="button" onclick="sendMsg()" value="发送">
+<input id="close" type="button" value="断开">
 {{end}}

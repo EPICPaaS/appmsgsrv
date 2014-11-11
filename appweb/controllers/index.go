@@ -14,6 +14,9 @@ func (this *IndexController) Get() {
 	user := this.GetSession("user").(*models.User)
 	orgs := models.GetRootOrg(user.TenantId)
 	this.Data["orgs"] = orgs
+	this.Data["User"] = user
+	users := models.GetOrgUsersById("23622391649369951")
+	this.Data["users"] = users
 }
 
 //获取下一单位

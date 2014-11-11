@@ -188,6 +188,7 @@
 
     GoPushCli.prototype.getOfflineMessage = function () {
         var that = this;
+		alert(that.mid)
         getScript({
 			//获取离线消息
             url: 'http://' + that.host + ':' + that.port + '/1/msg/get?k=' + this.originalKey + '&t=' + that.type + '&m=' + that.mid + '&p=' + that.pmid,
