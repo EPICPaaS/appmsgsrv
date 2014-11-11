@@ -58,7 +58,9 @@ func StartHTTP() {
 	appAppServeMux.Handle("/app/static/", http.StripPrefix("/app/static/", http.FileServer(http.Dir("static"))))
 
 	appAppServeMux.HandleFunc("/app/client/device/login", apiCallStat(app.Device.Login))
+	appAppServeMux.HandleFunc("/app/client/appweb/login", app.AppWeb.WebLogin)
 	appAppServeMux.HandleFunc("/app/client/device/push", apiCallStat(app.Device.Push))
+	appAppServeMux.HandleFunc("/app/client/appweb/push", app.AppWeb.WebPush)
 	appAppServeMux.HandleFunc("/app/client/device/addOrRemoveContact", app.Device.AddOrRemoveContact)
 	appAppServeMux.HandleFunc("/app/client/device/getMember", app.Device.GetMemberByUserName)
 	appAppServeMux.HandleFunc("/app/client/device/checkUpdate", app.Device.CheckUpdate)
