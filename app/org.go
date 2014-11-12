@@ -1615,3 +1615,24 @@ func isExistTennat(id string) bool {
 	}
 	return rows.Next()
 }
+
+//更具id获取租户信息
+func getTenantById(id string) *Tenant {
+
+	rows, err := db.MySQL.Query("select id , code , name,status,customer_id,created,updated from tenant where id =?", id)
+
+	if err != nil {
+		glog.Error(err)
+		return nil
+	}
+	for rows.Next() {
+		tenant := &Tenant{}
+		if err := rows.Scan(&tenant.Id, &tenant.Code, &tenant.Name, &tenant.Status, &tenant.CustomerId, &tenant.Created, &tenant.Updated); err != nil {
+			glog.Error(err)
+			return nil
+		}
+
+		return tenant
+	}
+	return nil
+}
