@@ -91,10 +91,14 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 		//应用10个分片
 		sharding = rand.Intn(10)
 		tenantId = application.TenantId
-		cllerId = token
+		cllerId = application.Id
 	}
 	//获取租户信息
 	tenant := getTenantById(tenantId)
+	if tenant == nil {
+		glog.Error("not found tenant")
+		return
+	}
 	apiCall := &ApiCall{
 		CustomerId: tenant.CustomerId,
 		TenantId:   tenantId,
