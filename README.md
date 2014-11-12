@@ -48,15 +48,15 @@
 ## 开发
 
 * 熟悉 gopush-cluster 的[架构](https://camo.githubusercontent.com/3c2f6df17ff0bace9f88e657819160f0bcb14a8c/687474703a2f2f7261772e6769746875622e636f6d2f54657272792d4d616f2f676f707573682d636c75737465722f6d61737465722f77696b692f6172636869746563747572652f6172636869746563747572652e6a7067)
-* 项目只能在 Linux 下开发（通过虚拟机方式方便一些）。
+* 项目只能在 Linux 下开发（通过虚拟机方式方便一些）
 
 ### web 模块
 
 迁出项目后需要修改 web.conf，用于在当前目录下运行的默认配置文件。
 * base.app.bind：应用接口监听端口
-* zookeeper.addr：gopush-cluster 集群节点通知n
+* zookeeper.addr：gopush-cluster 集群节点通知
 * user daniel：当前操作系统登录用户 
-* IP 绑定
+* 其他默认 IP 绑定
 
 启动命令 `./web -v=3 -logtostderr=true`
 
