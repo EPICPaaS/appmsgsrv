@@ -254,15 +254,28 @@ func SetSessionStat(sessionId, state string) bool {
 }
 
 //通过userd查询会话session
-func GetSessionsByUserId(userId string) (*Session, error) {
-	row := db.MySQL.QueryRow(SELECT_SESSION_BYUSERID, userId)
-	session := Session{}
-	if err := row.Scan(&session.Id, &session.Type, &session.UserId, &session.State, &session.Created, &session.Updated); err != nil {
+func GetSessionsByUserId(userId string) (*[]Session, error) {
+
+	rows, err := db.MySQL.Query(SELECT_SESSION_BYUSERID, userId)
+	if err != nil {
 		glog.Error(err)
 		return nil, err
 	}
 
-	return &session, nil
+	sessions := []Session{}
+	for rows.Next() {
+		session := Session{}
+		if err := rows.Scan(&session.Id, &session.Type, &session.UserId, &session.State, &session.Created, &session.Updated); err != nil {
+			glog.Error(err)
+			return nil, err
+		}
+		sessions = append(sessions, session)
+	}
+	if err := rows.Err(); err != nil {
+		glog.Error(err)
+		return nil, err
+	}
+	return &sessions, nil
 }
 
 ///除过时的会话,当更新时间距当前时间超过24 小时，就将该会话移除
