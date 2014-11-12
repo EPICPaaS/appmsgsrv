@@ -129,6 +129,16 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
+		s, _ := session.GetSessionsByUserId(name.Id)
+		if nil == s {
+			resources, _ := GetResourceByTenantId(application.TenantId)
+			apnsToken, _ := getApnsToken(name.Id)
+			glog.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", name.Id, msg, resources, apnsToken)
+			go pushAPNS(msg, resources, apnsToken)
+
+		}
+
 		result := push(key, msgBytes, expire)
 		if OK != result {
 			baseRes.Ret = result
@@ -236,6 +246,7 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	if nil == s {
 		resources, _ := GetResourceByTenantId(user.TenantId)
 		apnsToken, _ := getApnsToken(toUserID)
+		glog.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
 		go pushAPNS(msg, resources, apnsToken)
 
 	}
@@ -342,6 +353,7 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 	if nil == s {
 		resources, _ := GetResourceByTenantId(user.TenantId)
 		apnsToken, _ := getApnsToken(toUserID)
+		glog.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
 		go pushAPNS(msg, resources, apnsToken)
 
 	}
@@ -401,9 +413,9 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 		if !resp.Success {
 			glog.Errorf("Push message failed [%v],Error[%v],Host[%v]", alert, resp.Error, host)
 			// 推送分发过程中失败不立即返回，继续下一个推送
+		} else {
+			glog.Info("Push message successed [%v],Content[%v],Host[%v]", t.ApnsToken, alert, host)
 		}
-		glog.Info("Push message successed [%v],Content[%v],Host[%v]", t.ApnsToken, alert, host)
-
 		// TODO: APNs 回调处理
 
 	}
