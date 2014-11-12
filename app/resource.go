@@ -11,17 +11,17 @@ import (
 const (
 
 	// 租户资源插入 SQL.
-	InsertResourceSQL = "INSERT INTO `resource` (`id`, `tenant_id`, `name`, `description`, `type`, `content`, `created`, `updated`) VALUES " +
+	InsertResourceSQL = "INSERT INTO `resource` (`id`, `customer_id`, `name`, `description`, `type`, `content`, `created`, `updated`) VALUES " +
 		"(?, ?, ?, ?, ?, ?, ?, ?)"
 
 	// 根据资源id 获取资源
 	SelectResourceByIdSQL = "SELECT * FROM `resource` where `id` = ?"
 
 	// 根据租户 id 查询租户的资源.
-	SelectResourceByTenantIdSQL = "SELECT * FROM `resource` where `tenant_id`  = ?"
+	SelectResourceByTenantIdSQL = "SELECT * FROM `resource` where `customer_id`  = (select  customer_id from tenant where  id = ?)"
 
 	//根据id修改资源
-	UpdateResourceByIdSQL = "UPDATE `resource` SET `tenant_id` = ? ,`name` = ? , `description` = ? , `type` = ? ,`content` = ? ,  `created` = ?  , `updated` = ?   WHERE `id` = ?"
+	UpdateResourceByIdSQL = "UPDATE `resource` SET `customer_id` = ? ,`name` = ? , `description` = ? , `type` = ? ,`content` = ? ,  `created` = ?  , `updated` = ?   WHERE `id` = ?"
 
 	//根据id删除资源
 	DelResourceByIdSQL = "DELETE FROM `resource` WHERE `id` =? "
@@ -30,7 +30,7 @@ const (
 //租户证书资源结构
 type Resource struct {
 	Id          string    `json:"id"`
-	TenantId    string    `json:"tenantId"`
+	CustomerId  string    `json:"customerId"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Type        string    `json:"type"`
@@ -44,7 +44,7 @@ func GetResourceById(resourceId string) (*Resource, error) {
 	row := db.MySQL.QueryRow(SelectResourceByIdSQL, resourceId)
 
 	resource := Resource{}
-	if err := row.Scan(&resource.Id, &resource.TenantId, &resource.Name, &resource.Description, &resource.Type, &resource.Content, &resource.Created, &resource.Updated); err != nil {
+	if err := row.Scan(&resource.Id, &resource.CustomerId, &resource.Name, &resource.Description, &resource.Type, &resource.Content, &resource.Created, &resource.Updated); err != nil {
 		glog.Error(err)
 
 		return nil, err
@@ -61,7 +61,7 @@ func GetResourceByTenantId(tenantId string) ([]*Resource, error) {
 	ret := []*Resource{}
 	for rows.Next() {
 		resource := &Resource{}
-		if err := rows.Scan(&resource.Id, &resource.TenantId, &resource.Name, &resource.Description, &resource.Type, &resource.Content, &resource.Created, &resource.Updated); err != nil {
+		if err := rows.Scan(&resource.Id, &resource.CustomerId, &resource.Name, &resource.Description, &resource.Type, &resource.Content, &resource.Created, &resource.Updated); err != nil {
 			glog.Error(err)
 
 			return nil, err
@@ -82,7 +82,7 @@ func AddResource(resource *Resource) (*Resource, bool) {
 	}
 
 	// 创建资源记录
-	_, err = tx.Exec(InsertResourceSQL, resource.Id, resource.TenantId, resource.Name, resource.Description, resource.Type, resource.Content, resource.Created, resource.Updated)
+	_, err = tx.Exec(InsertResourceSQL, resource.Id, resource.CustomerId, resource.Name, resource.Description, resource.Type, resource.Content, resource.Created, resource.Updated)
 	if err != nil {
 		glog.Error(err)
 
@@ -109,7 +109,7 @@ func UpdateResource(resource *Resource) (*Resource, bool) {
 	}
 
 	// 创建资源记录
-	_, err = tx.Exec(UpdateResourceByIdSQL, resource.TenantId, resource.Name, resource.Description, resource.Type, resource.Content, resource.Created, resource.Updated, resource.Id)
+	_, err = tx.Exec(UpdateResourceByIdSQL, resource.CustomerId, resource.Name, resource.Description, resource.Type, resource.Content, resource.Created, resource.Updated, resource.Id)
 	if err != nil {
 		glog.Error(err)
 
