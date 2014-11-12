@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	APICALL_EXIST     = "select  id from api_call where customer_id = ? and tenant_id = ? and caller_id=? and api_name = ? and sharding = ?"
-	APICALL_ADD       = "UPDATE api_call SET count = count+1  ,updated=?  WHERE  customer_id = ? and  tenant_id = ? and caller_id=? and api_name = ? and sharding = ?"
-	INSERT_APICALL    = "insert into api_call(id , customer_id,tenant_id,caller_id,api_name,count,sharding,created,updated) values(?,?,?,?,?,?,?,?,?)"
+	APICALL_EXIST     = "select  id from api_call where customer_id = ? and tenant_id = ? and caller_id=? and type =? and api_name = ? and sharding = ? "
+	APICALL_ADD       = "UPDATE api_call SET count = count+1  ,updated=?  WHERE  customer_id = ? and  tenant_id = ? and caller_id=? and type =? and api_name = ? and sharding = ?"
+	INSERT_APICALL    = "insert into api_call(id , customer_id,tenant_id,caller_id,type,api_name,count,sharding,created,updated) values(?,?,?,?,?,?,?,?,?,?)"
 	GET_APICALL_COUNT = "select sum(count) as count from api_call WHERE  customer_id = ? and  tenant_id = ? and caller_id=? and api_name = ?  "
 )
 
@@ -24,6 +24,7 @@ type ApiCall struct {
 	CustomerId string
 	TenantId   string
 	CallerId   string
+	Type       string
 	ApiName    string
 	Count      int
 	Sharding   int
@@ -56,12 +57,12 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 	var tenantId, cllerId string
 	sharding := 0
 
-	deviceType := ""
+	deviceType := "app"
 	if baseReq["deviceType"] != nil {
 		deviceType = baseReq["deviceType"].(string)
 	}
 	/* Token 校验，分为用户校验和应用校验*/
-	if deviceType == DEVICE_TYPE_IOS || deviceType == DEVICE_TYPE_ANDROID {
+	if deviceType == DEVICE_TYPE_IOS || deviceType == DEVICE_TYPE_ANDROID { //移动端和网页端
 
 		var user *member
 		if args["userName"] != nil { // 登录api接口
@@ -72,7 +73,6 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 		} else { //发送消息接口
 
 			user = getUserByToken(token)
-
 		}
 
 		if nil == user {
@@ -82,8 +82,6 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 
 		tenantId = user.TenantId
 		cllerId = user.Uid
-		//用户5个分片
-		sharding = rand.Intn(5)
 	} else { //应用校验
 		application, err := getApplicationByToken(token)
 		if nil != err || nil == application {
@@ -101,6 +99,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 		CustomerId: tenant.CustomerId,
 		TenantId:   tenantId,
 		CallerId:   cllerId,
+		Type:       deviceType,
 		ApiName:    appName,
 		Count:      1, //默认值1
 		Sharding:   sharding,
@@ -117,7 +116,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 //判断该记录是否存在
 func apiCallExist(apiCall *ApiCall) bool {
 
-	rows, err := db.MySQL.Query(APICALL_EXIST, apiCall.CustomerId, apiCall.TenantId, apiCall.CallerId, apiCall.ApiName, apiCall.Sharding)
+	rows, err := db.MySQL.Query(APICALL_EXIST, apiCall.CustomerId, apiCall.TenantId, apiCall.CallerId, apiCall.Type, apiCall.ApiName, apiCall.Sharding)
 	if err != nil {
 		glog.Error(err)
 		return false
@@ -137,7 +136,7 @@ func addApiCount(apiCall *ApiCall) bool {
 		return false
 	}
 
-	_, err = tx.Exec(APICALL_ADD, time.Now().Local(), apiCall.CustomerId, apiCall.TenantId, apiCall.CallerId, apiCall.ApiName, apiCall.Sharding)
+	_, err = tx.Exec(APICALL_ADD, time.Now().Local(), apiCall.CustomerId, apiCall.TenantId, apiCall.CallerId, apiCall.Type, apiCall.ApiName, apiCall.Sharding)
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
@@ -161,7 +160,7 @@ func insertApiCall(apiCall *ApiCall) bool {
 		glog.Error(err)
 		return false
 	}
-	_, err = tx.Exec(INSERT_APICALL, uuid.New(), apiCall.CustomerId, apiCall.TenantId, apiCall.CallerId, apiCall.ApiName, apiCall.Count, apiCall.Sharding, time.Now().Local(), time.Now().Local())
+	_, err = tx.Exec(INSERT_APICALL, uuid.New(), apiCall.CustomerId, apiCall.TenantId, apiCall.CallerId, apiCall.Type, apiCall.ApiName, apiCall.Count, apiCall.Sharding, time.Now().Local(), time.Now().Local())
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
