@@ -131,12 +131,12 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 
 		//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
 		s, _ := session.GetSessionsByUserId(name.Id)
-		if nil == s {
+		glog.Infof("start apns push , session[%v], UserId[%v]", len(*s), name.Id)
+		if len(*s) == 0 {
 			resources, _ := GetResourceByTenantId(application.TenantId)
 			apnsToken, _ := getApnsToken(name.Id)
 			glog.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", name.Id, msg, resources, apnsToken)
 			go pushAPNS(msg, resources, apnsToken)
-
 		}
 
 		result := push(key, msgBytes, expire)
@@ -243,12 +243,12 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	}
 	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
 	s, _ := session.GetSessionsByUserId(toUserID)
-	if nil == s {
+	glog.Infof("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
+	if len(*s) == 0 {
 		resources, _ := GetResourceByTenantId(user.TenantId)
 		apnsToken, _ := getApnsToken(toUserID)
 		glog.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
 		go pushAPNS(msg, resources, apnsToken)
-
 	}
 	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire)
 
@@ -350,12 +350,12 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 
 	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
 	s, _ := session.GetSessionsByUserId(toUserID)
-	if nil == s {
+	glog.Infof("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
+	if len(*s) == 0 {
 		resources, _ := GetResourceByTenantId(user.TenantId)
 		apnsToken, _ := getApnsToken(toUserID)
 		glog.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
 		go pushAPNS(msg, resources, apnsToken)
-
 	}
 	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire)
 
