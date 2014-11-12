@@ -414,7 +414,7 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 			glog.Errorf("Push message failed [%v],Error[%v],Host[%v]", alert, resp.Error, host)
 			// 推送分发过程中失败不立即返回，继续下一个推送
 		} else {
-			glog.Info("Push message successed [%v],Content[%v],Host[%v]", t.ApnsToken, alert, host)
+			glog.Infof("Push message successed [%v],Content[%v],Host[%v]", t.ApnsToken, alert, host)
 		}
 		// TODO: APNs 回调处理
 
