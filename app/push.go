@@ -367,9 +367,11 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []ApnsToken) {
 
 	var host = "gateway.sandbox.push.apple.com:2195"
-	var certFile = ""
-	var keyFile = ""
+	var certFile = "/home/paas/paas/appmsgsrv/data/miicaa/dev/cert.pem"
+	var keyFile = "/home/paas/paas/appmsgsrv/data/miicaa/dev/key.unencrypted.pem"
 	if Conf.ApnsType == "product" {
+		certFile = "/home/paas/paas/appmsgsrv/data/miicaa/pro/pro-cert.pem"
+		keyFile = "/home/paas/paas/appmsgsrv/data/miicaa/pro/pro-key.unencrypted.pem"
 		host = "gateway.push.apple.com:2195"
 	}
 
