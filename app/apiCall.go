@@ -53,7 +53,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 	baseReq := args["baseRequest"].(map[string]interface{})
 	token := baseReq["token"].(string)
 	appName := r.URL.String()
-	var tenantId, callerId string
+	var tenantId, cllerId string
 	sharding := 0
 
 	deviceType := ""
@@ -81,7 +81,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 		}
 
 		tenantId = user.TenantId
-		callerId = user.Uid
+		cllerId = user.Uid
 		//用户5个分片
 		sharding = rand.Intn(5)
 	} else { //应用校验
@@ -92,15 +92,15 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 		}
 		//应用10个分片
 		sharding = rand.Intn(10)
-		tenantId = application.TenantId.String
-		callerId = token
+		tenantId = application.TenantId
+		cllerId = token
 	}
 	//获取租户信息
 	tenant := getTenantById(tenantId)
 	apiCall := &ApiCall{
 		CustomerId: tenant.CustomerId,
 		TenantId:   tenantId,
-		CallerId:   callerId,
+		CallerId:   cllerId,
 		ApiName:    appName,
 		Count:      1, //默认值1
 		Sharding:   sharding,
