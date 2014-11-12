@@ -367,20 +367,23 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []ApnsToken) {
 
 	var host = "gateway.sandbox.push.apple.com:2195"
-	var certFile = "/home/paas/paas/appmsgsrv/data/miicaa/dev/cert.pem"
-	var keyFile = "/home/paas/paas/appmsgsrv/data/miicaa/dev/key.unencrypted.pem"
 	if Conf.ApnsType == "product" {
-		certFile = "/home/paas/paas/appmsgsrv/data/miicaa/pro/pro-cert.pem"
-		keyFile = "/home/paas/paas/appmsgsrv/data/miicaa/pro/pro-key.unencrypted.pem"
 		host = "gateway.push.apple.com:2195"
 	}
 
+	var certFile = ""
+	var keyFile = ""
 	for _, r := range resources {
 		if r.Type == "0" {
 			certFile = r.Content
 		} else if r.Type == "1" {
 			keyFile = r.Content
 		}
+	}
+
+	if certFile == "" || keyFile == "" {
+		glog.Errorf("Push message failed. CertFile [%v] or KeyFile[%v] has a error ", certFile, keyFile)
+		return
 	}
 
 	for _, t := range apnsToken {
@@ -413,10 +416,10 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 		resp := client.Send(pn)
 		alert, _ := pn.PayloadString()
 		if !resp.Success {
-			glog.Errorf("Push message failed [%v],Error[%v],Host[%v]", alert, resp.Error, host)
+			glog.Errorf("Push message failed. ApnsToken[%v],Content[%v],Error[%v],Host[%v],CertFile [%v], KeyFile[%v]", t.ApnsToken, alert, resp.Error, host, certFile, keyFile)
 			// 推送分发过程中失败不立即返回，继续下一个推送
 		} else {
-			glog.Infof("Push message successed [%v],Content[%v],Host[%v]", t.ApnsToken, alert, host)
+			glog.Infof("Push message successed. ApnsToken[%v],Content[%v],Host[%v]", t.ApnsToken, alert, host)
 		}
 		// TODO: APNs 回调处理
 
