@@ -1,5 +1,33 @@
 delimiter $$
 
+CREATE TABLE `api_call` (
+  `id` varchar(64) NOT NULL,
+  `customer_id` varchar(64) DEFAULT NULL,
+  `tenant_id` varchar(64) DEFAULT NULL,
+  `caller_id` varchar(64) DEFAULT NULL COMMENT 'user_id 或 application_id',
+  `api_name` varchar(255) DEFAULT NULL,
+  `count` int(11) DEFAULT NULL,
+  `sharding` int(11) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
+
+delimiter $$
+
+CREATE TABLE `quota` (
+  `id` varchar(64) NOT NULL,
+  `customer_id` varchar(64) DEFAULT NULL,
+  `tenant_id` varchar(64) DEFAULT NULL,
+  `api_name` varchar(255) DEFAULT NULL,
+  `key` varchar(45) DEFAULT NULL COMMENT '计数/到期时间',
+  `value` varchar(45) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
+
+delimiter $$
+
 CREATE TABLE `application` (
   `id` varchar(64) NOT NULL,
   `name` varchar(45) DEFAULT NULL,
