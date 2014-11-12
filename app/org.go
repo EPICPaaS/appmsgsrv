@@ -242,10 +242,6 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 登录后设置用户未关联的会话session;  sessionId:{userI_id}_{device_type}-{real_device_id}
-	//sessionId := "anonymous_" + deviceType + "_" + deviceId
-	//go session.UpdateSessionUserID(sessionId, member.Uid)
-
 	//记录apnsToken
 	apnsTokenStr := args["apnsToken"]
 
