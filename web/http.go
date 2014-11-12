@@ -151,7 +151,7 @@ func stat(handler func(w http.ResponseWriter, r *http.Request)) func(w http.Resp
 		glog.V(3).Info(handlerName)
 
 		// TODO: 这里做调用统计持久化
-
+		app.ApiCallStatistics(w, r)
 		handler(w, r)
 	}
 }
