@@ -82,7 +82,7 @@ delimiter $$
 
 CREATE TABLE `resource` (
   `id` varchar(64) NOT NULL,
-  `tenant_id` varchar(64) DEFAULT NULL,
+  `customer_id` varchar(64) DEFAULT NULL,
   `name` varchar(45) DEFAULT NULL,
   `description` varchar(512) DEFAULT NULL,
   `type` varchar(45) DEFAULT NULL,
