@@ -396,7 +396,7 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 
 		payload := apns.NewPayload()
 		payload.Alert = contentMsg
-		payload.Badge = 42
+		payload.Badge = 0
 		payload.Sound = "bingbong.aiff"
 		payload.Category = "Test!"
 		payload.ContentAvailable = 1
