@@ -543,7 +543,9 @@ func (*app) GetOrgList(w http.ResponseWriter, r *http.Request) {
 
 func getOrgListByUserId(userId string) []*org {
 	rows, _ := db.MySQL.Query("select * from `org`  where  `org`.`id`  in  (select `org_user`.`org_id`  from `org_user` where `org_user`.`user_id` = ?) ", userId)
-
+	if rows != nil {
+		defer rows.Close()
+	}
 	ret := []*org{}
 	for rows.Next() {
 		resource := &org{}
@@ -1605,6 +1607,9 @@ func saveTennat(tenant *Tenant) bool {
 //判断租户是否存在
 func isExistTennat(id string) bool {
 	rows, err := db.MySQL.Query("select * from tenant where id =?", id)
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		glog.Error(err)
 		return false
@@ -1616,7 +1621,9 @@ func isExistTennat(id string) bool {
 func getTenantById(id string) *Tenant {
 
 	rows, err := db.MySQL.Query("select id , code , name,status,customer_id,created,updated from tenant where id =?", id)
-
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		glog.Error(err)
 		return nil

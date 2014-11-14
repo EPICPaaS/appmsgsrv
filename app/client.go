@@ -362,6 +362,9 @@ func getLatestVerion(deviceType string) (*ClientVersion, error) {
 func insertApnsToken(apnsToken *ApnsToken) bool {
 
 	rows, err := db.MySQL.Query(SelectApnsTokenByUserIdTokens, apnsToken.UserId, apnsToken.ApnsToken)
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		glog.Error(err)
 		return false
@@ -398,7 +401,6 @@ func getApnsToken(userId string) ([]ApnsToken, error) {
 	rows, err := db.MySQL.Query(SelectApnsTokenByUserId, userId)
 	if err != nil {
 		glog.Error(err)
-
 		return nil, err
 	}
 	defer rows.Close()

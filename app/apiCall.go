@@ -121,6 +121,9 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 func apiCallExist(apiCall *ApiCall) bool {
 
 	rows, err := db.MySQL.Query(APICALL_EXIST, apiCall.CustomerId, apiCall.TenantId, apiCall.CallerId, apiCall.Type, apiCall.ApiName, apiCall.Sharding)
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		glog.Error(err)
 		return false
@@ -185,6 +188,11 @@ func getApiCallCount(customerId, tenantId, callerId, apiName string) int {
 
 	count := 0
 	rows, err := db.MySQL.Query(GET_APICALL_COUNT, customerId, tenantId, callerId, apiName)
+
+	if rows != nil {
+		defer rows.Close()
+	}
+
 	if err != nil {
 		glog.Error(err)
 		return count

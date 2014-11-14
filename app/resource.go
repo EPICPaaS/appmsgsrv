@@ -57,7 +57,9 @@ func GetResourceById(resourceId string) (*Resource, error) {
 func GetResourceByTenantId(tenantId string) ([]*Resource, error) {
 
 	rows, _ := db.MySQL.Query(SelectResourceByTenantIdSQL, tenantId)
-
+	if rows != nil {
+		defer rows.Close()
+	}
 	ret := []*Resource{}
 	for rows.Next() {
 		resource := &Resource{}
