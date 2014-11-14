@@ -42,7 +42,7 @@
 	
     var channel = new GoPushCli({
 
-        host: '192.168.2.22',
+        host: '10.180.120.63',
         port: 8090,
         key: '{{.User.Id}}@user',
         onOfflineMessage: function (data) {
@@ -100,7 +100,7 @@
 			"userName": "{{.User.Name}}",
 		    "password": "{{.User.Password}}"
 		}
-		ajaxJsonp("http://192.168.2.22:8093/app/client/appweb/login",data,"loginCallback")
+		ajaxJsonp("http://10.180.120.63:8093/app/client/appweb/login",data,"loginCallback")
 	}
 	//消息回调函数
 	var loginCallback = function(data){
@@ -132,16 +132,16 @@
 			}
 		}
 		
-		ajaxJsonp("http://192.168.2.22:8093/app/client/appweb/push",data,"sendMsgCallback")
+		ajaxJsonp("http://10.180.120.63:8093/app/client/appweb/push",data,"sendMsgCallback")
        
 	}
 	//消息回调函数
-	var sendMsgCallback = function(json){
-		/*if (data.baseResponse.ret==0){
-			
+	var sendMsgCallback = function(data){
+		if (data.baseResponse.ret==0){
+			$("#message").val("")
 		}else{
 			  addContent("发送消息失败:"+data.baseResponse.errMsg);
-		}*/
+		}
 	}
 	
 	var ajaxJsonp = function (url , data , callback){
@@ -176,4 +176,5 @@
 </form>
 <input id="sendMsg" type="button" onclick="sendMsg()" value="发送">
 <input id="close" type="button" value="断开">
+<a href="/logout">退出</a>
 {{end}}
