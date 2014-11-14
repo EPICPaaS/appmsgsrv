@@ -12,24 +12,23 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
 //登陆消息体
 var loginMsgBody = []byte(`
 		{
-			"baseRequest" : {
-		         "token": "eflow_token"
-			},
-		    "sessions": ["all"],
-		    "content": "Test!",
-		    "msgType": "1",
-			"toUserNames" : ["23622391649384525@user", "22622391649384527@user"],
-		    "objectContent": {
-		        "appId": "23622391649370202",
-		        "appSendId": "xxxxx"
-		    }
+		    "baseRequest" : {
+		        "uid": "23622391649384525",
+		        "deviceID": "",
+		        "deviceType": "iOS",
+		        "token": ""
+		    },
+			"userName": "xufeifei",
+		    "password": "1"
 		}
+
 	`)
 
 //应用发送消息给服务端消息
@@ -50,26 +49,34 @@ var appSendMsgBody = []byte(`
 	`)
 
 //设备发送消息体
-var diveceMsgBody = []byte(`
+var diveceMsgBody []byte
+
+var errNum int = 0
+var senNum int = 0
+var token string
+
+//初始化token
+func init() {
+	token = login("http://10.180.120.63:8093/app/client/device/login")
+	diveceMsgBody = []byte(`
 		{
 			"baseRequest": {
-				"uid": "23622391649384525",
+				"uid": "23622391649370004",
 				"deviceID": "e907195984764735",
 		        "deviceType":"iOS",
-		        "token": "23622391649370004_4943f8c5-54df-4512-926d-5fb9166ba276"
+		        "token": "` + token + `"
 			},
 		    "sessions": ["all"],
 			"msg": {
-				"fromUserName": "23622391649384525@user",
+				"fromUserName": "23622391649370004@user",
 				"toUserName": "23622391649370202@user",
 				"msgType": 1,
-				"content": "Test!",
+				"content": "TestTestTest!",
 		        "clientMsgId": 1407734409242
 			}
 		}
 	`)
-var errNum int = 0
-var senNum int = 0
+}
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -96,11 +103,28 @@ func main() {
 		}
 	}*/
 
-	for i := 0; i < 1000; i++ {
-		go sendMsg("http://10.180.120.63:8093/app/client/app/user/push", appSendMsgBody)
+	if len(os.Args) != 3 {
+		fmt.Fprintf(os.Stderr, "输入格式如：url(请求地址) count（并发数）", os.Args[0])
+		os.Exit(1)
 	}
-	//sendMsg("http://10.180.120.63:8093/app/client/app/user/push", appSendMsgBody)
-	time.Sleep(5 * time.Minute)
+	url := os.Args[1]
+	count, _ := strconv.Atoi(os.Args[2])
+
+	var body []byte
+	if strings.Contains(url, "/app/client/app/user/push") {
+		body = appSendMsgBody
+	} else if strings.Contains(url, "/app/client/device/push") {
+		body = diveceMsgBody
+	} else if strings.Contains(url, "/app/client/device/login") {
+		body = loginMsgBody
+	}
+
+	for i := 0; i < count; i++ {
+		go sendMsg(url, body)
+	}
+
+	//压测结果
+	time.Sleep(1 * time.Minute)
 	fmt.Printf("异常次数:[%d] \n", errNum)
 	fmt.Printf("总请求数:[%d]", senNum)
 
@@ -172,6 +196,7 @@ func sendMsg(url string, msgBody []byte) {
 			errNum++
 			continue
 		}
+
 		if res.StatusCode == 200 { //请求成功
 			defer res.Body.Close()
 			resBody, err := ioutil.ReadAll(res.Body)
@@ -193,14 +218,49 @@ func sendMsg(url string, msgBody []byte) {
 				errNum++
 				continue
 			}
+			fmt.Println(string(resBody))
 			senNum++
-
 		} else {
 			fmt.Printf("请求失败,错误码:[%d]", res.StatusCode)
 		}
 
 	}
 
+}
+
+//登陆系统以获得token
+func login(url string) string {
+	body := bytes.NewReader(loginMsgBody)
+	res, err := http.Post(url, "text/plain;charset=UTF-8", body)
+	if err != nil {
+		log.Fatal(err)
+		errNum++
+		return ""
+	}
+
+	if res.StatusCode == 200 { //请求成功
+		defer res.Body.Close()
+		resBody, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			log.Fatalf("读取response信息异常：[s%]", err)
+			return ""
+		}
+		var args map[string]interface{}
+		if err = json.Unmarshal(resBody, &args); err != nil {
+			log.Fatalf("读取response信息转换为异常：[%s]", err)
+			return ""
+		}
+		baseResponse := args["baseResponse"].(map[string]interface{})
+		ret := baseResponse["ret"].(float64)
+		if ret != 0 {
+			fmt.Printf("服务器处理异常，返回吗：[%d]", int(ret))
+			return ""
+		}
+		return args["token"].(string)
+	} else {
+		fmt.Printf("请求失败,错误码:[%d]", res.StatusCode)
+	}
+	return ""
 }
 func checkErr(err error) {
 	if err != nil {
