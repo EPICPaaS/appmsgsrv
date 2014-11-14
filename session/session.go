@@ -73,6 +73,9 @@ func GetSessions(uid string, args []string) []*Session {
 		// 大于 1 一个会话的情况都是指定到了具体的会话 id
 		rows, err = db.MySQL.Query(SELECT_SESSION_BYIDS, strings.Join(args, ","))
 	}
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		glog.Error(err)
 		return ret
@@ -257,6 +260,9 @@ func SetSessionStat(sessionId, state string) bool {
 func GetSessionsByUserId(userId string) (*[]Session, error) {
 
 	rows, err := db.MySQL.Query(SELECT_SESSION_BYUSERID, userId)
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		glog.Error(err)
 		return nil, err
