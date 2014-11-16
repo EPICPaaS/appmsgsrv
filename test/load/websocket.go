@@ -124,7 +124,7 @@ func main() {
 	}
 
 	//压测结果
-	time.Sleep(1 * time.Minute)
+	time.Sleep(10 * time.Minute)
 	fmt.Printf("异常次数:[%d] \n", errNum)
 	fmt.Printf("总请求数:[%d]", senNum)
 
@@ -218,7 +218,6 @@ func sendMsg(url string, msgBody []byte) {
 				errNum++
 				continue
 			}
-			fmt.Println(string(resBody))
 			senNum++
 		} else {
 			fmt.Printf("请求失败,错误码:[%d]", res.StatusCode)
