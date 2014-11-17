@@ -81,6 +81,7 @@ func main() {
 
 	defer db.MySQL.Close()
 
+	go app.LoadQuotaAll()
 	// init signals, block wait signals
 	signalCH := InitSignal()
 	HandleSignal(signalCH)
