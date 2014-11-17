@@ -290,7 +290,7 @@ func (*app) SyncQuota(w http.ResponseWriter, r *http.Request) {
 
 }
 
-//判断配合是否存在
+// 判断配额是否存在.
 func isExistQuota(quota *Quota) bool {
 
 	rows, err := db.MySQL.Query(SELECT_EXIST, quota.CustomerId, quota.TenantId, quota.ApiName, quota.Type)
@@ -357,7 +357,7 @@ func insertQuota(quota *Quota) bool {
 	return true
 }
 
-//获取配合信息
+// 获取配额信息.
 func GetQuotas(customerId, tenantId, apiName string) ([]Quota, error) {
 
 	quotas := []Quota{}
