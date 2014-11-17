@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -17,6 +18,9 @@ const (
 	APICALL_ADD       = "UPDATE api_call SET count = count+1  ,updated=?  WHERE  customer_id = ? and  tenant_id = ? and caller_id=? and type =? and api_name = ? and sharding = ?"
 	INSERT_APICALL    = "insert into api_call(id , customer_id,tenant_id,caller_id,type,api_name,count,sharding,created,updated) values(?,?,?,?,?,?,?,?,?,?)"
 	GET_APICALL_COUNT = "select sum(count) as count from api_call WHERE  customer_id = ? and  tenant_id = ? and caller_id=? and api_name = ?  "
+	QUOTA_EXIST       = "select id from quota where customer_id = ? and tenant_id=? and  api_name=?"
+	UPDATE_QUOTA      = "update quota set type = ? , value=? , updated =? where customer_id = ? and tenant_id=? and  api_name=?"
+	INSERT_QUOTA      = "insert into quota(id , customer_id,tenant_id,api_name,type,value,created,updated) values(?,?,?,?,?,?,?,?)"
 )
 
 type ApiCall struct {
@@ -30,6 +34,18 @@ type ApiCall struct {
 	Sharding   int
 	Created    time.Time
 	Updated    time.Time
+}
+
+type Quota struct {
+	Id         string
+	CustomerId string
+	TenantId   string
+	ApiName    string
+	Type       string
+	Value      string
+	Created    time.Time
+	Updated    time.Time
+	lock       sync.Mutex
 }
 
 //记录api调用次数
@@ -210,4 +226,132 @@ func getApiCallCount(customerId, tenantId, callerId, apiName string) int {
 		return count
 	}
 	return count
+}
+
+//记录api调用次数
+func (*app) SyncQuota(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		res["ret"] = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+	token := baseReq["token"].(string)
+
+	//应用校验
+	_, err = getApplicationByToken(token)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		return
+	}
+
+	quotaM := args["quata"].(map[string]interface{})
+	quota := &Quota{
+		CustomerId: quotaM["customerId"].(string),
+		TenantId:   quotaM["tenantId"].(string),
+		ApiName:    quotaM["apiName"].(string),
+		Type:       quotaM["type"].(string),
+		Value:      quotaM["value"].(string),
+	}
+	retBool := false
+	if isExistQuota(quota) {
+		retBool = updateQuota(quota)
+	} else {
+		retBool = insertQuota(quota)
+	}
+
+	if !retBool {
+		baseRes.Ret = InternalErr
+		baseRes.ErrMsg = "sync quota fail !"
+		return
+	}
+
+}
+
+//判断配合是否存在
+func isExistQuota(quota *Quota) bool {
+
+	rows, err := db.MySQL.Query(QUOTA_EXIST, quota.CustomerId, quota.TenantId, quota.ApiName)
+	if rows != nil {
+		defer rows.Close()
+	}
+
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+	if err = rows.Err(); err != nil {
+		glog.Error(err)
+		return false
+	}
+	return rows.Next()
+}
+
+//修改quota
+func updateQuota(quota *Quota) bool {
+	tx, err := db.MySQL.Begin()
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+	_, err = tx.Exec(UPDATE_QUOTA, quota.Type, quota.Value, time.Now().Local(), quota.CustomerId, quota.TenantId, quota.ApiName)
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+
+	if err = tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	return true
+}
+
+//修改quota
+func insertQuota(quota *Quota) bool {
+	tx, err := db.MySQL.Begin()
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+	_, err = tx.Exec(INSERT_QUOTA, uuid.New(), quota.CustomerId, quota.TenantId, quota.ApiName, quota.Type, quota.Value, time.Now().Local(), time.Now().Local())
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+
+	if err = tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	return true
 }
