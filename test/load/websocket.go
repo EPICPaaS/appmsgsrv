@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -192,7 +191,7 @@ func sendMsg(url string, msgBody []byte) {
 		body := bytes.NewReader(msgBody)
 		res, err := http.Post(url, "text/plain;charset=UTF-8", body)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
 			errNum++
 			continue
 		}
@@ -201,13 +200,13 @@ func sendMsg(url string, msgBody []byte) {
 			defer res.Body.Close()
 			resBody, err := ioutil.ReadAll(res.Body)
 			if err != nil {
-				log.Fatalf("读取response信息异常：[s%]", err)
+				fmt.Printf("读取response信息异常：[%s]", err)
 				errNum++
 				continue
 			}
 			var args map[string]interface{}
 			if err = json.Unmarshal(resBody, &args); err != nil {
-				log.Fatalf("读取response信息转换为异常：[%s]", err)
+				fmt.Printf("读取response信息转换为异常：[%s]", err)
 				errNum++
 				continue
 			}
@@ -232,7 +231,7 @@ func login(url string) string {
 	body := bytes.NewReader(loginMsgBody)
 	res, err := http.Post(url, "text/plain;charset=UTF-8", body)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 		errNum++
 		return ""
 	}
@@ -241,12 +240,12 @@ func login(url string) string {
 		defer res.Body.Close()
 		resBody, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			log.Fatalf("读取response信息异常：[s%]", err)
+			fmt.Printf("读取response信息异常：[s%]", err)
 			return ""
 		}
 		var args map[string]interface{}
 		if err = json.Unmarshal(resBody, &args); err != nil {
-			log.Fatalf("读取response信息转换为异常：[%s]", err)
+			fmt.Printf("读取response信息转换为异常：[%s]", err)
 			return ""
 		}
 		baseResponse := args["baseResponse"].(map[string]interface{})
@@ -263,7 +262,7 @@ func login(url string) string {
 }
 func checkErr(err error) {
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
 }
