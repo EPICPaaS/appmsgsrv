@@ -22,7 +22,11 @@ const (
 	SELECT_QUOTA      = "select id , customer_id,tenant_id,api_name,type,value,created,updated from quota  where customer_id = ? and tenant_id=? and  api_name=?"
 	UPDATE_QUOTA      = "update quota set  value=? , updated =? where customer_id = ? and tenant_id=? and  api_name=? and type = ?"
 	INSERT_QUOTA      = "insert into quota(id , customer_id,tenant_id,api_name,type,value,created,updated) values(?,?,?,?,?,?,?,?)"
+	SELECT_QUOTA_ALL  = "select id , customer_id,tenant_id,api_name,type,value,created,updated from quota"
 )
+
+var QuotaAll = make(map[string]Quota)
+var LoadQuotaTime = time.NewTicker(5 * time.Minute)
 
 type ApiCall struct {
 	Id         string
@@ -383,4 +387,38 @@ func GetQuotas(customerId, tenantId, apiName string) ([]Quota, error) {
 		return nil, err
 	}
 	return quotas, err
+}
+
+//定时加载配额信息5分钟加载一次
+func LoadQuotaAll() {
+
+	for _ = range LoadQuotaTime.C {
+		rows, err := db.MySQL.Query(SELECT_QUOTA_ALL)
+		if err != nil {
+			glog.Errorf("load quota err [%s]", err)
+		}
+
+		key := bytes.Buffer{}
+		for rows.Next() {
+			quota := Quota{}
+			if err := rows.Scan(&quota.Id, &quota.CustomerId, &quota.TenantId, &quota.ApiName, &quota.Type, &quota.Value, &quota.Created, &quota.Created); err != nil {
+				glog.Errorf("load quota err [%s]", err)
+				break
+			}
+			key.WriteString(quota.CustomerId)
+			key.WriteString(quota.TenantId)
+			key.WriteString(quota.ApiName)
+			key.WriteString(quota.Type)
+			QuotaAll[key.String()] = quota
+			key.Reset()
+		}
+
+		if err = rows.Err(); err != nil {
+			glog.Errorf("load quota err [%s]", err)
+		}
+		if rows != nil {
+			rows.Close()
+		}
+	}
+
 }
