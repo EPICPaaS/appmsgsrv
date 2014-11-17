@@ -18,8 +18,9 @@ const (
 	APICALL_ADD       = "UPDATE api_call SET count = count+1  ,updated=?  WHERE  customer_id = ? and  tenant_id = ? and caller_id=? and type =? and api_name = ? and sharding = ?"
 	INSERT_APICALL    = "insert into api_call(id , customer_id,tenant_id,caller_id,type,api_name,count,sharding,created,updated) values(?,?,?,?,?,?,?,?,?,?)"
 	GET_APICALL_COUNT = "select sum(count) as count from api_call WHERE  customer_id = ? and  tenant_id = ? and caller_id=? and api_name = ?  "
-	QUOTA_EXIST       = "select id from quota where customer_id = ? and tenant_id=? and  api_name=?"
-	UPDATE_QUOTA      = "update quota set type = ? , value=? , updated =? where customer_id = ? and tenant_id=? and  api_name=?"
+	SELECT_EXIST      = "select id from quota  where customer_id = ? and tenant_id=? and  api_name=? and type = ?"
+	SELECT_QUOTA      = "select id , customer_id,tenant_id,api_name,type,value,created,updated from quota  where customer_id = ? and tenant_id=? and  api_name=?"
+	UPDATE_QUOTA      = "update quota set  value=? , updated =? where customer_id = ? and tenant_id=? and  api_name=? and type = ?"
 	INSERT_QUOTA      = "insert into quota(id , customer_id,tenant_id,api_name,type,value,created,updated) values(?,?,?,?,?,?,?,?)"
 )
 
@@ -292,7 +293,7 @@ func (*app) SyncQuota(w http.ResponseWriter, r *http.Request) {
 //判断配合是否存在
 func isExistQuota(quota *Quota) bool {
 
-	rows, err := db.MySQL.Query(QUOTA_EXIST, quota.CustomerId, quota.TenantId, quota.ApiName)
+	rows, err := db.MySQL.Query(SELECT_EXIST, quota.CustomerId, quota.TenantId, quota.ApiName, quota.Type)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -315,7 +316,7 @@ func updateQuota(quota *Quota) bool {
 		glog.Error(err)
 		return false
 	}
-	_, err = tx.Exec(UPDATE_QUOTA, quota.Type, quota.Value, time.Now().Local(), quota.CustomerId, quota.TenantId, quota.ApiName)
+	_, err = tx.Exec(UPDATE_QUOTA, quota.Value, time.Now().Local(), quota.CustomerId, quota.TenantId, quota.ApiName, quota.Type)
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
@@ -354,4 +355,32 @@ func insertQuota(quota *Quota) bool {
 	}
 
 	return true
+}
+
+//获取配合信息
+func GetQuotas(customerId, tenantId, apiName string) ([]Quota, error) {
+
+	quotas := []Quota{}
+	rows, err := db.MySQL.Query(SELECT_QUOTA, customerId, tenantId, apiName)
+	if rows != nil {
+		defer rows.Close()
+	}
+	if err != nil {
+		glog.Error(err)
+		return nil, err
+	}
+
+	for rows.Next() {
+		quota := Quota{}
+		if err := rows.Scan(&quota.Id, &quota.CustomerId, &quota.TenantId, &quota.ApiName, &quota.Type, &quota.Value, &quota.Created, &quota.Created); err != nil {
+			glog.Error(err)
+			return nil, err
+		}
+		quotas = append(quotas, quota)
+	}
+	if err = rows.Err(); err != nil {
+		glog.Error(err)
+		return nil, err
+	}
+	return quotas, err
 }
