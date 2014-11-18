@@ -36,10 +36,12 @@ CREATE TABLE `application` (
   `status` int(11) DEFAULT NULL,
   `sort` int(11) DEFAULT NULL,
   `level` int(11) DEFAULT NULL,
-  `icon` varchar(255) DEFAULT NULL,
+  `avatar` varchar(255) DEFAULT NULL,
   `tenant_id` varchar(64) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
+  `name_py` varchar(45) NOT NULL DEFAULT '',
+  `name_quanpin` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
 
