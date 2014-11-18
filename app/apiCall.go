@@ -2,8 +2,8 @@ package app
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
 	"github.com/golang/glog"
@@ -16,22 +16,23 @@ import (
 )
 
 const (
-	APICALL_EXIST     = "select  id from api_call where customer_id = ? and tenant_id = ? and caller_id=? and type =? and api_name = ? and sharding = ? "
-	APICALL_ADD       = "UPDATE api_call SET count = count+1  ,updated=?  WHERE  customer_id = ? and  tenant_id = ? and caller_id=? and type =? and api_name = ? and sharding = ?"
-	INSERT_APICALL    = "insert into api_call(id , customer_id,tenant_id,caller_id,type,api_name,count,sharding,created,updated) values(?,?,?,?,?,?,?,?,?,?)"
-	GET_APICALL_COUNT = "select sum(count) as count from api_call WHERE  customer_id = ? and  tenant_id = ?  and api_name = ?  "
-	SELECT_EXIST      = "select id from quota  where customer_id = ? and tenant_id=? and  api_name=? and type = ?"
-	SELECT_QUOTA      = "select id , customer_id,tenant_id,api_name,type,value,created,updated from quota  where customer_id = ? and tenant_id=? and  api_name=?"
-	UPDATE_QUOTA      = "update quota set  value=? , updated =? where customer_id = ? and tenant_id=? and  api_name=? and type = ?"
-	INSERT_QUOTA      = "insert into quota(id , customer_id,tenant_id,api_name,type,value,created,updated) values(?,?,?,?,?,?,?,?)"
-	SELECT_QUOTA_ALL  = "select id , customer_id,tenant_id,api_name,type,value,created,updated from quota"
+	APICALL_EXIST      = "select  id from api_call where customer_id = ? and tenant_id = ? and caller_id=? and type =? and api_name = ? and sharding = ? "
+	APICALL_ADD        = "UPDATE api_call SET count = count+1  ,updated=?  WHERE  customer_id = ? and  tenant_id = ? and caller_id=? and type =? and api_name = ? and sharding = ?"
+	INSERT_APICALL     = "insert into api_call(id , customer_id,tenant_id,caller_id,type,api_name,count,sharding,created,updated) values(?,?,?,?,?,?,?,?,?,?)"
+	GET_APICALL_COUNT  = "select sum(count) as count from api_call WHERE  customer_id = ? and  tenant_id = ?  and api_name = ?  "
+	GET_CUSTOMER_COUNT = "select sum(count) as count from api_call WHERE  customer_id = ? and api_name = ?  "
+	SELECT_EXIST       = "select id from quota  where customer_id = ? and tenant_id=? and  api_name=? and type = ?"
+	SELECT_QUOTA       = "select id , customer_id,tenant_id,api_name,type,value,created,updated from quota  where customer_id = ? and tenant_id=? and  api_name=?"
+	UPDATE_QUOTA       = "update quota set  value=? , updated =? where customer_id = ? and tenant_id=? and  api_name=? and type = ?"
+	INSERT_QUOTA       = "insert into quota(id , customer_id,tenant_id,api_name,type,value,created,updated) values(?,?,?,?,?,?,?,?)"
+	SELECT_QUOTA_ALL   = "select id , customer_id,tenant_id,api_name,type,value,created,updated from quota"
 	/*配额类型*/
 	EXPIRE  = "expire"
 	API_CNT = "api_cnt"
 )
 
 var QuotaAll = make(map[string]Quota)
-var LoadQuotaTime = time.NewTicker(10 * time.Second)
+var LoadQuotaTime = time.NewTicker(5 * time.Minute)
 
 type ApiCall struct {
 	Id         string
@@ -118,7 +119,6 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 	} else { //应用校验
 		application, err := getApplicationByToken(token)
 		if nil != err || nil == application {
-			fmt.Println(token)
 			glog.V(5).Infof("api_call error: [Logon failure]")
 			baseRes.ErrMsg = "Auth failure"
 			RetPWriteJSON(w, r, res, &resBody, time.Now())
@@ -148,7 +148,6 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 	}
 	//检验此调用是否合法
 	if !ValidApiCall(apiCall) {
-		fmt.Println("----------------------not valid--------------------------")
 		RetPWriteJSON(w, r, res, &resBody, time.Now())
 		return false
 	}
@@ -231,7 +230,14 @@ func insertApiCall(apiCall *ApiCall) bool {
 func getApiCallCount(customerId, tenantId, apiName string) int {
 
 	count := 0
-	rows, err := db.MySQL.Query(GET_APICALL_COUNT, customerId, tenantId, apiName)
+	var rows *sql.Rows
+	var err error
+	//查询但customer下的所有租户调用次数
+	if tenantId == "*" {
+		rows, err = db.MySQL.Query(GET_CUSTOMER_COUNT, customerId, apiName)
+	} else {
+		rows, err = db.MySQL.Query(GET_APICALL_COUNT, customerId, tenantId, apiName)
+	}
 
 	if rows != nil {
 		defer rows.Close()
@@ -248,7 +254,7 @@ func getApiCallCount(customerId, tenantId, apiName string) int {
 	//取出count
 	for rows.Next() {
 		if err = rows.Scan(&count); err != nil {
-			glog.Error(err)
+			//glog.Error(err)
 			return count
 		}
 		return count
@@ -452,7 +458,6 @@ func LoadQuotaAll() {
 func ValidApiCall(apiCall *ApiCall) bool {
 	//校验时间期限
 	key := apiCall.CustomerId + apiCall.TenantId + apiCall.ApiName + EXPIRE
-	fmt.Println(apiCall.CustomerId + "/" + apiCall.TenantId + "/" + apiCall.ApiName + "/" + EXPIRE)
 	quota, ok := QuotaAll[key]
 	//该租户不存在配置侧查询全局配置
 	if !ok {
@@ -460,7 +465,6 @@ func ValidApiCall(apiCall *ApiCall) bool {
 		quota, ok = QuotaAll[key]
 	}
 	if ok {
-		fmt.Println(quota.Value)
 		validTime, err := time.ParseInLocation("2006/01/02 15:04:05", quota.Value, time.Local)
 		if err != nil || validTime.Before(time.Now().Local()) {
 			glog.Error(err)
@@ -480,7 +484,6 @@ func ValidApiCall(apiCall *ApiCall) bool {
 				return false
 			}
 			count := getApiCallCount(quota.CustomerId, quota.TenantId, quota.ApiName)
-			fmt.Println("call count:", count)
 			if quotaCount > count {
 				return true
 			}
