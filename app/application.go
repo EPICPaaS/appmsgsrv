@@ -2,8 +2,11 @@ package app
 
 import (
 	//"database/sql"
+	"encoding/json"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/golang/glog"
+	"io/ioutil"
+	"net/http"
 	"time"
 )
 
@@ -38,7 +41,7 @@ func getApplication(appId string) (*application, error) {
 	application := application{}
 
 	if err := row.Scan(&application.Id, &application.Name, &application.Token, &application.Type, &application.Status,
-		&application.Sort, &application.Level, &application.Icon, &application.Created, &application.Updated); err != nil {
+		&application.Sort, &application.Level, &application.Icon, &application.TenantId, &application.Created, &application.Updated); err != nil {
 		glog.Error(err)
 
 		return nil, err
@@ -54,16 +57,16 @@ func getAllApplication() ([]*application, error) {
 	}
 	ret := []*application{}
 	for rows.Next() {
-		application := &application{}
+		application := application{}
 		if err := rows.Scan(&application.Id, &application.Name, &application.Token, &application.Type, &application.Status,
-			&application.Sort, &application.Level, &application.Icon, &application.Created, &application.Updated); err != nil {
+			&application.Sort, &application.Level, &application.Icon, &application.TenantId, &application.Created, &application.Updated); err != nil {
 			glog.Error(err)
 
 			return nil, err
 		}
 		//去处Token值，防止暴露
 		application.Token = ""
-		ret = append(ret, application)
+		ret = append(ret, &application)
 	}
 
 	return ret, nil
@@ -76,11 +79,54 @@ func getApplicationByToken(token string) (*application, error) {
 	application := application{}
 
 	if err := row.Scan(&application.Id, &application.Name, &application.Token, &application.Type, &application.Status,
-		&application.Sort, &application.Level, &application.Level, &application.TenantId, &application.Created, &application.Updated); err != nil {
+		&application.Sort, &application.Level, &application.Icon, &application.TenantId, &application.Created, &application.Updated); err != nil {
 		glog.Error(err)
 
 		return nil, err
 	}
 
 	return &application, nil
+}
+
+func (*device) GetApplicationList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+
+	// Token 校验
+	token := baseReq["token"].(string)
+	user := getUserByToken(token)
+	if nil == user {
+		baseRes.Ret = AuthErr
+
+		return
+	}
+
+	apps, _ := getAllApplication()
+	res["applicationCount"] = len(apps)
+	res["applicationList"] = apps
 }
