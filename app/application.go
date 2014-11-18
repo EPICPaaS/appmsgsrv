@@ -61,6 +61,8 @@ func getAllApplication() ([]*application, error) {
 
 			return nil, err
 		}
+		//去处Token值，防止暴露
+		application.Token = ""
 		ret = append(ret, application)
 	}
 
