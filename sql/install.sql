@@ -14,22 +14,6 @@ CREATE TABLE `api_call` (
 
 delimiter $$
 
-CREATE TABLE `push_cnt` (
-  `id` varchar(64) NOT NULL,
-  `customer_id` varchar(64) DEFAULT NULL,
-  `tenant_id` varchar(64) DEFAULT NULL,
-  `caller_id` varchar(64) DEFAULT NULL,
-  `type` varchar(64) DEFAULT NULL,
-  `push_type` varchar(64) DEFAULT NULL COMMENT 'qun/user',
-  `count` int(11) DEFAULT NULL,
-  `sharding` int(11) DEFAULT NULL,
-  `created` datetime DEFAULT NULL,
-  `updated` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8$$
-
-delimiter $$
-
 CREATE TABLE `quota` (
   `id` varchar(64) NOT NULL,
   `customer_id` varchar(64) DEFAULT NULL,
@@ -52,6 +36,7 @@ CREATE TABLE `application` (
   `status` int(11) DEFAULT NULL,
   `sort` int(11) DEFAULT NULL,
   `level` int(11) DEFAULT NULL,
+  `icon` varchar(255) DEFAULT NULL,
   `tenant_id` varchar(64) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
