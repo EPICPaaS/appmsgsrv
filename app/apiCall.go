@@ -3,12 +3,14 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
 	"github.com/golang/glog"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -17,16 +19,19 @@ const (
 	APICALL_EXIST     = "select  id from api_call where customer_id = ? and tenant_id = ? and caller_id=? and type =? and api_name = ? and sharding = ? "
 	APICALL_ADD       = "UPDATE api_call SET count = count+1  ,updated=?  WHERE  customer_id = ? and  tenant_id = ? and caller_id=? and type =? and api_name = ? and sharding = ?"
 	INSERT_APICALL    = "insert into api_call(id , customer_id,tenant_id,caller_id,type,api_name,count,sharding,created,updated) values(?,?,?,?,?,?,?,?,?,?)"
-	GET_APICALL_COUNT = "select sum(count) as count from api_call WHERE  customer_id = ? and  tenant_id = ? and caller_id=? and api_name = ?  "
+	GET_APICALL_COUNT = "select sum(count) as count from api_call WHERE  customer_id = ? and  tenant_id = ?  and api_name = ?  "
 	SELECT_EXIST      = "select id from quota  where customer_id = ? and tenant_id=? and  api_name=? and type = ?"
 	SELECT_QUOTA      = "select id , customer_id,tenant_id,api_name,type,value,created,updated from quota  where customer_id = ? and tenant_id=? and  api_name=?"
 	UPDATE_QUOTA      = "update quota set  value=? , updated =? where customer_id = ? and tenant_id=? and  api_name=? and type = ?"
 	INSERT_QUOTA      = "insert into quota(id , customer_id,tenant_id,api_name,type,value,created,updated) values(?,?,?,?,?,?,?,?)"
 	SELECT_QUOTA_ALL  = "select id , customer_id,tenant_id,api_name,type,value,created,updated from quota"
+	/*配额类型*/
+	EXPIRE  = "expire"
+	API_CNT = "api_cnt"
 )
 
 var QuotaAll = make(map[string]Quota)
-var LoadQuotaTime = time.NewTicker(5 * time.Minute)
+var LoadQuotaTime = time.NewTicker(10 * time.Second)
 
 type ApiCall struct {
 	Id         string
@@ -54,12 +59,17 @@ type Quota struct {
 }
 
 //记录api调用次数
-func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
+func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
+
+	baseRes := baseResponse{AuthErr, "request is not available"}
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	resBody := "request is not available"
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
-		return
+		RetPWriteJSON(w, r, res, &resBody, time.Now())
+		return false
 	}
 	//将body数据写回到request
 	rr := bytes.NewReader(body)
@@ -69,7 +79,8 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 	var args map[string]interface{}
 	if err := json.Unmarshal(body, &args); err != nil {
 		glog.Errorf(" json.Unmarshal failed (%s)", err)
-		return
+		RetPWriteJSON(w, r, res, &resBody, time.Now())
+		return false
 	}
 
 	baseReq := args["baseRequest"].(map[string]interface{})
@@ -92,13 +103,14 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 			user = getUserByCode(userName)
 
 		} else { //发送消息接口
-
 			user = getUserByToken(token)
 		}
 
 		if nil == user {
 			glog.V(5).Infof("api_call error: [Logon failure]")
-			return
+			baseRes.ErrMsg = "Auth failure"
+			RetPWriteJSON(w, r, res, &resBody, time.Now())
+			return false
 		}
 
 		tenantId = user.TenantId
@@ -106,8 +118,11 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 	} else { //应用校验
 		application, err := getApplicationByToken(token)
 		if nil != err || nil == application {
+			fmt.Println(token)
 			glog.V(5).Infof("api_call error: [Logon failure]")
-			return
+			baseRes.ErrMsg = "Auth failure"
+			RetPWriteJSON(w, r, res, &resBody, time.Now())
+			return false
 		}
 		//应用10个分片
 		sharding = rand.Intn(10)
@@ -118,7 +133,9 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 	tenant := getTenantById(tenantId)
 	if tenant == nil {
 		glog.Error("not found tenant")
-		return
+		baseRes.ErrMsg = "not found tenant"
+		RetPWriteJSON(w, r, res, &resBody, time.Now())
+		return false
 	}
 	apiCall := &ApiCall{
 		CustomerId: tenant.CustomerId,
@@ -129,13 +146,19 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) {
 		Count:      1, //默认值1
 		Sharding:   sharding,
 	}
+	//检验此调用是否合法
+	if !ValidApiCall(apiCall) {
+		fmt.Println("----------------------not valid--------------------------")
+		RetPWriteJSON(w, r, res, &resBody, time.Now())
+		return false
+	}
 
 	if apiCallExist(apiCall) { //修改
 		addApiCount(apiCall)
 	} else { //新增
 		insertApiCall(apiCall)
 	}
-
+	return true
 }
 
 //判断该记录是否存在
@@ -205,10 +228,10 @@ func insertApiCall(apiCall *ApiCall) bool {
 }
 
 //获取没用户/应用调用api次数
-func getApiCallCount(customerId, tenantId, callerId, apiName string) int {
+func getApiCallCount(customerId, tenantId, apiName string) int {
 
 	count := 0
-	rows, err := db.MySQL.Query(GET_APICALL_COUNT, customerId, tenantId, callerId, apiName)
+	rows, err := db.MySQL.Query(GET_APICALL_COUNT, customerId, tenantId, apiName)
 
 	if rows != nil {
 		defer rows.Close()
@@ -398,6 +421,8 @@ func LoadQuotaAll() {
 			glog.Errorf("load quota err [%s]", err)
 		}
 
+		QuotaAll = nil
+		QuotaAll = make(map[string]Quota)
 		key := bytes.Buffer{}
 		for rows.Next() {
 			quota := Quota{}
@@ -421,4 +446,50 @@ func LoadQuotaAll() {
 		}
 	}
 
+}
+
+//检验本次调用是否合法
+func ValidApiCall(apiCall *ApiCall) bool {
+	//校验时间期限
+	key := apiCall.CustomerId + apiCall.TenantId + apiCall.ApiName + EXPIRE
+	fmt.Println(apiCall.CustomerId + "/" + apiCall.TenantId + "/" + apiCall.ApiName + "/" + EXPIRE)
+	quota, ok := QuotaAll[key]
+	//该租户不存在配置侧查询全局配置
+	if !ok {
+		key := apiCall.CustomerId + "*" + apiCall.ApiName + EXPIRE
+		quota, ok = QuotaAll[key]
+	}
+	if ok {
+		fmt.Println(quota.Value)
+		validTime, err := time.ParseInLocation("2006/01/02 15:04:05", quota.Value, time.Local)
+		if err != nil || validTime.Before(time.Now().Local()) {
+			glog.Error(err)
+			return false
+		}
+		//校验api调用计数
+		key = apiCall.CustomerId + apiCall.TenantId + apiCall.ApiName + API_CNT
+		quota, ok = QuotaAll[key]
+		if !ok {
+			key = apiCall.CustomerId + "*" + apiCall.ApiName + API_CNT
+			quota, ok = QuotaAll[key]
+		}
+		if ok {
+			quotaCount, err := strconv.Atoi(quota.Value)
+			if err != nil {
+				glog.Error(err)
+				return false
+			}
+			count := getApiCallCount(quota.CustomerId, quota.TenantId, quota.ApiName)
+			fmt.Println("call count:", count)
+			if quotaCount > count {
+				return true
+			}
+		} else {
+			return false
+		}
+
+	} else {
+		return false
+	}
+	return false
 }
