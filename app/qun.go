@@ -2,15 +2,14 @@ package app
 
 import (
 	"encoding/json"
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/EPICPaaS/go-uuid/uuid"
+	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/golang/glog"
 )
 
 const (
@@ -159,7 +158,7 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 	msg["content"] = "你创建了群\"" + topic + "\""
 
 	//准备pushCnt（推送统计）信息
-	pushCnt := &PushCnt{
+	pushCnt := PushCnt{
 		TenantId: user.TenantId,
 		CallerId: user.Uid,
 		Type:     deviceType,
@@ -278,7 +277,7 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//准备pushCnt（推送统计）信息
-	pushCnt := &PushCnt{
+	pushCnt := PushCnt{
 		TenantId: user.TenantId,
 		CallerId: user.Uid,
 		Type:     deviceType,
@@ -400,7 +399,13 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 		}
 		res["memberList"] = members
 		res["memberCount"] = len(members)
-
+		//准备pushCnt（推送统计）信息
+		pushCnt := PushCnt{
+			TenantId: user.TenantId,
+			CallerId: user.Uid,
+			Type:     deviceType,
+			PushType: QUN_SUFFIX,
+		}
 		//xxx邀请xxx、xxx、xxx等N人加入了群聊
 		// 给群成员发送消息
 		msg := map[string]interface{}{}
@@ -414,13 +419,6 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 		contentJoin := "您被" + user.NickName + "邀请加入群聊"
 		contentCreate := "您邀请" + newNikNamesStr + "等" + l + "人加入了群聊"
 
-		//准备pushCnt（推送统计）信息
-		pushCnt := &PushCnt{
-			TenantId: user.TenantId,
-			CallerId: user.Uid,
-			Type:     deviceType,
-			PushType: QUN_SUFFIX,
-		}
 		for _, menber := range members {
 
 			//给自己发送消息
@@ -544,7 +542,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 		res["memberList"] = members
 		res["memberCount"] = len(members)
 		//准备pushCnt（推送统计）信息
-		pushCnt := &PushCnt{
+		pushCnt := PushCnt{
 			TenantId: user.TenantId,
 			CallerId: user.Uid,
 			Type:     deviceType,
@@ -809,7 +807,7 @@ func getQunById(qunId string) (*Qun, error) {
 	row := db.MySQL.QueryRow(SelectQunById, qunId)
 
 	qun := Qun{}
-	if err := row.Scan(&qun.Id, &qun.CreatorId, &qun.Name, &qun.Description, &qun.MaxMember, &qun.Avatar, &qun.Created, &qun.Updated); err != nil {
+	if err := row.Scan(&qun.Id, &qun.CreatorId, &qun.Name, &qun.Description, &qun.MaxMember, &qun.Avatar, &qun.TenantId, &qun.Created, &qun.Updated); err != nil {
 		glog.Error(err)
 
 		return nil, err

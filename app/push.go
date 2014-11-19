@@ -284,7 +284,7 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//准备pushCnt（推送统计）信息
-	pushCnt := &PushCnt{
+	pushCnt := PushCnt{
 		TenantId: user.TenantId,
 		CallerId: user.Uid,
 		Type:     deviceType,
@@ -402,7 +402,7 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//准备pushCnt（推送统计）信息
-	pushCnt := &PushCnt{
+	pushCnt := PushCnt{
 		TenantId: user.TenantId,
 		CallerId: user.Uid,
 		Type:     APPWEB_TYPE,
@@ -487,7 +487,7 @@ func substr(s string, pos, length int) string {
 }
 
 // 按会话推送.
-func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int, pushCnt *PushCnt) int {
+func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int, pushCnt PushCnt) int {
 	names, _ := getNames(toUserName, sessionArgs)
 
 	// 推送
@@ -514,7 +514,7 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 	}
 	//统计消息推送记录
 	pushCnt.Count = len(names)
-	go StatisticsPush(pushCnt)
+	go StatisticsPush(&pushCnt)
 
 	return OK
 }

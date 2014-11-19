@@ -5,6 +5,7 @@ import (
 	"github.com/EPICPaaS/go-uuid/uuid"
 	"github.com/golang/glog"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -27,10 +28,12 @@ const (
 	ADD_PUSH_COUNT = "update push_cnt set count = count+?  where  customer_id=? and tenant_id=? and caller_id = ? and type=? and push_type=? and sharding =?"
 )
 
+var lock sync.Mutex
+
 //统计消息推送
 func StatisticsPush(pushCnt *PushCnt) {
 
-	if len(pushCnt.Type) > 0 && (pushCnt.Type == DEVICE_TYPE_ANDROID || pushCnt.Type == DEVICE_TYPE_ANDROID) {
+	if DEVICE_TYPE_ANDROID == pushCnt.Type || DEVICE_TYPE_IOS == pushCnt.Type {
 		pushCnt.Sharding = 1
 	} else {
 		pushCnt.Sharding = rand.Intn(10)
@@ -44,12 +47,15 @@ func StatisticsPush(pushCnt *PushCnt) {
 		return
 	}
 	pushCnt.CustomerId = tenant.CustomerId
-	//update
-	if isExistPushCnt(pushCnt) {
+
+	//同步问题
+	lock.Lock()
+	if isExistPushCnt(pushCnt) { //update
 		addPushCount(pushCnt)
 	} else { //insert
 		insertPushCnt(pushCnt)
 	}
+	lock.Unlock()
 }
 
 func isExistPushCnt(pushCnt *PushCnt) bool {
