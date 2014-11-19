@@ -120,17 +120,6 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//准备pushCnt（推送统计）信息
-	pushCnt := &PushCnt{
-		TenantId: application.TenantId,
-		CallerId: application.Id,
-		Type:     "app",
-		PushType: USER_SUFFIX,
-		Count:    userLen,
-	}
-	//统计推用户
-	StatisticsPush(pushCnt)
-
 	// 推送
 	for _, name := range names {
 		key := name.toKey()
@@ -167,10 +156,28 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 			// 推送分发过程中失败不立即返回，继续下一个推送
 		}
 	}
-	//统计群推
-	pushCnt.Count = qunLen
-	pushCnt.PushType = QUN_SUFFIX
-	StatisticsPush(pushCnt)
+
+	go func() {
+		//准备pushCnt（推送统计）信息
+		pushCnt := &PushCnt{
+			TenantId: application.TenantId,
+			CallerId: application.Id,
+			Type:     "app",
+			PushType: USER_SUFFIX,
+			Count:    userLen,
+		}
+		//统计推用户
+		if userLen != 0 {
+			StatisticsPush(pushCnt)
+		}
+		//统计群推
+		if qunLen != 0 {
+			pushCnt.Count = qunLen
+			pushCnt.PushType = QUN_SUFFIX
+			StatisticsPush(pushCnt)
+		}
+	}()
+
 	return
 }
 
@@ -507,7 +514,7 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 	}
 	//统计消息推送记录
 	pushCnt.Count = len(names)
-	StatisticsPush(pushCnt)
+	go StatisticsPush(pushCnt)
 
 	return OK
 }

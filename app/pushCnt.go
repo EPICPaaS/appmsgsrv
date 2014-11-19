@@ -22,9 +22,9 @@ type PushCnt struct {
 }
 
 const (
-	SELECT_PUSHCNT = "select id,customer_id,tenant_id,caller_id,type,push_type,count,sharding,created,updated from push_cnt where customer_id=? and tenant_id=? and type=? and push_type and sharding =?"
+	SELECT_PUSHCNT = "select id,customer_id,tenant_id,caller_id,type,push_type,count,sharding,created,updated from push_cnt where customer_id=? and tenant_id=? and caller_id = ? and type=? and push_type=? and sharding =?"
 	INSERT_PUSHCNT = "insert into push_cnt( id,customer_id,tenant_id,caller_id,type,push_type,count,sharding,created,updated) values(?,?,?,?,?,?,?,?,?,?)"
-	ADD_PUSH_COUNT = "update push_cnt set count = count+1  where  customer_id=? and tenant_id=? and type=? and push_type and sharding =?"
+	ADD_PUSH_COUNT = "update push_cnt set count = count+?  where  customer_id=? and tenant_id=? and caller_id = ? and type=? and push_type=? and sharding =?"
 )
 
 //统计消息推送
@@ -76,7 +76,7 @@ func addPushCount(pushCnt *PushCnt) bool {
 		return false
 	}
 
-	_, err = tx.Exec(ADD_PUSH_COUNT, pushCnt.CustomerId, pushCnt.TenantId, pushCnt.CallerId, pushCnt.Type, pushCnt.PushType, pushCnt.Sharding)
+	_, err = tx.Exec(ADD_PUSH_COUNT, pushCnt.Count, pushCnt.CustomerId, pushCnt.TenantId, pushCnt.CallerId, pushCnt.Type, pushCnt.PushType, pushCnt.Sharding)
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
