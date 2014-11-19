@@ -2,7 +2,6 @@ package app
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
 	"github.com/golang/glog"
@@ -168,7 +167,6 @@ func ValidPush(pushCnt *PushCnt) bool {
 	//该租户不存在配置侧查询全局配置
 	if !ok {
 		key := pushCnt.CustomerId + "*" + EXPIRE
-		fmt.Println("key:", key)
 		quota, ok = QuotaAll[key]
 	}
 	if ok {

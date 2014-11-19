@@ -32,7 +32,7 @@ const (
 )
 
 var QuotaAll = make(map[string]Quota)
-var LoadQuotaTime = time.NewTicker(5 * time.Second)
+var LoadQuotaTime = time.NewTicker(5 * time.Minute)
 
 type ApiCall struct {
 	Id         string
