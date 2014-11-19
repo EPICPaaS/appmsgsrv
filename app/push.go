@@ -105,12 +105,31 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	}
 
 	names := []*Name{}
+	userLen := 0
+	qunLen := 0
 	// 会话分发
 	for _, userName := range toUserNames {
-		ns, _ := getNames(userName.(string), sessionArgs)
 
+		ns, _ := getNames(userName.(string), sessionArgs)
 		names = append(names, ns...)
+		//收集发送次数
+		if strings.HasSuffix(userName.(string), USER_SUFFIX) { // 如果是推人
+			userLen += len(ns)
+		} else if strings.HasSuffix(userName.(string), QUN_SUFFIX) { // 如果是推群
+			qunLen += len(ns)
+		}
 	}
+
+	//准备pushCnt（推送统计）信息
+	pushCnt := &PushCnt{
+		TenantId: application.TenantId,
+		CallerId: application.Id,
+		Type:     "app",
+		PushType: USER_SUFFIX,
+		Count:    userLen,
+	}
+	//统计推用户
+	StatisticsPush(pushCnt)
 
 	// 推送
 	for _, name := range names {
@@ -148,7 +167,10 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 			// 推送分发过程中失败不立即返回，继续下一个推送
 		}
 	}
-
+	//统计群推
+	pushCnt.Count = qunLen
+	pushCnt.PushType = QUN_SUFFIX
+	StatisticsPush(pushCnt)
 	return
 }
 
@@ -188,9 +210,10 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 
 	// Token 校验
 	token := baseReq["token"].(string)
+	deviceType := baseReq["deviceType"].(string)
+	var pushType string // 推送类型
 
 	user := getUserByToken(token)
-
 	if nil == user {
 		baseRes.Ret = AuthErr
 
@@ -214,10 +237,12 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.HasSuffix(toUserName, USER_SUFFIX) { // 如果是推人
+		pushType = USER_SUFFIX
 		m := getUserByUid(fromUserID)
 
 		msg["fromDisplayName"] = m.NickName
 	} else if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 如果是推群
+		pushType = QUN_SUFFIX
 		m := getUserByUid(fromUserID)
 
 		qun, err := getQunById(toUserID)
@@ -250,7 +275,15 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		glog.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
 		go pushAPNS(msg, resources, apnsToken)
 	}
-	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire)
+
+	//准备pushCnt（推送统计）信息
+	pushCnt := &PushCnt{
+		TenantId: user.TenantId,
+		CallerId: user.Uid,
+		Type:     deviceType,
+		PushType: pushType,
+	}
+	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
 
 	res["msgID"] = "msgid"
 	res["clientMsgId"] = msg["clientMsgId"]
@@ -287,6 +320,8 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 
 	// Token 校验
 	token := r.FormValue("baseRequest[token]")
+	var pushType string
+
 	user := getUserByToken(token)
 	if nil == user {
 		baseRes.Ret = AuthErr
@@ -317,11 +352,12 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.HasSuffix(toUserName, USER_SUFFIX) { // 如果是推人
+		pushType = USER_SUFFIX
 		m := getUserByUid(fromUserID)
 		msg["fromDisplayName"] = m.NickName
 		msg["content"] = r.FormValue("msg[content]")
 	} else if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 如果是推群
-
+		pushType = QUN_SUFFIX
 		m := getUserByUid(fromUserID)
 		qun, err := getQunById(toUserID)
 
@@ -357,7 +393,15 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 		glog.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
 		go pushAPNS(msg, resources, apnsToken)
 	}
-	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire)
+
+	//准备pushCnt（推送统计）信息
+	pushCnt := &PushCnt{
+		TenantId: user.TenantId,
+		CallerId: user.Uid,
+		Type:     APPWEB_TYPE,
+		PushType: pushType,
+	}
+	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
 
 	res["msgID"] = "msgid"
 	res["clientMsgId"] = r.FormValue("msg[clientMsgId]")
@@ -436,7 +480,7 @@ func substr(s string, pos, length int) string {
 }
 
 // 按会话推送.
-func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int) int {
+func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int, pushCnt *PushCnt) int {
 	names, _ := getNames(toUserName, sessionArgs)
 
 	// 推送
@@ -461,6 +505,9 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 			// 推送分发过程中失败不立即返回，继续下一个推送
 		}
 	}
+	//统计消息推送记录
+	pushCnt.Count = len(names)
+	StatisticsPush(pushCnt)
 
 	return OK
 }

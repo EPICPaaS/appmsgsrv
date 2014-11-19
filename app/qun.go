@@ -92,7 +92,9 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 
 	// Token 校验
 	token := baseReq["token"].(string)
+	deviceType := baseReq["baseReq"].(string)
 	user := getUserByToken(token)
+
 	if nil == user {
 		baseRes.Ret = AuthErr
 		baseRes.ErrMsg = "会话超时请重新登录"
@@ -156,7 +158,14 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 	msg["msgType"] = 51
 	msg["content"] = "你创建了群\"" + topic + "\""
 
-	baseRes.Ret = pushSessions(msg, creatorId+USER_SUFFIX, []string{"all"}, 600)
+	//准备pushCnt（推送统计）信息
+	pushCnt := &PushCnt{
+		TenantId: user.TenantId,
+		CallerId: user.Uid,
+		Type:     deviceType,
+		PushType: QUN_SUFFIX,
+	}
+	baseRes.Ret = pushSessions(msg, creatorId+USER_SUFFIX, []string{"all"}, 600, pushCnt)
 
 	return
 }
@@ -261,12 +270,21 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 
 	// Token 校验
 	token := baseReq["token"].(string)
+	deviceType := baseReq["deviceType"].(string)
 	user := getUserByToken(token)
 	if nil == user {
 		baseRes.Ret = AuthErr
 		baseRes.ErrMsg = "会话超时请重新登录"
 		return
 	}
+	//准备pushCnt（推送统计）信息
+	pushCnt := &PushCnt{
+		TenantId: user.TenantId,
+		CallerId: user.Uid,
+		Type:     deviceType,
+		PushType: QUN_SUFFIX,
+	}
+
 	chatRoomName := args["ChatRoomName"].(string)
 	qunId := chatRoomName[:strings.LastIndex(chatRoomName, QUN_SUFFIX)]
 	topic := args["topic"].(string)
@@ -282,7 +300,8 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 
 		// 给修改者发送消息
 		msg["content"] = "你修改了群名为\"" + topic + "\""
-		pushSessions(msg, user.Uid+USER_SUFFIX, []string{"all"}, 600)
+
+		pushSessions(msg, user.Uid+USER_SUFFIX, []string{"all"}, 600, pushCnt)
 
 		//给其他群成员发送消息
 		msg["content"] = user.NickName + "修改了群名为\"" + topic + "\""
@@ -294,7 +313,7 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 
-				pushSessions(msg, mem.Uid+USER_SUFFIX, []string{"all"}, 600)
+				pushSessions(msg, mem.Uid+USER_SUFFIX, []string{"all"}, 600, pushCnt)
 			}
 		}
 	} else {
@@ -339,6 +358,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 
 	// Token 校验
 	token := baseReq["token"].(string)
+	deviceType := baseReq["deviceType"].(string)
 	user := getUserByToken(token)
 	if nil == user {
 		baseRes.Ret = AuthErr
@@ -394,12 +414,19 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 		contentJoin := "您被" + user.NickName + "邀请加入群聊"
 		contentCreate := "您邀请" + newNikNamesStr + "等" + l + "人加入了群聊"
 
+		//准备pushCnt（推送统计）信息
+		pushCnt := &PushCnt{
+			TenantId: user.TenantId,
+			CallerId: user.Uid,
+			Type:     deviceType,
+			PushType: QUN_SUFFIX,
+		}
 		for _, menber := range members {
 
 			//给自己发送消息
 			if menber.Uid == user.Uid {
 				msg["content"] = contentCreate
-				pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, 600)
+				pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, 600, pushCnt)
 				continue
 			}
 			//是否排除标志
@@ -409,7 +436,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 				if menber.Uid == newMenber.UserId {
 					//您被xxx邀请加入群聊
 					msg["content"] = contentJoin
-					pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, 600)
+					pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, 600, pushCnt)
 					flag = false
 					break
 				}
@@ -418,7 +445,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 
 			if flag {
 				msg["content"] = contentALL
-				pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, 600)
+				pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, 600, pushCnt)
 			}
 		}
 	} else {
@@ -463,6 +490,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 
 	// Token 校验
 	token := baseReq["token"].(string)
+	deviceType := baseReq["deviceType"].(string)
 	user := getUserByToken(token)
 	if nil == user {
 		baseRes.Ret = AuthErr
@@ -515,6 +543,13 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 		}
 		res["memberList"] = members
 		res["memberCount"] = len(members)
+		//准备pushCnt（推送统计）信息
+		pushCnt := &PushCnt{
+			TenantId: user.TenantId,
+			CallerId: user.Uid,
+			Type:     deviceType,
+			PushType: QUN_SUFFIX,
+		}
 
 		//xxx将xxx、xxx、xxx等N人移出了群聊
 		// 发送消息群成员
@@ -527,7 +562,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 			msg["content"] = user.NickName + "退出了群聊"
 			//发送给群成员
 			for _, member := range members {
-				pushSessions(msg, member.Uid+USER_SUFFIX, []string{"all"}, 600)
+				pushSessions(msg, member.Uid+USER_SUFFIX, []string{"all"}, 600, pushCnt)
 			}
 		} else { //删除
 			//消息内容
@@ -543,7 +578,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 				} else {
 					msg["content"] = contentAll
 				}
-				pushSessions(msg, member.Uid+USER_SUFFIX, []string{"all"}, 600)
+				pushSessions(msg, member.Uid+USER_SUFFIX, []string{"all"}, 600, pushCnt)
 			}
 			//发送给被移除着
 			for _, delQunUser := range qunUsers {
@@ -553,7 +588,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 				} else {
 					msg["content"] = contentRemove
 				}
-				pushSessions(msg, delQunUser.UserId+USER_SUFFIX, []string{"all"}, 600)
+				pushSessions(msg, delQunUser.UserId+USER_SUFFIX, []string{"all"}, 600, pushCnt)
 			}
 		}
 

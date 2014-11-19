@@ -5,3 +5,7 @@ type appWeb struct{}
 
 // 声明网页端操作接口.
 var AppWeb = appWeb{}
+
+const (
+	APPWEB_TYPE = "appWeb"
+)
