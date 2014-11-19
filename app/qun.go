@@ -158,11 +158,17 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 	msg["content"] = "你创建了群\"" + topic + "\""
 
 	//准备pushCnt（推送统计）信息
+	tenant := getTenantById(user.TenantId)
+	if tenant == nil {
+		baseRes.Ret = InternalErr
+		return
+	}
 	pushCnt := PushCnt{
-		TenantId: user.TenantId,
-		CallerId: user.Uid,
-		Type:     deviceType,
-		PushType: QUN_SUFFIX,
+		CustomerId: tenant.CustomerId,
+		TenantId:   user.TenantId,
+		CallerId:   user.Uid,
+		Type:       deviceType,
+		PushType:   QUN_SUFFIX,
 	}
 	baseRes.Ret = pushSessions(msg, creatorId+USER_SUFFIX, []string{"all"}, 600, pushCnt)
 
@@ -277,11 +283,17 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//准备pushCnt（推送统计）信息
+	tenant := getTenantById(user.TenantId)
+	if tenant == nil {
+		baseRes.Ret = InternalErr
+		return
+	}
 	pushCnt := PushCnt{
-		TenantId: user.TenantId,
-		CallerId: user.Uid,
-		Type:     deviceType,
-		PushType: QUN_SUFFIX,
+		CustomerId: tenant.CustomerId,
+		TenantId:   user.TenantId,
+		CallerId:   user.Uid,
+		Type:       deviceType,
+		PushType:   QUN_SUFFIX,
 	}
 
 	chatRoomName := args["ChatRoomName"].(string)
@@ -400,11 +412,17 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 		res["memberList"] = members
 		res["memberCount"] = len(members)
 		//准备pushCnt（推送统计）信息
+		tenant := getTenantById(user.TenantId)
+		if tenant == nil {
+			baseRes.Ret = InternalErr
+			return
+		}
 		pushCnt := PushCnt{
-			TenantId: user.TenantId,
-			CallerId: user.Uid,
-			Type:     deviceType,
-			PushType: QUN_SUFFIX,
+			CustomerId: tenant.CustomerId,
+			TenantId:   user.TenantId,
+			CallerId:   user.Uid,
+			Type:       deviceType,
+			PushType:   QUN_SUFFIX,
 		}
 		//xxx邀请xxx、xxx、xxx等N人加入了群聊
 		// 给群成员发送消息
@@ -542,11 +560,17 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 		res["memberList"] = members
 		res["memberCount"] = len(members)
 		//准备pushCnt（推送统计）信息
+		tenant := getTenantById(user.TenantId)
+		if tenant == nil {
+			baseRes.Ret = InternalErr
+			return
+		}
 		pushCnt := PushCnt{
-			TenantId: user.TenantId,
-			CallerId: user.Uid,
-			Type:     deviceType,
-			PushType: QUN_SUFFIX,
+			CustomerId: tenant.CustomerId,
+			TenantId:   user.TenantId,
+			CallerId:   user.Uid,
+			Type:       deviceType,
+			PushType:   QUN_SUFFIX,
 		}
 
 		//xxx将xxx、xxx、xxx等N人移出了群聊

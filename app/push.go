@@ -107,10 +107,16 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	names := []*Name{}
 
 	//准备pushCnt（推送统计）信息
+	tenant := getTenantById(application.TenantId)
+	if tenant == nil {
+		baseRes.Ret = InternalErr
+		return
+	}
 	pushCnt := &PushCnt{
-		TenantId: application.TenantId,
-		CallerId: application.Id,
-		Type:     "app",
+		CustomerId: tenant.CustomerId,
+		TenantId:   application.TenantId,
+		CallerId:   application.Id,
+		Type:       "app",
 	}
 
 	//检验是否可以发送消息
