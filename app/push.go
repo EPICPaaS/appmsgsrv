@@ -105,6 +105,19 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	}
 
 	names := []*Name{}
+
+	//准备pushCnt（推送统计）信息
+	pushCnt := &PushCnt{
+		TenantId: application.TenantId,
+		CallerId: application.Id,
+		Type:     "app",
+	}
+
+	//检验是否可以发送消息
+	if !ValidPush(pushCnt) {
+		baseRes.Ret = OverQuotaPush
+		return
+	}
 	userLen := 0
 	qunLen := 0
 	// 会话分发
@@ -158,16 +171,10 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func() {
-		//准备pushCnt（推送统计）信息
-		pushCnt := &PushCnt{
-			TenantId: application.TenantId,
-			CallerId: application.Id,
-			Type:     "app",
-			PushType: USER_SUFFIX,
-			Count:    userLen,
-		}
 		//统计推用户
 		if userLen != 0 {
+			pushCnt.Count = userLen
+			pushCnt.PushType = USER_SUFFIX
 			StatisticsPush(pushCnt)
 		}
 		//统计群推
@@ -284,11 +291,17 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//准备pushCnt（推送统计）信息
+	tenant := getTenantById(user.TenantId)
+	if tenant == nil {
+		baseRes.Ret = InternalErr
+		return
+	}
 	pushCnt := PushCnt{
-		TenantId: user.TenantId,
-		CallerId: user.Uid,
-		Type:     deviceType,
-		PushType: pushType,
+		CustomerId: tenant.CustomerId,
+		TenantId:   user.TenantId,
+		CallerId:   user.Uid,
+		Type:       deviceType,
+		PushType:   pushType,
 	}
 	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
 
@@ -402,12 +415,20 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//准备pushCnt（推送统计）信息
-	pushCnt := PushCnt{
-		TenantId: user.TenantId,
-		CallerId: user.Uid,
-		Type:     APPWEB_TYPE,
-		PushType: pushType,
+	//获取租户信息
+	tenant := getTenantById(user.TenantId)
+	if tenant == nil {
+		baseRes.Ret = InternalErr
+		return
 	}
+	pushCnt := PushCnt{
+		CustomerId: tenant.CustomerId,
+		TenantId:   user.TenantId,
+		CallerId:   user.Uid,
+		Type:       APPWEB_TYPE,
+		PushType:   pushType,
+	}
+
 	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
 
 	res["msgID"] = "msgid"
@@ -488,8 +509,10 @@ func substr(s string, pos, length int) string {
 
 // 按会话推送.
 func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int, pushCnt PushCnt) int {
+	if !ValidPush(&pushCnt) {
+		return OverQuotaPush
+	}
 	names, _ := getNames(toUserName, sessionArgs)
-
 	// 推送
 	for _, name := range names {
 		key := name.toKey()
