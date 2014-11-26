@@ -188,6 +188,9 @@ func ValidPush(pushCnt *PushCnt) bool {
 				glog.Error(err)
 				return false
 			}
+			if quotaCount == -1 { //-1 表示不限限制次数
+				return true
+			}
 			count := getPushCount(quota.CustomerId, quota.TenantId)
 			if quotaCount > count {
 				return true
