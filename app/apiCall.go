@@ -418,40 +418,43 @@ func GetQuotas(customerId, tenantId, apiName string) ([]Quota, error) {
 	return quotas, err
 }
 
-//定时加载配额信息5分钟加载一次
-func LoadQuotaAll() {
-
-	for _ = range LoadQuotaTime.C {
-		rows, err := db.MySQL.Query(SELECT_QUOTA_ALL)
-		if err != nil {
+//初始化配额配置
+func InitQuotaAll() {
+	rows, err := db.MySQL.Query(SELECT_QUOTA_ALL)
+	if err != nil {
+		glog.Errorf("load quota err [%s]", err)
+	}
+	if rows != nil {
+		defer rows.Close()
+	}
+	QuotaAll = nil
+	QuotaAll = make(map[string]Quota)
+	key := bytes.Buffer{}
+	for rows.Next() {
+		quota := Quota{}
+		if err := rows.Scan(&quota.Id, &quota.CustomerId, &quota.TenantId, &quota.ApiName, &quota.Type, &quota.Value, &quota.Created, &quota.Created); err != nil {
 			glog.Errorf("load quota err [%s]", err)
+			break
 		}
-
-		QuotaAll = nil
-		QuotaAll = make(map[string]Quota)
-		key := bytes.Buffer{}
-		for rows.Next() {
-			quota := Quota{}
-			if err := rows.Scan(&quota.Id, &quota.CustomerId, &quota.TenantId, &quota.ApiName, &quota.Type, &quota.Value, &quota.Created, &quota.Created); err != nil {
-				glog.Errorf("load quota err [%s]", err)
-				break
-			}
-			key.WriteString(quota.CustomerId)
-			key.WriteString(quota.TenantId)
-			key.WriteString(quota.ApiName)
-			key.WriteString(quota.Type)
-			QuotaAll[key.String()] = quota
-			key.Reset()
-		}
-
-		if err = rows.Err(); err != nil {
-			glog.Errorf("load quota err [%s]", err)
-		}
-		if rows != nil {
-			rows.Close()
-		}
+		key.WriteString(quota.CustomerId)
+		key.WriteString(quota.TenantId)
+		key.WriteString(quota.ApiName)
+		key.WriteString(quota.Type)
+		QuotaAll[key.String()] = quota
+		key.Reset()
 	}
 
+	if err = rows.Err(); err != nil {
+		glog.Errorf("load quota err [%s]", err)
+	}
+
+}
+
+//定时加载配额信息5分钟加载一次
+func LoadQuotaAll() {
+	for _ = range LoadQuotaTime.C {
+		InitQuotaAll()
+	}
 }
 
 //检验本次调用是否合法
@@ -482,6 +485,9 @@ func ValidApiCall(apiCall *ApiCall) bool {
 			if err != nil {
 				glog.Error(err)
 				return false
+			}
+			if quotaCount == -1 { //-1 表示不限限制次数
+				return true
 			}
 			count := getApiCallCount(quota.CustomerId, quota.TenantId, quota.ApiName)
 			if quotaCount > count {
