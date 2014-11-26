@@ -17,6 +17,10 @@ const (
 	SelectAllApplication = "SELECT `id`, `name`, `name`,`status`, `sort`,`avatar`, `tenant_id`, `name_py`, `name_quanpin` FROM `application`"
 	// 根据 token 获取应用记录.
 	SelectApplicationByToken = "SELECT * FROM `application` WHERE `token` = ?"
+	//根据应用ID查询应用操作项列表
+	SelectAppOpertionByAppId = "SELECT * FROM `opertion` WHERE `app_id` = ?  and  parent_id  is  null  order by  sort "
+	//根据操作项父ID查询应用操作项列表
+	SelectAppOpertionByParentId = "SELECT * FROM `opertion` WHERE `parent_id` = ?  order by  sort "
 )
 
 // 应用结构.
@@ -34,6 +38,19 @@ type application struct {
 	Updated   time.Time `json:"updated"`
 	PYInitial string    `json:"pYInitial"`
 	PYQuanPin string    `json:"pYQuanPin"`
+}
+
+// 应用操作项
+type opertion struct {
+	Id       string `json:"id"`
+	AppId    string `json:"appId"`
+	Content  string `json:"content"`
+	Action   string `json:"action"`
+	MsgType  string `json:"msgType"`
+	Sort     int    `json:"sort"`
+	ParentId string `json:"parentId"`
+
+	OpertionList []*opertion `json:"opertionList"`
 }
 
 // 根据 id 查询应用记录.
@@ -73,6 +90,42 @@ func getAllApplication() ([]*member, error) {
 	}
 
 	return ret, nil
+}
+
+//根据appId获取应用的列表项
+func getAppOpertionListByAppId(appId string) ([]*opertion, error) {
+	rows, _ := db.MySQL.Query(SelectAppOpertionByAppId)
+	if rows != nil {
+		defer rows.Close()
+	}
+	ret := []*opertion{}
+	for rows.Next() {
+		rec := opertion{}
+
+		if err := rows.Scan(&rec.Id, &rec.AppId, &rec.Content, &rec.Action, &rec.MsgType, &rec.Sort, &rec.ParentId); err != nil {
+			glog.Error(err)
+			return nil, err
+		}
+		crows, _ := db.MySQL.Query(SelectAppOpertionByParentId)
+		if crows != nil {
+			defer crows.Close()
+		}
+		opertionList := []*opertion{}
+		for crows.Next() {
+			crec := opertion{}
+
+			if err := rows.Scan(&crec.Id, &crec.AppId, &crec.Content, &crec.Action, &crec.MsgType, &crec.Sort, &crec.ParentId); err != nil {
+				glog.Error(err)
+				return nil, err
+			}
+			opertionList = append(opertionList, &crec)
+		}
+		rec.OpertionList = opertionList
+		ret = append(ret, &rec)
+	}
+
+	return ret, nil
+
 }
 
 // 根据 token 查询应用记录.
@@ -142,4 +195,57 @@ func (*device) GetApplicationList(w http.ResponseWriter, r *http.Request) {
 
 	res["memberList"] = members
 	res["memberCount"] = len(members)
+}
+
+/*
+* 根据应用信息获取应用的操作项
+**/
+func (*device) GetAppOpertionList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+
+	// Token 校验
+	token := baseReq["token"].(string)
+	user := getUserByToken(token)
+	if nil == user {
+		baseRes.Ret = AuthErr
+		baseRes.ErrMsg = "会话超时请重新登录"
+		return
+	}
+
+	appId := args["appId"].(string)
+	opertions, err := getAppOpertionListByAppId(appId)
+	if err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = InternalErr
+		return
+	}
+
+	res["opertionList"] = opertions
+	res["opertionCount"] = len(opertions)
 }
