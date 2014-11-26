@@ -81,7 +81,10 @@ func main() {
 
 	defer db.MySQL.Close()
 
+	//初始化配额配置
+	app.InitQuotaAll()
 	go app.LoadQuotaAll()
+
 	// init signals, block wait signals
 	signalCH := InitSignal()
 	HandleSignal(signalCH)
