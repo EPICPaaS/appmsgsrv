@@ -7,6 +7,7 @@ import (
 	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -237,7 +238,14 @@ func (*device) GetAppOpertionList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appId := args["appId"].(string)
+	username := args["username"].(string)
+	if !strings.HasSuffix(username, APP_SUFFIX) {
+		baseRes.Ret = AuthErr
+		baseRes.ErrMsg = "username没有以 " + APP_SUFFIX + " 结尾"
+		return
+	}
+
+	appId := strings.Split(username, APP_SUFFIX)[0]
 	opertions, err := getAppOpertionListByAppId(appId)
 	if err != nil {
 		baseRes.ErrMsg = err.Error()
