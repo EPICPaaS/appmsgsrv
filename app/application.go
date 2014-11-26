@@ -113,7 +113,7 @@ func getAppOpertionListByAppId(appId string) ([]*opertion, error) {
 		for crows.Next() {
 			crec := opertion{}
 
-			if err := rows.Scan(&crec.Id, &crec.AppId, &crec.Content, &crec.Action, &crec.MsgType, &crec.Sort); err != nil {
+			if err := crows.Scan(&crec.Id, &crec.AppId, &crec.Content, &crec.Action, &crec.MsgType, &crec.Sort); err != nil {
 				glog.Error(err)
 				return nil, err
 			}
