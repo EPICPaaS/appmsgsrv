@@ -18,6 +18,7 @@ const (
 	InsertApnsToken               = "INSERT INTO `apns_token`(`id`,`user_id`,`device_id`,`apns_token`,`created`,`updated`) VALUES(?,?,?,?,?,?)"
 	SelectApnsTokenByUserId       = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? "
 	SelectApnsTokenByUserIdTokens = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? AND `apns_token`=?"
+	DeleteApnsToken               = "DELETE FROM apns_token where apns_token = ?"
 )
 
 // 客户端结构.
@@ -419,4 +420,30 @@ func getApnsToken(userId string) ([]ApnsToken, error) {
 		return nil, err
 	}
 	return ret, nil
+}
+
+//根据apns_token删除token
+func deleteApnsToken(apns_token string) bool {
+
+	tx, err := db.MySQL.Begin()
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	_, err = tx.Exec(DeleteApnsToken, apns_token)
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+
+	if err := tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	return true
 }

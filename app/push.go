@@ -496,6 +496,16 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 		if !resp.Success {
 			glog.Errorf("Push message failed. ApnsToken[%v],Content[%v],Error[%v],Host[%v],CertFile [%v], KeyFile[%v]", t.ApnsToken, alert, resp.Error, host, certFile, keyFile)
 			// 推送分发过程中失败不立即返回，继续下一个推送
+
+			//只删除失效类型
+			if resp.Error.Error() == "INVALID_TOKEN" {
+				if deleteApnsToken(t.ApnsToken) {
+					glog.V(3).Info("delete INVALID_TOKEN  succeed")
+				} else {
+					glog.V(3).Info("delete  INVALID_TOKEN failure")
+				}
+			}
+
 		} else {
 			glog.Infof("Push message successed. ApnsToken[%v],Content[%v],Host[%v]", t.ApnsToken, alert, host)
 		}
