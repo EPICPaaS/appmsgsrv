@@ -151,8 +151,6 @@ func stat(handler func(w http.ResponseWriter, r *http.Request)) func(w http.Resp
 	return func(w http.ResponseWriter, r *http.Request) {
 		handlerName := getFunctionName(handler)
 
-		glog.V(3).Info(handlerName)
-
 		if !app.ApiCallStatistics(w, r) {
 			return
 		}
