@@ -7,6 +7,7 @@ import (
 	"github.com/golang/glog"
 	"math/rand"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -37,6 +38,10 @@ var lock sync.Mutex
 
 //统计消息推送
 func StatisticsPush(pushCnt *PushCnt) {
+
+	if len(pushCnt.Type) > 0 {
+		pushCnt.Type = strings.ToLower(pushCnt.Type)
+	}
 
 	if DEVICE_TYPE_ANDROID == pushCnt.Type || DEVICE_TYPE_IOS == pushCnt.Type {
 		pushCnt.Sharding = 1

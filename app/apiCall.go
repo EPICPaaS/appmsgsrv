@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -93,6 +94,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 	deviceType := "app"
 	if baseReq["deviceType"] != nil {
 		deviceType = baseReq["deviceType"].(string)
+		deviceType = strings.ToLower(deviceType)
 	}
 	/* Token 校验，分为用户校验和应用校验*/
 	if deviceType == DEVICE_TYPE_IOS || deviceType == DEVICE_TYPE_ANDROID { //移动端和网页端

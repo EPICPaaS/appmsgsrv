@@ -6,6 +6,7 @@ import (
 	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -49,8 +50,10 @@ func SessionStat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	baseReq := args["baseRequest"].(map[string]interface{})
-	deviceType := baseReq["deviceType"].(string)
-
+	deviceType, ok := baseReq["deviceType"].(string)
+	if ok {
+		deviceType = strings.ToLower(deviceType)
+	}
 	/* Token 校验，分为用户校验和应用校验*/
 	token := baseReq["token"].(string)
 	//用户校验
