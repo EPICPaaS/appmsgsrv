@@ -19,13 +19,14 @@ package main
 import (
 	"bufio"
 	"errors"
-	"github.com/EPICPaaS/appmsgsrv/session"
-	"github.com/golang/glog"
 	"io"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/EPICPaaS/appmsgsrv/session"
+	"github.com/golang/glog"
 )
 
 const (
@@ -47,7 +48,7 @@ type tcpBufCache struct {
 // newTCPBufCache return a new tcpBuf cache.
 func newtcpBufCache() *tcpBufCache {
 	inst := make([]chan *bufio.Reader, 0, Conf.BufioInstance)
-	glog.V(1).Infof("create %d read buffer instance", Conf.BufioInstance)
+	glog.V(5).Infof("create %d read buffer instance", Conf.BufioInstance)
 	for i := 0; i < Conf.BufioInstance; i++ {
 		inst = append(inst, make(chan *bufio.Reader, Conf.BufioNum))
 	}
@@ -115,7 +116,7 @@ func tcpListen(bind string) {
 	// init reader buffer instance
 	rb := newtcpBufCache()
 	for {
-		glog.V(1).Info("start accept")
+		glog.V(5).Info("start accept")
 		conn, err := l.AcceptTCP()
 		if err != nil {
 			glog.Errorf("listener.AcceptTCP() error(%v)", err)
@@ -145,14 +146,14 @@ func tcpListen(bind string) {
 		rc := rb.Get()
 		// one connection one routine
 		go handleTCPConn(conn, rc)
-		glog.V(1).Info("accept finished")
+		glog.V(5).Info("accept finished")
 	}
 }
 
 // hanleTCPConn handle a long live tcp connection.
 func handleTCPConn(conn net.Conn, rc chan *bufio.Reader) {
 	addr := conn.RemoteAddr().String()
-	glog.V(1).Infof("<%s> handleTcpConn routine start", addr)
+	glog.V(5).Infof("<%s> handleTcpConn routine start", addr)
 	rd := newBufioReader(rc, conn)
 	if args, err := parseCmd(rd); err == nil {
 		// return buffer bufio.Reader
@@ -175,7 +176,7 @@ func handleTCPConn(conn net.Conn, rc chan *bufio.Reader) {
 	if err := conn.Close(); err != nil {
 		glog.Errorf("<%s> conn.Close() error(%v)", addr, err)
 	}
-	glog.V(1).Infof("<%s> handleTcpConn routine stop", addr)
+	glog.V(5).Infof("<%s> handleTcpConn routine stop", addr)
 	return
 }
 
@@ -293,7 +294,7 @@ func SubscribeTCPHandle(conn net.Conn, args []string) {
 				glog.Errorf("<%s> user_key:\"%s\" conn.Write() failed, write heartbeat to client error(%v)", addr, key, err)
 				break
 			}
-			glog.V(1).Infof("<%s> user_key:\"%s\" receive heartbeat (%s)", addr, key, reply)
+			glog.V(5).Infof("<%s> user_key:\"%s\" receive heartbeat (%s)", addr, key, reply)
 		} else {
 			glog.Warningf("<%s> user_key:\"%s\" unknown heartbeat protocol (%s)", addr, key, reply)
 			break
