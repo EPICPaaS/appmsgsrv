@@ -17,12 +17,13 @@
 package main
 
 import (
-	"github.com/EPICPaaS/appmsgsrv/app"
-	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
-	"github.com/golang/glog"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/EPICPaaS/appmsgsrv/app"
+	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
+	"github.com/golang/glog"
 )
 
 // GetServer handle for server get
@@ -62,10 +63,10 @@ func GetServer(w http.ResponseWriter, r *http.Request) {
 	// Select the best ip
 	if app.Conf.Router != "" {
 		server = routerCN.SelectBest(r.RemoteAddr, addr)
-		glog.V(1).Infof("select the best ip:\"%s\" match with remoteAddr:\"%s\" , from ip list:\"%v\"", server, r.RemoteAddr, addr)
+		glog.V(5).Infof("select the best ip:\"%s\" match with remoteAddr:\"%s\" , from ip list:\"%v\"", server, r.RemoteAddr, addr)
 	}
 	if server == "" {
-		glog.V(1).Infof("remote addr: \"%s\" chose the ip: \"%s\"", r.RemoteAddr, addr[0])
+		glog.V(5).Infof("remote addr: \"%s\" chose the ip: \"%s\"", r.RemoteAddr, addr[0])
 		server = addr[0]
 	}
 	res["data"] = map[string]interface{}{"server": server}
