@@ -18,11 +18,12 @@ package main
 
 import (
 	"errors"
+	"sync"
+
 	"github.com/EPICPaaS/appmsgsrv/hlist"
 	"github.com/EPICPaaS/appmsgsrv/id"
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
 	"github.com/golang/glog"
-	"sync"
 )
 
 var (
@@ -162,7 +163,7 @@ func (c *SeqChannel) AddConn(key string, conn *Connection) (*hlist.Element, erro
 	e := c.conn.PushFront(conn)
 	c.mutex.Unlock()
 	ConnStat.IncrAdd()
-	glog.Infof("user_key:\"%s\" add conn = %d", key, c.conn.Len())
+	glog.V(5).Infof("user_key:\"%s\" add conn = %d", key, c.conn.Len())
 	return e, nil
 }
 
@@ -177,7 +178,7 @@ func (c *SeqChannel) RemoveConn(key string, e *hlist.Element) error {
 	}
 	close(conn.Buf)
 	ConnStat.IncrRemove()
-	glog.Infof("user_key:\"%s\" remove conn = %d", key, c.conn.Len())
+	glog.V(5).Infof("user_key:\"%s\" remove conn = %d", key, c.conn.Len())
 	return nil
 }
 
