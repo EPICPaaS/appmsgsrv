@@ -19,12 +19,13 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
+	"sync"
+
 	"github.com/EPICPaaS/appmsgsrv/hash"
 	"github.com/EPICPaaS/appmsgsrv/hlist"
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
 	"github.com/golang/glog"
-	"net"
-	"sync"
 )
 
 var (
@@ -67,11 +68,11 @@ func (c *Connection) HandleWrite(key string) {
 			n   int
 			err error
 		)
-		glog.V(1).Infof("user_key: \"%s\" HandleWrite goroutine start", key)
+		glog.V(5).Infof("user_key: \"%s\" HandleWrite goroutine start", key)
 		for {
 			msg, ok := <-c.Buf
 			if !ok {
-				glog.V(1).Infof("user_key: \"%s\" HandleWrite goroutine stop", key)
+				glog.V(5).Infof("user_key: \"%s\" HandleWrite goroutine stop", key)
 				return
 			}
 			if c.Proto == WebsocketProto {
@@ -90,7 +91,7 @@ func (c *Connection) HandleWrite(key string) {
 				glog.Errorf("user_key: \"%s\" conn.Write() error(%v)", key, err)
 				MsgStat.IncrFailed(1)
 			} else {
-				glog.V(1).Infof("user_key: \"%s\" write \r\n========%s(%d)========", key, string(msg), n)
+				glog.V(5).Infof("user_key: \"%s\" write \r\n========%s(%d)========", key, string(msg), n)
 				MsgStat.IncrSucceed(1)
 			}
 		}
@@ -132,7 +133,7 @@ func (c *ChannelBucket) Unlock() {
 func NewChannelList() *ChannelList {
 	l := &ChannelList{Channels: []*ChannelBucket{}}
 	// split hashmap to many bucket
-	glog.V(1).Infof("create %d ChannelBucket", Conf.ChannelBucket)
+	glog.V(5).Infof("create %d ChannelBucket", Conf.ChannelBucket)
 	for i := 0; i < Conf.ChannelBucket; i++ {
 		c := &ChannelBucket{
 			Data:  map[string]Channel{},
@@ -157,7 +158,7 @@ func (l *ChannelList) bucket(key string) *ChannelBucket {
 	h := hash.NewMurmur3C()
 	h.Write([]byte(key))
 	idx := uint(h.Sum32()) & uint(Conf.ChannelBucket-1)
-	glog.V(1).Infof("user_key:\"%s\" hit channel bucket index:%d", key, idx)
+	glog.V(5).Infof("user_key:\"%s\" hit channel bucket index:%d", key, idx)
 	return l.Channels[idx]
 }
 
