@@ -149,11 +149,12 @@ func common(f func(w http.ResponseWriter, r *http.Request)) func(w http.Response
 //  1. 调用统计
 func stat(handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		handlerName := getFunctionName(handler)
+		// handlerName := getFunctionName(handler)
 
 		if !app.ApiCallStatistics(w, r) {
 			return
 		}
+
 		handler(w, r)
 	}
 }
