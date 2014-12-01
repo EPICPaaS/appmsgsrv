@@ -254,6 +254,10 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 			Created:   time.Now().Local(),
 			Updated:   time.Now().Local(),
 		}
+
+		// 先删除该deviceId
+		deleteApnsTokenByDeviceId(deviceId)
+		//再插入该设备对应的用户
 		if !insertApnsToken(apnsToken) {
 			baseRes.Ret = InternalErr
 			baseRes.ErrMsg = "Sava apns_token faild"

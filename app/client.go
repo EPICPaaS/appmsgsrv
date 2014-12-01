@@ -19,6 +19,7 @@ const (
 	SelectApnsTokenByUserId       = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? "
 	SelectApnsTokenByUserIdTokens = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? AND `apns_token`=?"
 	DeleteApnsToken               = "DELETE FROM apns_token where apns_token = ?"
+	DeleteApnsTokenByDeviceId     = "DELETE FROM apns_token where device_id = ?"
 )
 
 // 客户端结构.
@@ -332,6 +333,9 @@ func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 		Created:   time.Now().Local(),
 		Updated:   time.Now().Local(),
 	}
+	//先删除该设备对应的信息
+	deleteApnsTokenByDeviceId(deviceId)
+	//再插入该设备对应信息
 	if insertApnsToken(apnsToken) {
 		baseRes.Ret = OK
 		baseRes.ErrMsg = "save apns_token success"
@@ -432,6 +436,32 @@ func deleteApnsToken(apns_token string) bool {
 	}
 
 	_, err = tx.Exec(DeleteApnsToken, apns_token)
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+
+	if err := tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	return true
+}
+
+//根据apns_token删除token
+func deleteApnsTokenByDeviceId(deviceId string) bool {
+
+	tx, err := db.MySQL.Begin()
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	_, err = tx.Exec(DeleteApnsTokenByDeviceId, deviceId)
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
