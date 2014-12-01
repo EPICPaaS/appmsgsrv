@@ -2,7 +2,16 @@
 
 在 [gopush-cluster](https://github.com/Terry-Mao/gopush-cluster) 基础上做了扩展，加入了用户、群、组织机构等应用元素。
 
-## 概要
+## 特性
+
+	* 会话推送
+	* 用户-用户、用户-群、应用-用户推送
+	* iOS 通知
+	* Web 推送
+	* 图片、语音、链接推送
+	* 配额与统计
+
+## 实现概要
 
 * 在 gopush 中进行实现（web 进程）
 * 用户登录后返回
