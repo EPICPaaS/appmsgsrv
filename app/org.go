@@ -243,20 +243,20 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//记录apnsToken
-	apnsTokenStr := args["apnsToken"]
+	apnsTokenStr, ok := args["apnsToken"].(string)
 
-	if apnsTokenStr != nil && len(apnsTokenStr.(string)) > 0 {
-
+	if ok {
 		apnsToken := &ApnsToken{
-			UserId:    member.Uid,
-			DeviceId:  deviceId,
-			ApnsToken: apnsTokenStr.(string),
+			UserId: member.Uid,
+			//DeviceId:  deviceId,  IOS获取不到deviceID，用APNSToken代替
+			DeviceId:  apnsTokenStr,
+			ApnsToken: apnsTokenStr,
 			Created:   time.Now().Local(),
 			Updated:   time.Now().Local(),
 		}
 
 		// 先删除该deviceId
-		deleteApnsTokenByDeviceId(deviceId)
+		deleteApnsTokenByDeviceId(apnsToken.DeviceId)
 		//再插入该设备对应的用户
 		if !insertApnsToken(apnsToken) {
 			baseRes.Ret = InternalErr

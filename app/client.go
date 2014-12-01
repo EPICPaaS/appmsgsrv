@@ -319,22 +319,22 @@ func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apnsTokenStr := args["apns_token"].(string)
+	//记录apnsToken
+	apnsTokenStr, ok := args["apnsToken"].(string)
 	deviceId := baseReq["deviceID"].(string)
-	if len(apnsTokenStr) == 0 || len(deviceId) == 0 {
-		baseRes.Ret = ParamErr
-		return
-	}
+	
+	if ok {
+		apnsToken := &ApnsToken{
+			UserId:    member.Uid,
+			//DeviceId:  deviceId,  IOS获取不到deviceID，用APNSToken代替
+			DeviceId:  apnsTokenStr,
+			ApnsToken: apnsTokenStr,
+			Created:   time.Now().Local(),
+			Updated:   time.Now().Local(),
+		}
 
-	apnsToken := &ApnsToken{
-		UserId:    user.Uid,
-		DeviceId:  deviceId,
-		ApnsToken: apnsTokenStr,
-		Created:   time.Now().Local(),
-		Updated:   time.Now().Local(),
-	}
 	//先删除该设备对应的信息
-	deleteApnsTokenByDeviceId(deviceId)
+	deleteApnsTokenByDeviceId(apnsToken.DeviceId)
 	//再插入该设备对应信息
 	if insertApnsToken(apnsToken) {
 		baseRes.Ret = OK
