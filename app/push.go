@@ -498,7 +498,7 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 			// 推送分发过程中失败不立即返回，继续下一个推送
 
 			//只删除失效类型
-			if resp.Error.Error() == "INVALID_TOKEN" {
+			if resp.Error.Error() == apns.ApplePushResponses[8] || resp.Error.Error() == apns.ApplePushResponses[5] {
 				if deleteApnsToken(t.ApnsToken) {
 					glog.V(3).Info("delete INVALID_TOKEN  succeed")
 				} else {
