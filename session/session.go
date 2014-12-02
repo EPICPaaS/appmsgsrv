@@ -104,15 +104,18 @@ func CreatSession(session *Session) bool {
 		glog.Error(err)
 		return false
 	}
-	//var e error
+
 	_, err = tx.Exec(INSERT_SESSION, session.Id, session.Type, session.UserId, session.State, session.Created, session.Updated)
 	if err != nil {
-
-		glog.Error(err)
+		if !strings.Contains(err.Error(), "Duplicate entry") {
+			// 非主键重复的异常才打日志
+			glog.Error(err)
+		}
 
 		if err := tx.Rollback(); err != nil {
 			glog.Error(err)
 		}
+
 		return false
 	}
 
