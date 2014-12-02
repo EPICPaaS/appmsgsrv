@@ -2,12 +2,13 @@ package app
 
 import (
 	"encoding/json"
-	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/EPICPaaS/go-uuid/uuid"
+	"github.com/golang/glog"
 )
 
 const (
@@ -321,11 +322,10 @@ func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 
 	//记录apnsToken
 	apnsTokenStr, ok := args["apnsToken"].(string)
-	deviceId := baseReq["deviceID"].(string)
-	
+
 	if ok {
 		apnsToken := &ApnsToken{
-			UserId:    member.Uid,
+			UserId: user.Uid,
 			//DeviceId:  deviceId,  IOS获取不到deviceID，用APNSToken代替
 			DeviceId:  apnsTokenStr,
 			ApnsToken: apnsTokenStr,
@@ -333,17 +333,18 @@ func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 			Updated:   time.Now().Local(),
 		}
 
-	//先删除该设备对应的信息
-	deleteApnsTokenByDeviceId(apnsToken.DeviceId)
-	//再插入该设备对应信息
-	if insertApnsToken(apnsToken) {
-		baseRes.Ret = OK
-		baseRes.ErrMsg = "save apns_token success"
-		return
-	} else {
-		baseRes.Ret = InternalErr
-		baseRes.ErrMsg = "Save apns_token faild"
-		return
+		//先删除该设备对应的信息
+		deleteApnsTokenByDeviceId(apnsToken.DeviceId)
+		//再插入该设备对应信息
+		if insertApnsToken(apnsToken) {
+			baseRes.Ret = OK
+			baseRes.ErrMsg = "Save apns_token success"
+			return
+		} else {
+			baseRes.Ret = InternalErr
+			baseRes.ErrMsg = "Save apns_token faild"
+			return
+		}
 	}
 }
 
