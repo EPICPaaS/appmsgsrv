@@ -17,6 +17,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/golang/glog"
 	"os"
 	"os/signal"
@@ -38,11 +39,14 @@ func HandleSignal(c chan os.Signal) {
 		glog.Infof("get a signal %s", s.String())
 		switch s {
 		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGSTOP, syscall.SIGINT:
+			glog.Error(errors.New("Comet Exit: syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGSTOP, syscall.SIGINT"))
 			return
 		case syscall.SIGHUP:
 			// TODO reload
 			//return
+			glog.Error(errors.New("Comet Exit: syscall.SIGHUP"))
 		default:
+			glog.Error(errors.New("Comet Exit: default"))
 			return
 		}
 	}
