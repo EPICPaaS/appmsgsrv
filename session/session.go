@@ -25,6 +25,7 @@ const (
 	SELECT_SESSION_BYUSERID = "SELECT  `id`,`type`,`user_id`,`state`,`created`,`updated` FROM SESSION WHERE `user_id` = ?"
 	SELECT_SESSION_BYID     = "SELECT  `id`,`type`,`user_id`,`state`,`created`,`updated` FROM SESSION WHERE `id`=?"
 	SELECT_SESSION_BYIDS    = "SELECT  `id`,`type`,`user_id`,`state`,`created`,`updated` FROM SESSION WHERE `id`IN (？)"
+	EXIST_SESSION           = "SELECT id FROM session WHERE id = ?"
 )
 
 type Session struct {
@@ -98,7 +99,10 @@ func GetSessions(uid string, args []string) []*Session {
 
 //创建会话session记录
 func CreatSession(session *Session) bool {
-
+	//存在不做任何处理
+	if IsExistSession(session.Id) {
+		return true
+	}
 	tx, err := db.MySQL.Begin()
 	if err != nil {
 		glog.Error(err)
@@ -125,6 +129,22 @@ func CreatSession(session *Session) bool {
 		return false
 	}
 	return true
+}
+
+func IsExistSession(sessionId string) bool {
+	rows, err := db.MySQL.Query(EXIST_SESSION, sessionId)
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	defer rows.Close()
+
+	if err = rows.Err(); err != nil {
+		glog.Error(err)
+		return false
+	}
+	return rows.Next()
 }
 
 //修改会话session记录
