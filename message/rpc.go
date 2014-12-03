@@ -66,7 +66,7 @@ func (r *MessageRPC) SavePrivate(m *myrpc.MessageSavePrivateArgs, ret *int) erro
 
 // GetPrivate rpc interface get user private message.
 func (r *MessageRPC) GetPrivate(m *myrpc.MessageGetPrivateArgs, rw *myrpc.MessageGetResp) error {
-	glog.V(1).Infof("messageRPC.GetPrivate key:\"%s\" mid:\"%d\"", m.Key, m.MsgId)
+	glog.V(5).Infof("messageRPC.GetPrivate key:\"%s\" mid:\"%d\"", m.Key, m.MsgId)
 	if m == nil || m.Key == "" || m.MsgId < 0 {
 		return myrpc.ErrParam
 	}
@@ -76,7 +76,7 @@ func (r *MessageRPC) GetPrivate(m *myrpc.MessageGetPrivateArgs, rw *myrpc.Messag
 		return err
 	}
 	rw.Msgs = msgs
-	glog.V(1).Infof("UserStorage.GetPrivate(\"%s\", %d) ok", m.Key, m.MsgId)
+	glog.V(5).Infof("UserStorage.GetPrivate(\"%s\", %d) ok", m.Key, m.MsgId)
 	return nil
 }
 

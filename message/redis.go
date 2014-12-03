@@ -241,6 +241,6 @@ func (s *RedisStorage) getConn(key string) redis.Conn {
 		glog.Warningf("user_key: \"%s\" hit redis node: \"%s\" not in pool", key, node)
 		return nil
 	}
-	glog.V(1).Infof("user_key: \"%s\" hit redis node: \"%s\"", key, node)
+	glog.V(5).Infof("user_key: \"%s\" hit redis node: \"%s\"", key, node)
 	return p.Get()
 }
