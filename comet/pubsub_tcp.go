@@ -90,7 +90,7 @@ func putBufioReader(c chan *bufio.Reader, r *bufio.Reader) {
 // StartTCP Start tcp listen.
 func StartTCP() {
 	for _, bind := range Conf.TCPBind {
-		glog.Infof("start tcp listen addr:\"%s\"", bind)
+		glog.V(5).Infof("start tcp listen addr:\"%s\"", bind)
 		go tcpListen(bind)
 	}
 }
@@ -108,7 +108,7 @@ func tcpListen(bind string) {
 	}
 	// free the listener resource
 	defer func() {
-		glog.Infof("tcp addr: \"%s\" close", bind)
+		glog.V(5).Infof("tcp addr: \"%s\" close", bind)
 		if err := l.Close(); err != nil {
 			glog.Errorf("listener.Close() error(%v)", err)
 		}

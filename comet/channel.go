@@ -170,14 +170,14 @@ func (l *ChannelList) New(key string) (Channel, error) {
 	if c, ok := b.Data[key]; ok {
 		b.Unlock()
 		ChStat.IncrAccess()
-		glog.Infof("user_key:\"%s\" refresh channel bucket expire time", key)
+		glog.V(5).Infof("user_key:\"%s\" refresh channel bucket expire time", key)
 		return c, nil
 	} else {
 		c = NewSeqChannel()
 		b.Data[key] = c
 		b.Unlock()
 		ChStat.IncrCreate()
-		glog.Infof("user_key:\"%s\" create a new channel", key)
+		glog.V(5).Infof("user_key:\"%s\" create a new channel", key)
 		return c, nil
 	}
 }
@@ -193,7 +193,7 @@ func (l *ChannelList) Get(key string, newOne bool) (Channel, error) {
 			b.Data[key] = c
 			b.Unlock()
 			ChStat.IncrCreate()
-			glog.Infof("user_key:\"%s\" create a new channel", key)
+			glog.V(5).Infof("user_key:\"%s\" create a new channel", key)
 			return c, nil
 		} else {
 			b.Unlock()
@@ -203,7 +203,7 @@ func (l *ChannelList) Get(key string, newOne bool) (Channel, error) {
 	} else {
 		b.Unlock()
 		ChStat.IncrAccess()
-		glog.Infof("user_key:\"%s\" refresh channel bucket expire time", key)
+		glog.V(5).Infof("user_key:\"%s\" refresh channel bucket expire time", key)
 		return c, nil
 	}
 }
@@ -221,14 +221,14 @@ func (l *ChannelList) Delete(key string) (Channel, error) {
 		delete(b.Data, key)
 		b.Unlock()
 		ChStat.IncrDelete()
-		glog.Infof("user_key:\"%s\" delete channel", key)
+		glog.V(5).Infof("user_key:\"%s\" delete channel", key)
 		return c, nil
 	}
 }
 
 // Close close all channel.
 func (l *ChannelList) Close() {
-	glog.Info("channel close")
+	glog.V(5).Info("channel close")
 	chs := make([]Channel, 0, l.Count())
 	for _, c := range l.Channels {
 		c.Lock()

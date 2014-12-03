@@ -54,7 +54,7 @@ func (l *KeepAliveListener) Accept() (c net.Conn, err error) {
 // StartHttp start http listen.
 func StartHttp() {
 	for _, bind := range Conf.WebsocketBind {
-		glog.Infof("start websocket listen addr:\"%s\"", bind)
+		glog.V(5).Infof("start websocket listen addr:\"%s\"", bind)
 		go websocketListen(bind)
 	}
 }
@@ -112,7 +112,7 @@ func SubscribeHandle(ws *websocket.Conn) {
 	heartbeat := i + delayHeartbeatSec
 	token := params.Get("token")
 	version := params.Get("ver")
-	glog.Infof("<%s> subscribe to key = %s, heartbeat = %d, token = %s, version = %s", addr, key, heartbeat, token, version)
+	glog.V(5).Infof("<%s> subscribe to key = %s, heartbeat = %d, token = %s, version = %s", addr, key, heartbeat, token, version)
 	// fetch subscriber from the channel
 	c, err := UserChannel.Get(key, true)
 	if err != nil {

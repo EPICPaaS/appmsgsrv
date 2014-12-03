@@ -35,7 +35,7 @@ func HandleSignal(c chan os.Signal) {
 	// Block until a signal is received.
 	for {
 		s := <-c
-		glog.Infof("comet get a signal %s", s.String())
+		glog.V(5).Infof("comet get a signal %s", s.String())
 		switch s {
 		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGSTOP, syscall.SIGINT:
 			glog.Error("Comet Exit: syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGSTOP, syscall.SIGINT")

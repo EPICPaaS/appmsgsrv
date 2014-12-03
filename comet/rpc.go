@@ -34,7 +34,7 @@ func StartRPC() {
 	c := &CometRPC{}
 	rpc.Register(c)
 	for _, bind := range Conf.RPCBind {
-		glog.Infof("start listen rpc addr: \"%s\"", bind)
+		glog.V(5).Infof("start listen rpc addr: \"%s\"", bind)
 		go rpcListen(bind)
 	}
 }
@@ -47,7 +47,7 @@ func rpcListen(bind string) {
 	}
 	// if process exit, then close the rpc bind
 	defer func() {
-		glog.Infof("rpc addr: \"%s\" close", bind)
+		glog.V(5).Infof("rpc addr: \"%s\" close", bind)
 		if err := l.Close(); err != nil {
 			glog.Errorf("listener.Close() error(%v)", err)
 		}
@@ -149,20 +149,20 @@ func (c *CometRPC) Migrate(args *myrpc.CometMigrateArgs, ret *int) error {
 		}
 		for _, k := range keys {
 			delete(c.Data, k)
-			glog.Infof("migrate delete channel key \"%s\"", k)
+			glog.V(5).Infof("migrate delete channel key \"%s\"", k)
 		}
 		c.Unlock()
-		glog.Infof("migrate channel bucket:%d finished", i)
+		glog.V(5).Infof("migrate channel bucket:%d finished", i)
 	}
 	// close all the migrate channels
-	glog.Info("close all the migrate channels")
+	glog.V(5).Info("close all the migrate channels")
 	for _, channel := range channels {
 		if err := channel.Close(); err != nil {
 			glog.Errorf("channel.Close() error(%v)", err)
 			continue
 		}
 	}
-	glog.Info("close all the migrate channels finished")
+	glog.V(5).Info("close all the migrate channels finished")
 	return nil
 }
 

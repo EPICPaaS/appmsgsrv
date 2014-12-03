@@ -126,7 +126,7 @@ func statListen(bind string) {
 func StartStats() {
 	startTime = time.Now().UnixNano()
 	for _, bind := range Conf.StatBind {
-		glog.Infof("start stat listen addr:\"%s\"", bind)
+		glog.V(5).Infof("start stat listen addr:\"%s\"", bind)
 		go statListen(bind)
 	}
 }
