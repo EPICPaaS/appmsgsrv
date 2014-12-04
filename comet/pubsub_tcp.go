@@ -217,7 +217,7 @@ func SubscribeTCPHandle(conn net.Conn, args []string) {
 	if argLen > 3 {
 		version = args[3]
 	}
-	glog.Infof("<%s> subscribe to key = %s, heartbeat = %d, token = %s, version = %s", addr, key, heartbeat, token, version)
+	glog.V(5).Infof("<%s> subscribe to key = %s, heartbeat = %d, token = %s, version = %s", addr, key, heartbeat, token, version)
 	// fetch subscriber from the channel
 	c, err := UserChannel.Get(key, true)
 	if err != nil {

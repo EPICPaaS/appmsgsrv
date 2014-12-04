@@ -91,7 +91,7 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 
 	// Token 校验
 	token := baseReq["token"].(string)
-	deviceType := baseReq["baseReq"].(string)
+	deviceType := baseReq["deviceType"].(string)
 	user := getUserByToken(token)
 
 	if nil == user {
