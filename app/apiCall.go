@@ -63,7 +63,7 @@ type Quota struct {
 //记录api调用次数
 func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 
-	baseRes := baseResponse{OverQuotaApicall, "request is not available"}
+	baseRes := baseResponse{AuthErr, "request is not available"}
 	res := map[string]interface{}{"baseResponse": &baseRes}
 	resBody := "request is not available"
 
@@ -134,7 +134,8 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 	//获取租户信息
 	tenant := getTenantById(tenantId)
 	if tenant == nil {
-		glog.Error("not found tenant")
+		glog.Errorf("not found tenantId : %s", tenantId)
+		baseRes.Ret = OverQuotaApicall
 		baseRes.ErrMsg = "not found tenant"
 		RetPWriteJSON(w, r, res, &resBody, time.Now())
 		return false
@@ -150,6 +151,8 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 	}
 	//检验此调用是否合法
 	if !ValidApiCall(apiCall) {
+		baseRes.Ret = OverQuotaApicall
+		baseRes.ErrMsg = "apicall auth failure"
 		RetPWriteJSON(w, r, res, &resBody, time.Now())
 		return false
 	}
