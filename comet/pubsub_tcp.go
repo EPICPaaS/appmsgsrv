@@ -170,7 +170,8 @@ func handleTCPConn(conn net.Conn, rc chan *bufio.Reader) {
 	} else {
 		// return buffer bufio.Reader
 		putBufioReader(rc, rd)
-		glog.Errorf("<%s> parseCmd() error(%v)", addr, err)
+		//TODO 调试需要时再打开
+		//glog.Errorf("<%s> parseCmd() error(%v)", addr, err)
 	}
 	// close the connection
 	if err := conn.Close(); err != nil {
@@ -321,7 +322,8 @@ func parseCmd(rd *bufio.Reader) ([]string, error) {
 	// get argument number
 	argNum, err := parseCmdSize(rd, '*')
 	if err != nil {
-		glog.Errorf("tcp:cmd format error when find '*' (%s)", err)
+		//TODO 调试需要时再打开
+		//glog.Errorf("tcp:cmd format error when find '*' (%s)", err)
 		return nil, err
 	}
 	if argNum < minCmdNum || argNum > maxCmdNum {
@@ -358,7 +360,8 @@ func parseCmdSize(rd *bufio.Reader, prefix uint8) (int, error) {
 	}
 	csl := len(cs)
 	if csl <= 3 || cs[0] != prefix || cs[csl-2] != '\r' {
-		glog.Errorf("tcp:\"%v\"(%d) number format error, length error or prefix error or no \\r", cs, csl)
+		//TODO 调试需要时再打开
+		//glog.Errorf("tcp:\"%v\"(%d) number format error, length error or prefix error or no \\r", cs, csl)
 		return 0, ErrProtocol
 	}
 	// skip the \r\n
