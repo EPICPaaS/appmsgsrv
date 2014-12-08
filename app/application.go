@@ -19,9 +19,9 @@ const (
 	// 根据 token 获取应用记录.
 	SelectApplicationByToken = "SELECT * FROM `application` WHERE `token` = ?"
 	//根据应用ID查询应用操作项列表
-	SelectAppOpertionByAppId = "SELECT  `id`, `app_id`, `content`,`action`, `msg_type`,`sort`   FROM `opertion` WHERE `app_id` = ?  and  parent_id  is  null  order by  sort "
+	SelectAppOpertionByAppId = "SELECT  `id`, `app_id`, `content`,`action`, `msg_type`,`sort`   FROM `operation` WHERE `app_id` = ?  and  parent_id  is  null  order by  sort "
 	//根据操作项父ID查询应用操作项列表
-	SelectAppOpertionByParentId = "SELECT `id`, `app_id`, `content`,`action`, `msg_type`,`sort`  FROM `opertion` WHERE `parent_id` = ?  order by  sort "
+	SelectAppOpertionByParentId = "SELECT `id`, `app_id`, `content`,`action`, `msg_type`,`sort`  FROM `operation` WHERE `parent_id` = ?  order by  sort "
 )
 
 // 应用结构.
@@ -42,7 +42,7 @@ type application struct {
 }
 
 // 应用操作项
-type opertion struct {
+type operation struct {
 	Id      string `json:"id"`
 	AppId   string `json:"appId"`
 	Content string `json:"content"`
@@ -50,7 +50,7 @@ type opertion struct {
 	MsgType string `json:"msgType"`
 	Sort    int    `json:"sort"`
 
-	OpertionList []*opertion `json:"opertionList"`
+	OpertionList []*operation `json:"operationList"`
 }
 
 // 根据 id 查询应用记录.
@@ -93,14 +93,14 @@ func getAllApplication() ([]*member, error) {
 }
 
 //根据appId获取应用的列表项
-func getAppOpertionListByAppId(appId string) ([]*opertion, error) {
+func getAppOpertionListByAppId(appId string) ([]*operation, error) {
 	rows, _ := db.MySQL.Query(SelectAppOpertionByAppId, appId)
 	if rows != nil {
 		defer rows.Close()
 	}
-	ret := []*opertion{}
+	ret := []*operation{}
 	for rows.Next() {
-		rec := opertion{}
+		rec := operation{}
 
 		if err := rows.Scan(&rec.Id, &rec.AppId, &rec.Content, &rec.Action, &rec.MsgType, &rec.Sort); err != nil {
 			glog.Error(err)
@@ -110,9 +110,9 @@ func getAppOpertionListByAppId(appId string) ([]*opertion, error) {
 		if crows != nil {
 			defer crows.Close()
 		}
-		opertionList := []*opertion{}
+		opertionList := []*operation{}
 		for crows.Next() {
-			crec := opertion{}
+			crec := operation{}
 
 			if err := crows.Scan(&crec.Id, &crec.AppId, &crec.Content, &crec.Action, &crec.MsgType, &crec.Sort); err != nil {
 				glog.Error(err)
@@ -253,6 +253,6 @@ func (*device) GetAppOpertionList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res["opertionList"] = opertions
-	res["opertionCount"] = len(opertions)
+	res["operationList"] = opertions
+	res["operationCount"] = len(opertions)
 }
