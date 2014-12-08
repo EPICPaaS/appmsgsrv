@@ -130,7 +130,7 @@ CREATE TABLE `group_msg` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- ----------------------------
--- Table structure for opertion
+-- Table structure for operation
 -- ----------------------------
 DROP TABLE IF EXISTS `opertion`;
 CREATE TABLE `opertion` (
