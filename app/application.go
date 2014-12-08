@@ -200,7 +200,7 @@ func (*device) GetApplicationList(w http.ResponseWriter, r *http.Request) {
 /*
 * 根据应用信息获取应用的操作项
 **/
-func (*device) GetAppOpertionList(w http.ResponseWriter, r *http.Request) {
+func (*device) GetAppOperationList(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", 405)
 		return
