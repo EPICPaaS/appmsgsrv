@@ -139,6 +139,34 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	/*记录发送文件信息*/
+	msgType, ok := msg["msgType"].(string)
+	if ok && msgType == "2" {
+		objectContent, ok := msg["objectContent"].(map[string]interface{})
+		if !ok {
+			baseRes.Ret = ParamErr
+			return
+		}
+		responseUpload, ok := objectContent["responseUpload"].(map[string]interface{})
+		if !ok {
+			baseRes.Ret = ParamErr
+			return
+		}
+
+		fileId := responseUpload["fid"].(string)
+		fileName := responseUpload["fileName"].(string)
+		fileUrl := responseUpload["fileUrl"].(string)
+		size := int(responseUpload["size"].(float64))
+		fileLink := &FileLink{
+			SenderId: application.Id,
+			FileId:   fileId,
+			FileName: fileName,
+			FileUrl:  fileUrl,
+			Size:     size,
+		}
+		go SaveFileLinK(fileLink)
+	}
+
 	// 推送
 	for _, name := range names {
 		key := name.toKey()
@@ -527,6 +555,35 @@ func substr(s string, pos, length int) string {
 func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int, pushCnt PushCnt) int {
 	if !ValidPush(&pushCnt) {
 		return OverQuotaPush
+	}
+
+	/*记录发送文件信息*/
+	msgType, ok := msg["msgType"].(float64)
+	if ok && msgType == 2 {
+		objectContent, ok := msg["objectContent"].(map[string]interface{})
+		if !ok {
+			return ParamErr
+		}
+		responseUpload, ok := objectContent["responseUpload"].(map[string]interface{})
+		if !ok {
+			return ParamErr
+		}
+		//发送消息的userId
+		fromUserName := msg["fromUserName"].(string)
+		userId := fromUserName[:strings.Index(fromUserName, "@")]
+
+		fileId := responseUpload["fid"].(string)
+		fileName := responseUpload["fileName"].(string)
+		fileUrl := responseUpload["fileUrl"].(string)
+		size := int(responseUpload["size"].(float64))
+		fileLink := &FileLink{
+			SenderId: userId,
+			FileId:   fileId,
+			FileName: fileName,
+			FileUrl:  fileUrl,
+			Size:     size,
+		}
+		go SaveFileLinK(fileLink)
 	}
 	names, _ := getNames(toUserName, sessionArgs)
 	// 推送
