@@ -71,7 +71,7 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 
 	content := args["content"].(string)
 	msg["content"] = content
-	msg["msgType"] = args["msgType"].(string)
+	msg["msgType"] = args["msgType"].(float64)
 	msg["objectContent"] = args["objectContent"]
 
 	toUserNames := args["toUserNames"].([]interface{})
@@ -140,8 +140,8 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	}
 
 	/*记录发送文件信息*/
-	msgType, ok := msg["msgType"].(string)
-	if ok && msgType == "2" {
+	msgType, ok := msg["msgType"].(float64)
+	if ok && msgType == 2 {
 		objectContent, ok := msg["objectContent"].(map[string]interface{})
 		if !ok {
 			baseRes.Ret = ParamErr
@@ -568,16 +568,13 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 		if !ok {
 			return ParamErr
 		}
-		//发送消息的userId
-		fromUserName := msg["fromUserName"].(string)
-		userId := fromUserName[:strings.Index(fromUserName, "@")]
 
 		fileId := responseUpload["fid"].(string)
 		fileName := responseUpload["fileName"].(string)
 		fileUrl := responseUpload["fileUrl"].(string)
 		size := int(responseUpload["size"].(float64))
 		fileLink := &FileLink{
-			SenderId: userId,
+			SenderId: pushCnt.CallerId, // pushCnt.CallerId为发送者的id
 			FileId:   fileId,
 			FileName: fileName,
 			FileUrl:  fileUrl,
