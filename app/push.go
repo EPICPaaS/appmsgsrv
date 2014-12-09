@@ -71,7 +71,7 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 
 	content := args["content"].(string)
 	msg["content"] = content
-	msg["msgType"] = args["msgType"].(string)
+	msg["msgType"] = args["msgType"].(float64)
 	msg["objectContent"] = args["objectContent"]
 
 	toUserNames := args["toUserNames"].([]interface{})
@@ -137,6 +137,34 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		} else if strings.HasSuffix(userName.(string), QUN_SUFFIX) { // 如果是推群
 			qunLen += len(ns)
 		}
+	}
+
+	/*记录发送文件信息*/
+	msgType, ok := msg["msgType"].(float64)
+	if ok && msgType == 2 {
+		objectContent, ok := msg["objectContent"].(map[string]interface{})
+		if !ok {
+			baseRes.Ret = ParamErr
+			return
+		}
+		responseUpload, ok := objectContent["responseUpload"].(map[string]interface{})
+		if !ok {
+			baseRes.Ret = ParamErr
+			return
+		}
+
+		fileId := responseUpload["fid"].(string)
+		fileName := responseUpload["fileName"].(string)
+		fileUrl := responseUpload["fileUrl"].(string)
+		size := int(responseUpload["size"].(float64))
+		fileLink := &FileLink{
+			SenderId: application.Id,
+			FileId:   fileId,
+			FileName: fileName,
+			FileUrl:  fileUrl,
+			Size:     size,
+		}
+		go SaveFileLinK(fileLink)
 	}
 
 	// 推送
@@ -527,6 +555,32 @@ func substr(s string, pos, length int) string {
 func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int, pushCnt PushCnt) int {
 	if !ValidPush(&pushCnt) {
 		return OverQuotaPush
+	}
+
+	/*记录发送文件信息*/
+	msgType, ok := msg["msgType"].(float64)
+	if ok && msgType == 2 {
+		objectContent, ok := msg["objectContent"].(map[string]interface{})
+		if !ok {
+			return ParamErr
+		}
+		responseUpload, ok := objectContent["responseUpload"].(map[string]interface{})
+		if !ok {
+			return ParamErr
+		}
+
+		fileId := responseUpload["fid"].(string)
+		fileName := responseUpload["fileName"].(string)
+		fileUrl := responseUpload["fileUrl"].(string)
+		size := int(responseUpload["size"].(float64))
+		fileLink := &FileLink{
+			SenderId: pushCnt.CallerId, // pushCnt.CallerId为发送者的id
+			FileId:   fileId,
+			FileName: fileName,
+			FileUrl:  fileUrl,
+			Size:     size,
+		}
+		go SaveFileLinK(fileLink)
 	}
 	names, _ := getNames(toUserName, sessionArgs)
 	// 推送
