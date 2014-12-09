@@ -1643,3 +1643,59 @@ func getTenantById(id string) *Tenant {
 	}
 	return nil
 }
+
+/*同步租户*/
+func (*app) UserAuth(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		res["ret"] = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+	appToken := baseReq["token"].(string)
+	//应用校验
+	_, err = getApplicationByToken(appToken)
+	if nil != err {
+		baseRes.Ret = AuthErr
+		baseRes.ErrMsg = "auth failure"
+		return
+	}
+
+	token := args["token"].(string)
+	uid := args["uid"].(string)
+	//用户校验
+	mem := getUserByToken(token)
+
+	if nil == mem {
+		baseRes.Ret = AuthErr
+		baseRes.ErrMsg = "auth failure"
+		return
+	}
+
+	if uid != mem.Uid {
+		baseRes.Ret = AuthErr
+		baseRes.ErrMsg = "auth failure"
+		return
+	}
+}
