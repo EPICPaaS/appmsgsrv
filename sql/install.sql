@@ -138,7 +138,7 @@ CREATE TABLE `opertion` (
   `app_id` varchar(64) DEFAULT NULL COMMENT '应用ID',
   `content` varchar(45) DEFAULT NULL COMMENT '操作项显示内容',
   `action` varchar(255) DEFAULT NULL COMMENT '操作项对应的URL',
-  `msg_type` char(1) DEFAULT NULL COMMENT '1 返回页面信息  2 返回JSON串',
+  `operation_type` char(1) DEFAULT NULL COMMENT '1 返回页面信息  2 返回JSON串',
   `sort` int(11) DEFAULT NULL,
   `parent_id` varchar(64) DEFAULT NULL COMMENT '操作项的父操作项',
   PRIMARY KEY (`id`)
