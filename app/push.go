@@ -582,9 +582,18 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 		}
 		go SaveFileLinK(fileLink)
 	}
+
 	names, _ := getNames(toUserName, sessionArgs)
+
+	isQunPush := strings.HasSuffix(toUserName, QUN_SUFFIX)
+
 	// 推送
 	for _, name := range names {
+		// 在群里自己发言时不用推送给自己
+		if isQunPush && name.Id == pushCnt.CallerId {
+			continue
+		}
+
 		key := name.toKey()
 
 		msg["toUserKey"] = key
