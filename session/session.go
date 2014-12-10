@@ -316,7 +316,7 @@ func ScanSession() {
 	}
 	for t := range ScanSessionTime.C {
 
-		glog.V(3).Info(t.Format("2006/01/02 15:04:05"), "执行了定时扫描session表操作-----------------------------")
+		glog.Info(t.Format("2006/01/02 15:04:05"), "执行了定时扫描session表操作-----------------------------")
 		//创建过时时间
 		hours, _ := time.ParseDuration("-24h")
 		pastTime := time.Now().Local()
