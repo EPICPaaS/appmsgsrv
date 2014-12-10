@@ -7,6 +7,7 @@ import (
 	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -14,8 +15,7 @@ const (
 	INSERT_FILELINK        = "insert into file_link (id , sender_id,file_id ,file_name,file_url,size,created,updated)  values(?,?,?,?,?,?,?,?)"
 	UPDATE_FILELINK_TIME   = "update file_link set updated =? where sender_id =? and file_id =?"
 	EXIST_FILELINK         = "select id from file_link where sender_id =? and file_id =?"
-	SELECT_EXPIRE_FILELINK = "select  file_id from where  update  < ?"
-	DELETE_EXPIRE_FILELINK = "delete  from  file_id from where  update  < ?"
+	SELECT_EXPIRE_FILELINK = "select  id, file_id from file_link where  updated  < ?"
 )
 
 type FileLink struct {
@@ -119,31 +119,41 @@ func ScanExpireFileLink() {
 		return
 	}
 
+	var delIds []string
 	for rows.Next() {
-		var fileId string
-		if err := rows.Scan(&fileId); err != nil {
+		var id, fileId string
+		if err := rows.Scan(&id, &fileId); err != nil {
 			glog.Error(err)
 			continue
 		}
+
 		//删除文件
-		go DeleteFile(fileId)
+		if DeleteFile(fileId) {
+			delIds = append(delIds, id)
+		}
 	}
 
 	/*删除文件记录*/
-	tx, err := db.MySQL.Begin()
-	if err != nil {
-		glog.Error(err)
-	}
-	_, err = tx.Exec(DELETE_EXPIRE_FILELINK, expire)
-	if err != nil {
-		glog.Error(err)
-		if err := tx.Rollback(); err != nil {
+	if len(delIds) > 0 {
+		tx, err := db.MySQL.Begin()
+		if err != nil {
 			glog.Error(err)
+			return
 		}
-	}
-	//提交操作
-	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		delSql := "delete  from file_link where  id   in ('" + strings.Join(delIds, "','") + "')"
+		_, err = tx.Exec(delSql)
+		if err != nil {
+			glog.Error(err)
+			if err := tx.Rollback(); err != nil {
+				glog.Error(err)
+			}
+			return
+		}
+		//提交操作
+		if err := tx.Commit(); err != nil {
+			glog.Error(err)
+			return
+		}
 	}
 
 }
