@@ -37,7 +37,7 @@ func main() {
 	// Parse cmd-line arguments
 	flag.Parse()
 
-	logger := log.NewLogger(os.Stdout, log.Debug)
+	logger := log.NewLogger(os.Stdout, log.Info)
 	logger.Info("Web is running")
 
 	glog.Infof("web ver: \"%s\" start", ver.Version)
