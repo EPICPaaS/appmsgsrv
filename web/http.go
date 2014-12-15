@@ -73,6 +73,7 @@ func StartHTTP() {
 	appAppServeMux.HandleFunc("/app/client/device/addQunMember", app.Device.AddQunMember)
 	appAppServeMux.HandleFunc("/app/client/device/delQunMember", app.Device.DelQunMember)
 	appAppServeMux.HandleFunc("/app/client/device/addApnsToken", app.Device.AddApnsToken)
+	appAppServeMux.HandleFunc("/app/client/device/delApnsToken", app.Device.DelApnsToken)
 	appAppServeMux.HandleFunc("/app/client/device/setSessionState", app.SessionStat)
 	appAppServeMux.HandleFunc("/app/client/device/getApplicationList", app.Device.GetApplicationList)
 	appAppServeMux.HandleFunc("/app/client/device/getAppOperationList", app.Device.GetAppOperationList)

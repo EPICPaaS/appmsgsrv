@@ -20,6 +20,7 @@ const (
 	SelectApnsTokenByUserId       = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? "
 	SelectApnsTokenByUserIdTokens = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? AND `apns_token`=?"
 	DeleteApnsToken               = "DELETE FROM apns_token where apns_token = ?"
+	DeleteApnsTokenByUid          = "DELETE FROM apns_token where apns_token = ?  and user_id = ? "
 	DeleteApnsTokenByDeviceId     = "DELETE FROM apns_token where device_id = ?"
 )
 
@@ -348,6 +349,62 @@ func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/* 删除指定ApnsToken*/
+func (*device) DelApnsToken(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		baseRes.Ret = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+	// Token 校验
+	token := baseReq["token"].(string)
+	user := getUserByToken(token)
+	if nil == user {
+		baseRes.Ret = AuthErr
+		baseRes.ErrMsg = "Authentication failed"
+		return
+	}
+
+	//记录apnsToken
+	apnsTokenStr, ok := args["apnsToken"].(string)
+
+	if ok {
+		//删除对应用户的 APNSTOKEN
+		if deleteApnsTokenByUid(apnsTokenStr, user.Uid) {
+			baseRes.Ret = OK
+			baseRes.ErrMsg = "Save apns_token success"
+			return
+		} else {
+			baseRes.Ret = InternalErr
+			baseRes.ErrMsg = "Save apns_token faild"
+			return
+		}
+	}
+}
+
 // 在数据库中查询指定类型客户端的最新的版本.
 func getLatestVerion(deviceType string) (*ClientVersion, error) {
 	row := db.MySQL.QueryRow(SelectLatestClientVerByType, deviceType)
@@ -437,6 +494,32 @@ func deleteApnsToken(apns_token string) bool {
 	}
 
 	_, err = tx.Exec(DeleteApnsToken, apns_token)
+	if err != nil {
+		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
+		return false
+	}
+
+	if err := tx.Commit(); err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	return true
+}
+
+//根据apns_token删除token
+func deleteApnsTokenByUid(apns_token, uid string) bool {
+
+	tx, err := db.MySQL.Begin()
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	_, err = tx.Exec(DeleteApnsTokenByUid, apns_token, uid)
 	if err != nil {
 		glog.Error(err)
 		if err := tx.Rollback(); err != nil {
