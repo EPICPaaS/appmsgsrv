@@ -405,6 +405,7 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 	msg["clientMsgId"] = r.FormValue("msg[clientMsgId]")
 	msg["msgType"], err = strconv.Atoi(r.FormValue("msg[msgType]"))
 	msg["deviceID"] = r.FormValue("baseRequest[deviceID]")
+	msg["fromUserName"] = r.FormValue("msg[fromUserName]")
 	if err != nil {
 		baseRes.Ret = ParamErr
 		baseRes.ErrMsg = "msgType not is int"
