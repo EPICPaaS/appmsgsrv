@@ -69,6 +69,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		baseRes.Ret = ParamErr
 		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		RetPWriteJSON(w, r, res, &resBody, time.Now())
 		return false
@@ -81,6 +82,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 	var args map[string]interface{}
 	if err := json.Unmarshal(body, &args); err != nil {
 		glog.Errorf(" json.Unmarshal failed (%s)", err)
+		baseRes.Ret = ParamErr
 		RetPWriteJSON(w, r, res, &resBody, time.Now())
 		return false
 	}

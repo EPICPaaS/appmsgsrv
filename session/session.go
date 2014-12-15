@@ -176,14 +176,14 @@ func RemoveSessionById(id string) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
 		glog.Error(err)
-		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
-		}
 		return false
 	}
 	_, err = tx.Exec(DELETE_SESSION_BYID, id)
 	if err != nil {
 		glog.Error(err)
+		if err := tx.Rollback(); err != nil {
+			glog.Error(err)
+		}
 		return false
 	}
 	//提交操作

@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"os"
 	"runtime"
 	"time"
 
@@ -26,6 +27,8 @@ import (
 	"github.com/EPICPaaS/appmsgsrv/perf"
 	"github.com/EPICPaaS/appmsgsrv/process"
 	"github.com/EPICPaaS/appmsgsrv/ver"
+
+	"github.com/b3log/wide/log"
 	"github.com/golang/glog"
 )
 
@@ -33,6 +36,10 @@ func main() {
 	var err error
 	// Parse cmd-line arguments
 	flag.Parse()
+
+	logger := log.NewLogger(os.Stdout, log.Info)
+	logger.Info("Web is running")
+
 	glog.Infof("web ver: \"%s\" start", ver.Version)
 	defer glog.Flush()
 	if err = app.InitConfig(); err != nil {

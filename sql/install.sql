@@ -10,7 +10,7 @@ Target Server Type    : MYSQL
 Target Server Version : 50538
 File Encoding         : 65001
 
-Date: 2014-11-27 09:11:07
+Date: 2014-12-11 15:24:21
 */
 
 SET FOREIGN_KEY_CHECKS=0;
@@ -113,6 +113,22 @@ CREATE TABLE `customer` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- ----------------------------
+-- Table structure for file_link
+-- ----------------------------
+DROP TABLE IF EXISTS `file_link`;
+CREATE TABLE `file_link` (
+  `id` varchar(64) NOT NULL,
+  `sender_id` varchar(64) DEFAULT NULL,
+  `file_id` varchar(64) DEFAULT NULL,
+  `file_name` varchar(255) DEFAULT NULL,
+  `file_url` varchar(255) DEFAULT NULL,
+  `size` int(11) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ----------------------------
 -- Table structure for group_msg
 -- ----------------------------
 DROP TABLE IF EXISTS `group_msg`;
@@ -132,8 +148,8 @@ CREATE TABLE `group_msg` (
 -- ----------------------------
 -- Table structure for operation
 -- ----------------------------
-DROP TABLE IF EXISTS `opertion`;
-CREATE TABLE `opertion` (
+DROP TABLE IF EXISTS `operation`;
+CREATE TABLE `operation` (
   `id` varchar(64) NOT NULL COMMENT 'ID',
   `app_id` varchar(64) DEFAULT NULL COMMENT '应用ID',
   `content` varchar(45) DEFAULT NULL COMMENT '操作项显示内容',
