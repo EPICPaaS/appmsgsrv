@@ -604,16 +604,16 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 
 	names, _ := getNames(toUserName, sessionArgs)
 
-	isQunPush := strings.HasSuffix(toUserName, QUN_SUFFIX)
-
 	// 推送
 	for _, name := range names {
-		// 在群里自己发言时不用推送给当前设备
-		if isQunPush && name.Id == pushCnt.CallerId {
+		if name.Id == pushCnt.CallerId {
+			// 在群里自己发言时不用推送给当前设备
 			deviceID, ok := msg["deviceID"].(string)
 			if ok && strings.HasSuffix(name.SessionId, deviceID) {
 				continue
 			}
+			//发送给自己的其他设备
+			msg["fromUserName"] = pushCnt.CallerId + USER_SUFFIX
 		}
 
 		key := name.toKey()
