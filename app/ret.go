@@ -18,6 +18,7 @@ const (
 	InternalErr      = 65535
 	OverQuotaApicall = 65536
 	OverQuotaPush    = 65537
+	DeleteUser       = 65538
 )
 
 // 响应基础结构.

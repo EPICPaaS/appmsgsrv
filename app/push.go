@@ -297,10 +297,26 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 
 		if nil != err {
 			baseRes.Ret = InternalErr
-
 			return
 		}
 
+		/*校验该用户是否存在于该群*/
+		qunUserIds, err := getUserIdsInQun(toUserID)
+		if nil != err {
+			baseRes.Ret = InternalErr
+			return
+		}
+		isQunUser := false
+		for _, userId := range qunUserIds {
+			if userId == fromUserID {
+				isQunUser = true
+				break
+			}
+		}
+		if !isQunUser {
+			baseRes.Ret = DeleteUser
+			return
+		}
 		msg["content"] = fromUserName + "|" + m.Name + "|" + m.NickName + "&&" + msg["content"].(string)
 		msg["fromDisplayName"] = qun.Name
 		msg["fromUserName"] = toUserName
@@ -387,6 +403,7 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 	callback = &tmp
 	msg["clientMsgId"] = r.FormValue("msg[clientMsgId]")
 	msg["msgType"], err = strconv.Atoi(r.FormValue("msg[msgType]"))
+	msg["deviceID"] = r.FormValue("baseRequest[deviceID]")
 	if err != nil {
 		baseRes.Ret = ParamErr
 		baseRes.ErrMsg = "msgType not is int"
@@ -589,9 +606,12 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 
 	// 推送
 	for _, name := range names {
-		// 在群里自己发言时不用推送给自己
+		// 在群里自己发言时不用推送给当前设备
 		if isQunPush && name.Id == pushCnt.CallerId {
-			continue
+			deviceID, ok := msg["deviceID"].(string)
+			if ok && strings.HasSuffix(name.SessionId, deviceID) {
+				continue
+			}
 		}
 
 		key := name.toKey()
