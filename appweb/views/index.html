@@ -95,7 +95,8 @@
 	    data ={
 		    "baseRequest" : {
 		        "uid": "{{.User.Id}}",
-		        "deviceType": "web"
+		        "deviceType": "web",
+		        "deviceID": channel.deviceID
 		    },
 			"userName": "{{.User.Name}}",
 		    "password": "{{.User.Password}}"
@@ -114,13 +115,14 @@
 	}
 	//发送消息
 	var sendMsg = function () {
-		var toUserName = $("#toUserName").val()+"@user"
+                     var toUserName = $("#toUserName").val()+"@user"
 		var content = $("#message").val()
 		addContent(content)
-	    data ={
+	          data ={
 			"baseRequest": {
 				"uid": "{{.User.Id}}",
-				"token": token
+				"token": token,
+				 "deviceID": channel.deviceID
 			},
 			"sessions":"all",
 			"msg": {

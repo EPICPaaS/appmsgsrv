@@ -82,9 +82,10 @@ div{
 	float:left;
 	width:236px;
 	box-sizing: border-box;
-	border:0px;
+	border:none;
 	height:35px;
 	padding: 5px ;
+	outline: 0;
 	}
 .login-btn{
 	height:51px;

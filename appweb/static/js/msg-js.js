@@ -57,7 +57,8 @@
         var b_version = navigator.appVersion;
         var version = parseFloat(b_version);
         var rn = Math.round(Math.random() * 999); //三位随机数
-
+        this.deviceID = browser + "-" + version + "-" + rn;
+		
         if (tmp.indexOf('@') == -1) {
             tmp = tmp + "_" + browser + "-" + version + "-" + rn;
         } else {
