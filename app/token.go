@@ -1,11 +1,14 @@
 package app
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/EPICPaaS/appmsgsrv/ketama"
 	"github.com/EPICPaaS/go-uuid/uuid"
 	"github.com/garyburd/redigo/redis"
 	"github.com/golang/glog"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -196,4 +199,130 @@ func (s *redisStorage) getConn(key string) redis.Conn {
 	glog.V(10).Infof("key: \"%s\" hit redis node: \"%s\"", key, node)
 
 	return p.Get()
+}
+
+/*移除 token*/
+func (*device) DelToken(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		res["ret"] = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+	currentToken, _ := baseReq["token"].(string)
+	deltoken, ok := args["delToken"].(string)
+	if !ok {
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	//token校验
+	user := getUserByToken(currentToken)
+	if nil == user {
+		baseRes.Ret = AuthErr
+		return
+	}
+	/*删除推token*/
+	if delToken(deltoken) {
+		return
+	} else {
+		baseRes.Ret = InternalErr
+		baseRes.ErrMsg = "delete token fail "
+	}
+
+}
+
+/*移除 token*/
+func (*device) ValidateToken(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	baseRes := baseResponse{OK, ""}
+	body := ""
+	res := map[string]interface{}{"baseResponse": &baseRes}
+	defer RetPWriteJSON(w, r, res, &body, time.Now())
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		res["ret"] = ParamErr
+		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		return
+	}
+	body = string(bodyBytes)
+
+	var args map[string]interface{}
+
+	if err := json.Unmarshal(bodyBytes, &args); err != nil {
+		baseRes.ErrMsg = err.Error()
+		baseRes.Ret = ParamErr
+		return
+	}
+
+	baseReq := args["baseRequest"].(map[string]interface{})
+	token, _ := baseReq["token"].(string)
+
+	//token校验
+	user := getUserByToken(token)
+	if nil == user {
+		baseRes.Ret = NotFoundServer
+		return
+	}
+
+	return
+
+}
+
+/*删除token*/
+func delToken(token string) bool {
+
+	conn := rs.getConn("token")
+	if conn == nil {
+		glog.Info(RedisNoConnErr)
+		return false
+	}
+	defer conn.Close()
+
+	// 使用 Redis Hash 结构保存用户令牌值
+	if err := conn.Send("DEL", token); err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	if err := conn.Flush(); err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	_, err := conn.Receive()
+	if err != nil {
+		glog.Error(err)
+		return false
+	}
+
+	return true
 }
