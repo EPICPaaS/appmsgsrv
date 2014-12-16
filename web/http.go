@@ -77,6 +77,8 @@ func StartHTTP() {
 	appAppServeMux.HandleFunc("/app/client/device/setSessionState", app.SessionStat)
 	appAppServeMux.HandleFunc("/app/client/device/getApplicationList", app.Device.GetApplicationList)
 	appAppServeMux.HandleFunc("/app/client/device/getAppOperationList", app.Device.GetAppOperationList)
+	appAppServeMux.HandleFunc("/app/client/device/delToken", app.Device.DelToken)
+	appAppServeMux.HandleFunc("/app/client/device/validateToken", app.Device.ValidateToken)
 
 	appAppServeMux.HandleFunc("/app/client/app/syncOrg", app.App.SyncOrg)
 	appAppServeMux.HandleFunc("/app/client/app/syncUser", app.App.SyncUser)
