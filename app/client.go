@@ -8,7 +8,6 @@ import (
 
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/golang/glog"
 )
 
 const (
@@ -93,7 +92,7 @@ func (*device) loginLog(client *Client) {
 	}
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return
 	}
@@ -113,7 +112,7 @@ func (*device) loginLog(client *Client) {
 
 		err = row.Scan(&rec.Id, &rec.UserId, &rec.Type, &rec.DeviceId, &rec.LatestLoginTime, &rec.Created, &rec.Updated)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			return
 		}
@@ -132,7 +131,7 @@ func (*device) loginLog(client *Client) {
 func insertLoginLog(client *Client) {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return
 	}
 
@@ -140,17 +139,17 @@ func insertLoginLog(client *Client) {
 		" VALUES (?,?,?,?,?,?,?)",
 		client.Id, client.UserId, client.Type, client.DeviceId, client.LatestLoginTime, client.Created, client.Updated)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		return
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 	}
 }
 
@@ -158,7 +157,7 @@ func insertLoginLog(client *Client) {
 func updateLoginLog(client *Client) {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return
 	}
 
@@ -169,16 +168,16 @@ func updateLoginLog(client *Client) {
 	_, err = tx.Exec("UPDATE `client` SET  `latest_login_time` = ? , `updated` = ? WHERE  `id` = ?",
 		client.LatestLoginTime, client.Updated, client.Id)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		return
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 	}
 }
 
@@ -196,7 +195,7 @@ func getDeviceIds(userId string) []string {
 	}
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return ret
 	}
@@ -214,7 +213,7 @@ func getDeviceIds(userId string) []string {
 
 		err = row.Scan(&deviceId)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			return ret
 		}
@@ -240,7 +239,7 @@ func (*device) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -298,7 +297,7 @@ func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -365,7 +364,7 @@ func (*device) DelApnsToken(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -413,7 +412,7 @@ func getLatestVerion(deviceType string) (*ClientVersion, error) {
 	if err := row.Scan(&clientVer.Id, &clientVer.Type, &clientVer.VersionCode, &clientVer.VersionName,
 		&clientVer.VersionDescription, &clientVer.DownloadURL, &clientVer.FileName, &clientVer.Created,
 		&clientVer.Updated); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return nil, err
 	}
@@ -429,27 +428,27 @@ func insertApnsToken(apnsToken *ApnsToken) bool {
 		defer rows.Close()
 	}
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	if !rows.Next() { //不存在记录才添加
 		tx, err := db.MySQL.Begin()
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			return false
 		}
 
 		_, err = tx.Exec(InsertApnsToken, uuid.New(), apnsToken.UserId, apnsToken.DeviceId, apnsToken.ApnsToken, apnsToken.Created, apnsToken.Updated)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			if err := tx.Rollback(); err != nil {
-				glog.Error(err)
+				logger.Error(err)
 			}
 			return false
 		}
 
 		if err := tx.Commit(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			return false
 		}
 	}
@@ -460,10 +459,10 @@ func insertApnsToken(apnsToken *ApnsToken) bool {
 func getApnsToken(userId string) ([]ApnsToken, error) {
 
 	ret := []ApnsToken{}
-	glog.Infoln("userId", userId)
+	logger.Info("userId", userId)
 	rows, err := db.MySQL.Query(SelectApnsTokenByUserId, userId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -471,14 +470,14 @@ func getApnsToken(userId string) ([]ApnsToken, error) {
 	for rows.Next() {
 		apnsToken := ApnsToken{}
 		if err := rows.Scan(&apnsToken.Id, &apnsToken.UserId, &apnsToken.DeviceId, &apnsToken.ApnsToken, &apnsToken.Created, &apnsToken.Updated); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			return nil, err
 		}
 		ret = append(ret, apnsToken)
 	}
 
 	if err := rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, err
 	}
 	return ret, nil
@@ -489,21 +488,21 @@ func deleteApnsToken(apns_token string) bool {
 
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
 	_, err = tx.Exec(DeleteApnsToken, apns_token)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
@@ -515,21 +514,21 @@ func deleteApnsTokenByUid(apns_token, uid string) bool {
 
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
 	_, err = tx.Exec(DeleteApnsTokenByUid, apns_token, uid)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
@@ -541,21 +540,21 @@ func deleteApnsTokenByDeviceId(deviceId string) bool {
 
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
 	_, err = tx.Exec(DeleteApnsTokenByDeviceId, deviceId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 

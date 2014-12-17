@@ -13,7 +13,6 @@ import (
 	"time"
 	//"github.com/EPICPaaS/appmsgsrv/session"
 	"fmt"
-	"github.com/golang/glog"
 )
 
 /*成员结构体*/
@@ -94,7 +93,7 @@ func getUserByField(fieldName, fieldArg string) *member {
 		rec := member{}
 		err = row.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin, &rec.Password, &rec.Mobile, &rec.Area)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		rec.UserName = rec.Uid + USER_SUFFIX
@@ -123,7 +122,7 @@ func UserErWeiMa(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("view/erweima.html")
 
 	if nil != err {
-		glog.Error(err)
+		logger.Error(err)
 		http.Error(w, err.Error(), 500)
 
 		return
@@ -151,7 +150,7 @@ func (*device) GetMemberByUserName(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -208,7 +207,7 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -230,7 +229,7 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	userName := args["userName"].(string)
 	password := args["password"].(string)
 
-	glog.V(5).Infof("uid [%s], deviceId [%s], deviceType [%s], userName [%s], password [%s]",
+	logger.Tracef("uid [%s], deviceId [%s], deviceType [%s], userName [%s], password [%s]",
 		uid, deviceId, deviceType, userName, password)
 
 	// TODO: 登录验证逻辑
@@ -273,7 +272,7 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := genToken(member)
 	if nil != err {
-		glog.Error(err)
+		logger.Error(err)
 
 		baseRes.ErrMsg = err.Error()
 		baseRes.Ret = InternalErr
@@ -313,7 +312,7 @@ func (*appWeb) WebLogin(w http.ResponseWriter, r *http.Request) {
 	userName := r.FormValue("userName")
 	password := r.FormValue("password")
 
-	glog.V(5).Infof("uid [%s], deviceType [%s], userName [%s], password [%s]",
+	logger.Tracef("uid [%s], deviceType [%s], userName [%s], password [%s]",
 		uid, deviceType, userName, password)
 
 	// TODO: 登录验证逻辑
@@ -388,7 +387,7 @@ func getUserListByTenantId(id string) members {
 		rec := new(member)
 		err = row.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin, &rec.Mobile, &rec.Area)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		ret = append(ret, rec)
 	}
@@ -420,7 +419,7 @@ func getUserListByOrgId(id string) members {
 		rec := new(member)
 		err = row.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin, &rec.Mobile, &rec.Area, &rec.Sort)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		rec.UserName = rec.Uid + USER_SUFFIX
 		ret = append(ret, rec)
@@ -439,7 +438,7 @@ func (*device) GetOrgUserList(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -472,7 +471,7 @@ func (*app) GetOrgUserList(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -491,7 +490,7 @@ func (*app) GetOrgUserList(w http.ResponseWriter, r *http.Request) {
 	application, err := getApplicationByToken(token)
 	if nil != err {
 		baseRes.Ret = AuthErr
-		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		logger.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
 		return
 	}
 
@@ -516,7 +515,7 @@ func (*app) GetOrgList(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -535,7 +534,7 @@ func (*app) GetOrgList(w http.ResponseWriter, r *http.Request) {
 	application, err := getApplicationByToken(token)
 	if nil != err {
 		baseRes.Ret = AuthErr
-		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		logger.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
 		return
 	}
 
@@ -554,7 +553,7 @@ func getOrgListByUserId(userId string) []*org {
 	for rows.Next() {
 		resource := &org{}
 		if err := rows.Scan(&resource.ID, &resource.Name, &resource.ShortName, &resource.ParentId, &resource.Location, &resource.TenantId, &resource.Sort); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			return nil
 		}
@@ -578,7 +577,7 @@ func (*app) AddOrgUser(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -597,7 +596,7 @@ func (*app) AddOrgUser(w http.ResponseWriter, r *http.Request) {
 	application, err := getApplicationByToken(token)
 	if nil != err {
 		baseRes.Ret = AuthErr
-		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		logger.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
 		return
 	}
 
@@ -622,7 +621,7 @@ func (*app) RemoveOrgUser(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -641,7 +640,7 @@ func (*app) RemoveOrgUser(w http.ResponseWriter, r *http.Request) {
 	application, err := getApplicationByToken(token)
 	if nil != err {
 		baseRes.Ret = AuthErr
-		glog.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
+		logger.Errorf("Application[%v]  AuthErr  [%v]", application.Name, err)
 		return
 	}
 
@@ -655,24 +654,24 @@ func removeOrgUser(orgId, userId string) bool {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
 
 	_, err = tx.Exec("delete from org_user where org_id = ? and user_id = ?", orgId, userId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -708,21 +707,21 @@ func addUser(member *member) bool {
 
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	_, err = tx.Exec("insert into user(id,name,nickname,avatar,name_py,name_quanpin,status,password,tenant_id,email,mobile,area,created,updated)values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", member.Uid, member.Name, member.NickName, member.Avatar, member.PYInitial, member.PYQuanPin, member.Status, member.Password, member.TenantId, member.Email, member.Mobile, member.Area, time.Now(), time.Now())
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 	//提交操作
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -733,20 +732,20 @@ func addOrgUser(orgId, userId string) bool {
 
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
 	_, err = tx.Exec("insert into org_user(id,org_id,user_id) values(?,?,?)", uuid.New(), orgId, userId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -769,7 +768,7 @@ func (*app) SyncUser(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 
@@ -854,12 +853,12 @@ func (*app) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		baseRes["errMsg"] = err.Error()
 		baseRes["ret"] = InternalErr
-		glog.Error(err)
+		logger.Error(err)
 	}
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 
@@ -869,7 +868,7 @@ func (*app) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(bodyBytes, &args); err != nil {
 		baseRes["errMsg"] = err.Error()
 		baseRes["ret"] = ParamErr
-		glog.Error(err)
+		logger.Error(err)
 		return
 	}
 
@@ -880,7 +879,7 @@ func (*app) SyncOrg(w http.ResponseWriter, r *http.Request) {
 	if nil != err {
 		baseRes["ret"] = AuthErr
 		baseRes["errMsg"] = "authfailure"
-		glog.Error(err)
+		logger.Error(err)
 		return
 	}
 
@@ -923,19 +922,19 @@ func addOrg(org *org, tx *sql.Tx) bool {
 
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	_, err = tx.Exec("insert into org(id, name , short_name, parent_id, tenant_id, sort) values(?,?,?,?,?,?)", org.ID, org.Name, org.ShortName, org.ParentId, org.TenantId, org.Sort)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 	if err = tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -951,7 +950,7 @@ func updateOrg(org *org, tx *sql.Tx) {
 	}
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return
 	}
 
@@ -963,21 +962,21 @@ func updateOrg(org *org, tx *sql.Tx) {
 func resetLocation2(org *org, location string) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
 	_, err = tx.Exec("update org set location=? where id=?", location, org.ID)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 
 	if err = tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -1130,14 +1129,14 @@ func isStar(fromUid, toUId string) bool {
 	}
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
 
 	row, err := smt.Query(fromUid, toUId)
 	if nil != err {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -1194,7 +1193,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -1223,7 +1222,7 @@ func (*device) GetOrgInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	glog.V(1).Infof("Uid [%s], DeviceId [%s], userName [%s], password [%s]",
+	logger.Tracef("Uid [%s], DeviceId [%s], userName [%s], password [%s]",
 		uid, deviceId, userName, password)
 
 	smt, err := db.MySQL.Prepare("select id, name,  parent_id, sort from org where tenant_id=?")
@@ -1367,7 +1366,7 @@ func (*device) SearchUser(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -1442,7 +1441,7 @@ func getStarUser(userId string) members {
 		rec := member{}
 		err = row.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin, &rec.Mobile, &rec.Area)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		rec.UserName = rec.Uid + USER_SUFFIX
@@ -1479,7 +1478,7 @@ func searchUser(tenantId, nickName string, offset, limit int) (members, int) {
 		rec := member{}
 		err = row.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin, &rec.Mobile, &rec.Area)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		rec.UserName = rec.Uid + USER_SUFFIX
@@ -1509,7 +1508,7 @@ func searchUser(tenantId, nickName string, offset, limit int) (members, int) {
 	for row.Next() {
 		err = row.Scan(&cnt)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 	}
 	return ret, cnt
@@ -1530,7 +1529,7 @@ func (*app) SyncTenant(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -1580,7 +1579,7 @@ func (*app) SyncTenant(w http.ResponseWriter, r *http.Request) {
 func saveTennat(tenant *Tenant) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
@@ -1593,15 +1592,15 @@ func saveTennat(tenant *Tenant) bool {
 	}
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 
 	if err = tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
@@ -1615,7 +1614,7 @@ func isExistTennat(id string) bool {
 		defer rows.Close()
 	}
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return rows.Next()
@@ -1629,13 +1628,13 @@ func getTenantById(id string) *Tenant {
 		defer rows.Close()
 	}
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil
 	}
 	for rows.Next() {
 		tenant := &Tenant{}
 		if err := rows.Scan(&tenant.Id, &tenant.Code, &tenant.Name, &tenant.Status, &tenant.CustomerId, &tenant.Created, &tenant.Updated); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			return nil
 		}
 
@@ -1659,7 +1658,7 @@ func (*app) UserAuth(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)

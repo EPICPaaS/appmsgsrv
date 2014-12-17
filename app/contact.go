@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -44,7 +43,7 @@ func (*device) AddOrRemoveContact(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 
 		return
 	}
@@ -90,7 +89,7 @@ func (*device) AddOrRemoveContact(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		glog.V(3).Infof("Created a contact [from=%s, to=%s]", fromUserId, toUserId)
+		logger.Tracef("Created a contact [from=%s, to=%s]", fromUserId, toUserId)
 	} else { // 删除联系人
 		if !deleteContact(fromUserId, toUserId) {
 			baseRes.Ret = InternalErr
@@ -98,7 +97,7 @@ func (*device) AddOrRemoveContact(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		glog.V(3).Infof("Deleted a contact [from=%s, to=%s]", fromUserId, toUserId)
+		logger.Tracef("Deleted a contact [from=%s, to=%s]", fromUserId, toUserId)
 	}
 }
 
@@ -107,7 +106,7 @@ func createContact(userUser *UserUser) bool {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -115,17 +114,17 @@ func createContact(userUser *UserUser) bool {
 	_, err = tx.Exec(InsertUserUserSQL, userUser.Id, userUser.FromUserId, userUser.ToUserId, userUser.RemarkName,
 		userUser.Sort, userUser.Created, userUser.Updated)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -138,24 +137,24 @@ func deleteContact(fromUserId, toUserId string) bool {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
 
 	_, err = tx.Exec(DeleteUserUserSQL, fromUserId, toUserId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}

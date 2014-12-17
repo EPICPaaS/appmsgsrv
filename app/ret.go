@@ -3,7 +3,6 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
 	"net/http"
 	"time"
 )
@@ -31,7 +30,7 @@ type baseResponse struct {
 func RetWrite(w http.ResponseWriter, r *http.Request, res map[string]interface{}, callback string, start time.Time) {
 	data, err := json.Marshal(res)
 	if err != nil {
-		glog.Errorf("json.Marshal(\"%v\") error(%v)", res, err)
+		logger.Errorf("json.Marshal(\"%v\") error(%v)", res, err)
 		return
 	}
 	dataStr := ""
@@ -43,29 +42,29 @@ func RetWrite(w http.ResponseWriter, r *http.Request, res map[string]interface{}
 		dataStr = fmt.Sprintf("%s(%s)", callback, string(data))
 	}
 	if n, err := w.Write([]byte(dataStr)); err != nil {
-		glog.Errorf("w.Write(\"%s\") error(%v)", dataStr, err)
+		logger.Errorf("w.Write(\"%s\") error(%v)", dataStr, err)
 	} else {
-		glog.V(4).Infof("w.Write(\"%s\") write %d bytes", dataStr, n)
+		logger.Tracef("w.Write(\"%s\") write %d bytes", dataStr, n)
 	}
 
-	glog.V(4).Infof("req: \"%s\", res:\"%s\", ip:\"%s\", time:\"%fs\"", r.URL.String(), dataStr, r.RemoteAddr, time.Now().Sub(start).Seconds())
+	logger.Tracef("req: \"%s\", res:\"%s\", ip:\"%s\", time:\"%fs\"", r.URL.String(), dataStr, r.RemoteAddr, time.Now().Sub(start).Seconds())
 }
 
 // retPWrite marshal the result and write to client(post).
 func RetPWrite(w http.ResponseWriter, r *http.Request, res map[string]interface{}, body *string, start time.Time) {
 	data, err := json.Marshal(res)
 	if err != nil {
-		glog.Errorf("json.Marshal(\"%v\") error(%v)", res, err)
+		logger.Errorf("json.Marshal(\"%v\") error(%v)", res, err)
 		return
 	}
 	dataStr := string(data)
 	if n, err := w.Write([]byte(dataStr)); err != nil {
-		glog.Errorf("w.Write(\"%s\") error(%v)", dataStr, err)
+		logger.Errorf("w.Write(\"%s\") error(%v)", dataStr, err)
 	} else {
-		glog.V(4).Infof("w.Write(\"%s\") write %d bytes", dataStr, n)
+		logger.Tracef("w.Write(\"%s\") write %d bytes", dataStr, n)
 	}
 
-	glog.V(4).Infof("req: \"%s\", post: \"%s\", res:\"%s\", ip:\"%s\", time:\"%fs\"", r.URL.String(), *body, dataStr, r.RemoteAddr, time.Now().Sub(start).Seconds())
+	logger.Tracef("req: \"%s\", post: \"%s\", res:\"%s\", ip:\"%s\", time:\"%fs\"", r.URL.String(), *body, dataStr, r.RemoteAddr, time.Now().Sub(start).Seconds())
 }
 
 // 带 Content-Type=application/json 头 写 JSON 数据，为了保持原有 gopush-cluster 的兼容性，所以新加了这个函数.

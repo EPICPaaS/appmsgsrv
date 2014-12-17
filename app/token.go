@@ -6,7 +6,6 @@ import (
 	"github.com/EPICPaaS/appmsgsrv/ketama"
 	"github.com/EPICPaaS/go-uuid/uuid"
 	"github.com/garyburd/redigo/redis"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -25,7 +24,7 @@ var rs *redisStorage
 
 // initRedisStorage initialize the redis pool and consistency hash ring.
 func InitRedisStorage() {
-	glog.Info("Connecting Redis....")
+	logger.Info("Connecting Redis....")
 
 	var (
 		err error
@@ -40,13 +39,13 @@ func InitRedisStorage() {
 		nw = strings.Split(n, ":")
 		if len(nw) != 2 {
 			err = errors.New("node config error, it's nodeN:W")
-			glog.Errorf("strings.Split(\"%s\", :) failed (%v)", n, err)
+			logger.Errorf("strings.Split(\"%s\", :) failed (%v)", n, err)
 			panic(err)
 		}
 
 		w, err = strconv.Atoi(nw[1])
 		if err != nil {
-			glog.Errorf("strconv.Atoi(\"%s\") failed (%v)", nw[1], err)
+			logger.Errorf("strconv.Atoi(\"%s\") failed (%v)", nw[1], err)
 			panic(err)
 		}
 
@@ -59,7 +58,7 @@ func InitRedisStorage() {
 			Dial: func() (redis.Conn, error) {
 				conn, err := redis.Dial("tcp", tmp)
 				if err != nil {
-					glog.Errorf("redis.Dial(\"tcp\", \"%s\") error(%v)", tmp, err)
+					logger.Errorf("redis.Dial(\"tcp\", \"%s\") error(%v)", tmp, err)
 					return nil, err
 				}
 
@@ -73,7 +72,7 @@ func InitRedisStorage() {
 	ring.Bake()
 	rs = &redisStorage{pool: redisPool, ring: ring}
 
-	glog.Info("Redis connected")
+	logger.Info("Redis connected")
 }
 
 // 根据令牌返回用户. 如果该令牌可用，刷新其过期时间.
@@ -87,16 +86,16 @@ func getUserByToken(token string) *member {
 	defer conn.Close()
 
 	if err := conn.Send("EXISTS", token); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 	}
 
 	if err := conn.Flush(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 	}
 
 	reply, err := conn.Receive()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return nil
 	}
@@ -122,16 +121,16 @@ func getUserByToken(token string) *member {
 
 	// 刷新令牌
 	if err := conn.Send("EXPIRE", token, confExpire); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 	}
 
 	if err := conn.Flush(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 	}
 
 	_, err = conn.Receive()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 	}
 
 	return ret
@@ -153,30 +152,30 @@ func genToken(user *member) (string, error) {
 
 	// 使用 Redis Hash 结构保存用户令牌值
 	if err := conn.Send("HSET", token, "expire", expire); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return "", err
 	}
 
 	// 设置令牌过期时间
 	if err := conn.Send("EXPIRE", token, confExpire); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return "", err
 	}
 
 	if err := conn.Flush(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return "", err
 	}
 
 	_, err := conn.Receive()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return "", err
 	}
 
 	_, err = conn.Receive()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return "", err
 	}
 
@@ -192,11 +191,11 @@ func (s *redisStorage) getConn(key string) redis.Conn {
 	node := s.ring.Hash(key)
 	p, ok := s.pool[node]
 	if !ok {
-		glog.Warningf("key: \"%s\" hit redis node: \"%s\" not in pool", key, node)
+		logger.Warnf("key: \"%s\" hit redis node: \"%s\" not in pool", key, node)
 		return nil
 	}
 
-	glog.V(10).Infof("key: \"%s\" hit redis node: \"%s\"", key, node)
+	logger.Tracef("key: \"%s\" hit redis node: \"%s\"", key, node)
 
 	return p.Get()
 }
@@ -217,7 +216,7 @@ func (*device) DelToken(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -270,7 +269,7 @@ func (*device) ValidateToken(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -304,25 +303,25 @@ func delToken(token string) bool {
 
 	conn := rs.getConn("token")
 	if conn == nil {
-		glog.Info(RedisNoConnErr)
+		logger.Info(RedisNoConnErr)
 		return false
 	}
 	defer conn.Close()
 
 	// 使用 Redis Hash 结构保存用户令牌值
 	if err := conn.Send("DEL", token); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
 	if err := conn.Flush(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
 	_, err := conn.Receive()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 

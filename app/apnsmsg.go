@@ -5,7 +5,6 @@ import (
 
 	"github.com/EPICPaaS/appmsgsrv/db"
 	//"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/golang/glog"
 )
 
 const (
@@ -46,7 +45,7 @@ func GetApnsMsgById(id string) (*ApnsMsg, error) {
 
 	apnsmsg := ApnsMsg{}
 	if err := row.Scan(&apnsmsg.Id, &apnsmsg.Type, &apnsmsg.ApnsToken, &apnsmsg.Cnt, &apnsmsg.TenantId, &apnsmsg.Pushed, &apnsmsg.Created, &apnsmsg.Updated); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return nil, err
 	}
@@ -63,7 +62,7 @@ func GetApnsMsgByTenantId(tenantId string) ([]*ApnsMsg, error) {
 	for rows.Next() {
 		apnsmsg := ApnsMsg{}
 		if err := rows.Scan(&apnsmsg.Id, &apnsmsg.Type, &apnsmsg.ApnsToken, &apnsmsg.Cnt, &apnsmsg.TenantId, &apnsmsg.Pushed, &apnsmsg.Created, &apnsmsg.Updated); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			return nil, err
 		}
@@ -82,7 +81,7 @@ func GetApnsMsgByApnsToken(apnsToken string) ([]*ApnsMsg, error) {
 	for rows.Next() {
 		apnsmsg := ApnsMsg{}
 		if err := rows.Scan(&apnsmsg.Id, &apnsmsg.Type, &apnsmsg.ApnsToken, &apnsmsg.Cnt, &apnsmsg.TenantId, &apnsmsg.Pushed, &apnsmsg.Created, &apnsmsg.Updated); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			return nil, err
 		}
@@ -97,23 +96,23 @@ func AddApnsMsg(apnsMsg *ApnsMsg) (*ApnsMsg, bool) {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, false
 	}
 
 	// 创建资源记录
 	_, err = tx.Exec(InsertResourceSQL, apnsMsg.Id, apnsMsg.Type, apnsMsg.ApnsToken, apnsMsg.Cnt, apnsMsg.TenantId, apnsMsg.Pushed, apnsMsg.Created, apnsMsg.Updated)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return nil, false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, false
 	}
 	return apnsMsg, true
@@ -124,23 +123,23 @@ func UpdateApnsMsgById(apnsMsg *ApnsMsg) (*ApnsMsg, bool) {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, false
 	}
 
 	// 创建资源记录
 	_, err = tx.Exec(UpdateApnsMsgByIdSQL, apnsMsg.Type, apnsMsg.ApnsToken, apnsMsg.Cnt, apnsMsg.TenantId, apnsMsg.Pushed, apnsMsg.Created, apnsMsg.Updated, apnsMsg.Id)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return nil, false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, false
 	}
 	return apnsMsg, true
@@ -150,24 +149,24 @@ func DeleteApnsMsgById(id string) bool {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
 
 	_, err = tx.Exec(DelApnsMsgByIdSQL, id)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -179,24 +178,24 @@ func DeleteApnsMsgByTenantId(tenantId string) bool {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
 
 	_, err = tx.Exec(DelApnsMsgByTenantIdSQL, tenantId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}

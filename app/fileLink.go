@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -33,7 +32,7 @@ type FileLink struct {
 func SaveFileLinK(fileLink *FileLink) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	//更新
@@ -43,9 +42,9 @@ func SaveFileLinK(fileLink *FileLink) bool {
 		_, err = tx.Exec(INSERT_FILELINK, uuid.New(), fileLink.SenderId, fileLink.FileId, fileLink.FileName, fileLink.FileUrl, fileLink.Size, time.Now().Local(), time.Now().Local())
 	}
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
@@ -61,14 +60,14 @@ func SaveFileLinK(fileLink *FileLink) bool {
 func ExistFileLink(fileLink *FileLink) bool {
 	rows, err := db.MySQL.Query(EXIST_FILELINK, fileLink.SenderId, fileLink.FileId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
 	defer rows.Close()
 
 	if err = rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return rows.Next()
@@ -79,23 +78,23 @@ func DeleteFile(fileId string) bool {
 	var url = "http://115.29.107.77:5083/delete?fid=" + fileId
 	resp, err := http.Get(url)
 	if err != nil {
-		glog.Errorf("delete file fail  [ERROR]-%s", err.Error())
+		logger.Errorf("delete file fail  [ERROR]-%s", err.Error())
 		return false
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return false
 	}
 	var respBody []map[string]interface{}
 	if err := json.Unmarshal(body, &respBody); err != nil {
-		glog.Errorf("convert to json failed (%s)", err.Error())
+		logger.Errorf("convert to json failed (%s)", err.Error())
 		return false
 	}
 	e, ok := respBody[0]["error"].(string)
 	if ok {
-		glog.Errorf("delete file fail [ERROR]- %s", e)
+		logger.Errorf("delete file fail [ERROR]- %s", e)
 		return false
 	}
 	return true
@@ -109,13 +108,13 @@ func ScanExpireFileLink() {
 
 	rows, err := db.MySQL.Query(SELECT_EXPIRE_FILELINK, expire)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return
 	}
 
 	defer rows.Close()
 	if err := rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return
 	}
 
@@ -123,7 +122,7 @@ func ScanExpireFileLink() {
 	for rows.Next() {
 		var id, fileId string
 		if err := rows.Scan(&id, &fileId); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			continue
 		}
 
@@ -137,21 +136,21 @@ func ScanExpireFileLink() {
 	if len(delIds) > 0 {
 		tx, err := db.MySQL.Begin()
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			return
 		}
 		delSql := "delete  from file_link where  id   in ('" + strings.Join(delIds, "','") + "')"
 		_, err = tx.Exec(delSql)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			if err := tx.Rollback(); err != nil {
-				glog.Error(err)
+				logger.Error(err)
 			}
 			return
 		}
 		//提交操作
 		if err := tx.Commit(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			return
 		}
 	}

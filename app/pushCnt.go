@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/golang/glog"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -53,7 +52,7 @@ func StatisticsPush(pushCnt *PushCnt) {
 		//获取租户信息
 		tenant := getTenantById(pushCnt.TenantId)
 		if tenant == nil {
-			glog.Error("not found tenant")
+			logger.Error("not found tenant")
 			return
 		}
 		pushCnt.CustomerId = tenant.CustomerId
@@ -71,13 +70,13 @@ func StatisticsPush(pushCnt *PushCnt) {
 func isExistPushCnt(pushCnt *PushCnt) bool {
 	rows, err := db.MySQL.Query(SELECT_PUSHCNT, pushCnt.CustomerId, pushCnt.TenantId, pushCnt.CallerId, pushCnt.Type, pushCnt.PushType, pushCnt.Sharding)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	defer rows.Close()
 
 	if err = rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
@@ -88,21 +87,21 @@ func isExistPushCnt(pushCnt *PushCnt) bool {
 func addPushCount(pushCnt *PushCnt) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
 	_, err = tx.Exec(ADD_PUSH_COUNT, pushCnt.Count, pushCnt.CustomerId, pushCnt.TenantId, pushCnt.CallerId, pushCnt.Type, pushCnt.PushType, pushCnt.Sharding)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 	//提交操作
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -112,20 +111,20 @@ func addPushCount(pushCnt *PushCnt) bool {
 func insertPushCnt(pushCnt *PushCnt) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	_, err = tx.Exec(INSERT_PUSHCNT, uuid.New(), pushCnt.CustomerId, pushCnt.TenantId, pushCnt.CallerId, pushCnt.Type, pushCnt.PushType, pushCnt.Count, pushCnt.Sharding, time.Now().Local(), time.Now().Local())
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -147,17 +146,17 @@ func getPushCount(customerId, tenantId string) int {
 	}
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return count
 	}
 	if err = rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return count
 	}
 	//取出count
 	for rows.Next() {
 		if err = rows.Scan(&count); err != nil {
-			//glog.Error(err)
+			//logger.Error(err)
 			return count
 		}
 		return count
@@ -177,7 +176,7 @@ func ValidPush(pushCnt *PushCnt) bool {
 	if ok {
 		validTime, err := time.ParseInLocation("2006/01/02 15:04:05", quota.Value, time.Local)
 		if err != nil || validTime.Before(time.Now().Local()) {
-			glog.Error(err)
+			logger.Error(err)
 			return false
 		}
 		//校验api调用计数
@@ -190,7 +189,7 @@ func ValidPush(pushCnt *PushCnt) bool {
 		if ok {
 			quotaCount, err := strconv.Atoi(quota.Value)
 			if err != nil {
-				glog.Error(err)
+				logger.Error(err)
 				return false
 			}
 			if quotaCount == -1 { //-1 表示不限限制次数

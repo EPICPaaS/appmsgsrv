@@ -3,7 +3,6 @@ package app
 import (
 	"encoding/json"
 	"github.com/EPICPaaS/appmsgsrv/session"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -36,7 +35,7 @@ func SessionStat(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -109,7 +108,7 @@ func (*app) GetSession(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)

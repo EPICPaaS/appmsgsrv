@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -70,7 +69,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		RetPWriteJSON(w, r, res, &resBody, time.Now())
 		return false
 	}
@@ -81,7 +80,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 
 	var args map[string]interface{}
 	if err := json.Unmarshal(body, &args); err != nil {
-		glog.Errorf(" json.Unmarshal failed (%s)", err)
+		logger.Errorf(" json.Unmarshal failed (%s)", err)
 		baseRes.Ret = ParamErr
 		RetPWriteJSON(w, r, res, &resBody, time.Now())
 		return false
@@ -112,7 +111,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 		}
 
 		if nil == user {
-			glog.V(5).Infof("api_call error: [Logon failure]")
+			logger.Trace("api_call error: [Logon failure]")
 			baseRes.ErrMsg = "Auth failure"
 			RetPWriteJSON(w, r, res, &resBody, time.Now())
 			return false
@@ -123,7 +122,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 	} else { //应用校验
 		application, err := getApplicationByToken(token)
 		if nil != err || nil == application {
-			glog.V(5).Infof("api_call error: [Logon failure]")
+			logger.Trace("api_call error: [Logon failure]")
 			baseRes.ErrMsg = "Auth failure"
 			RetPWriteJSON(w, r, res, &resBody, time.Now())
 			return false
@@ -136,7 +135,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 	//获取租户信息
 	tenant := getTenantById(tenantId)
 	if tenant == nil {
-		glog.Errorf("not found tenantId : %s", tenantId)
+		logger.Errorf("not found tenantId : %s", tenantId)
 		baseRes.Ret = OverQuotaApicall
 		baseRes.ErrMsg = "not found tenant"
 		RetPWriteJSON(w, r, res, &resBody, time.Now())
@@ -175,11 +174,11 @@ func apiCallExist(apiCall *ApiCall) bool {
 		defer rows.Close()
 	}
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	if err = rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return rows.Next()
@@ -189,21 +188,21 @@ func apiCallExist(apiCall *ApiCall) bool {
 func addApiCount(apiCall *ApiCall) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
 	_, err = tx.Exec(APICALL_ADD, time.Now().Local(), apiCall.CustomerId, apiCall.TenantId, apiCall.CallerId, apiCall.Type, apiCall.ApiName, apiCall.Sharding)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 	//提交操作
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -214,20 +213,20 @@ func insertApiCall(apiCall *ApiCall) bool {
 
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	_, err = tx.Exec(INSERT_APICALL, uuid.New(), apiCall.CustomerId, apiCall.TenantId, apiCall.CallerId, apiCall.Type, apiCall.ApiName, apiCall.Count, apiCall.Sharding, time.Now().Local(), time.Now().Local())
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -251,17 +250,17 @@ func getApiCallCount(customerId, tenantId, apiName string) int {
 	}
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return count
 	}
 	if err = rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return count
 	}
 	//取出count
 	for rows.Next() {
 		if err = rows.Scan(&count); err != nil {
-			//glog.Error(err)
+			//logger.Error(err)
 			return count
 		}
 		return count
@@ -284,7 +283,7 @@ func (*app) SyncQuota(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -339,11 +338,11 @@ func isExistQuota(quota *Quota) bool {
 	}
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	if err = rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return rows.Next()
@@ -353,20 +352,20 @@ func isExistQuota(quota *Quota) bool {
 func updateQuota(quota *Quota) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	_, err = tx.Exec(UPDATE_QUOTA, quota.Value, time.Now().Local(), quota.CustomerId, quota.TenantId, quota.ApiName, quota.Type)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 
 	if err = tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
@@ -377,20 +376,20 @@ func updateQuota(quota *Quota) bool {
 func insertQuota(quota *Quota) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	_, err = tx.Exec(INSERT_QUOTA, uuid.New(), quota.CustomerId, quota.TenantId, quota.ApiName, quota.Type, quota.Value, time.Now().Local(), time.Now().Local())
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 
 	if err = tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
@@ -406,20 +405,20 @@ func GetQuotas(customerId, tenantId, apiName string) ([]Quota, error) {
 		defer rows.Close()
 	}
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, err
 	}
 
 	for rows.Next() {
 		quota := Quota{}
 		if err := rows.Scan(&quota.Id, &quota.CustomerId, &quota.TenantId, &quota.ApiName, &quota.Type, &quota.Value, &quota.Created, &quota.Created); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			return nil, err
 		}
 		quotas = append(quotas, quota)
 	}
 	if err = rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, err
 	}
 	return quotas, err
@@ -429,7 +428,7 @@ func GetQuotas(customerId, tenantId, apiName string) ([]Quota, error) {
 func InitQuotaAll() {
 	rows, err := db.MySQL.Query(SELECT_QUOTA_ALL)
 	if err != nil {
-		glog.Errorf("load quota err [%s]", err)
+		logger.Errorf("load quota err [%s]", err)
 	}
 	if rows != nil {
 		defer rows.Close()
@@ -440,7 +439,7 @@ func InitQuotaAll() {
 	for rows.Next() {
 		quota := Quota{}
 		if err := rows.Scan(&quota.Id, &quota.CustomerId, &quota.TenantId, &quota.ApiName, &quota.Type, &quota.Value, &quota.Created, &quota.Created); err != nil {
-			glog.Errorf("load quota err [%s]", err)
+			logger.Errorf("load quota err [%s]", err)
 			break
 		}
 		key.WriteString(quota.CustomerId)
@@ -452,7 +451,7 @@ func InitQuotaAll() {
 	}
 
 	if err = rows.Err(); err != nil {
-		glog.Errorf("load quota err [%s]", err)
+		logger.Errorf("load quota err [%s]", err)
 	}
 
 }
@@ -477,7 +476,7 @@ func ValidApiCall(apiCall *ApiCall) bool {
 	if ok {
 		validTime, err := time.ParseInLocation("2006/01/02 15:04:05", quota.Value, time.Local)
 		if err != nil || validTime.Before(time.Now().Local()) {
-			glog.Error(err)
+			logger.Error(err)
 			return false
 		}
 		//校验api调用计数
@@ -490,7 +489,7 @@ func ValidApiCall(apiCall *ApiCall) bool {
 		if ok {
 			quotaCount, err := strconv.Atoi(quota.Value)
 			if err != nil {
-				glog.Error(err)
+				logger.Error(err)
 				return false
 			}
 			if quotaCount == -1 { //-1 表示不限限制次数

@@ -4,7 +4,6 @@ import (
 	//"database/sql"
 	"encoding/json"
 	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -61,7 +60,7 @@ func getApplication(appId string) (*application, error) {
 
 	if err := row.Scan(&application.Id, &application.Name, &application.Token, &application.Type, &application.Status,
 		&application.Sort, &application.Level, &application.Avatar, &application.TenantId, &application.Created, &application.Updated, &application.PYInitial, &application.PYQuanPin); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return nil, err
 	}
@@ -79,7 +78,7 @@ func getAllApplication() ([]*member, error) {
 		rec := member{}
 
 		if err := rows.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Sort, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			return nil, err
 		}
@@ -103,7 +102,7 @@ func getAppOpertionListByAppId(appId string) ([]*operation, error) {
 		rec := operation{}
 
 		if err := rows.Scan(&rec.Id, &rec.AppId, &rec.Content, &rec.Action, &rec.OperationType, &rec.Sort); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			return nil, err
 		}
 		crows, _ := db.MySQL.Query(SelectAppOpertionByParentId, &rec.Id)
@@ -115,7 +114,7 @@ func getAppOpertionListByAppId(appId string) ([]*operation, error) {
 			crec := operation{}
 
 			if err := crows.Scan(&crec.Id, &crec.AppId, &crec.Content, &crec.Action, &crec.OperationType, &crec.Sort); err != nil {
-				glog.Error(err)
+				logger.Error(err)
 				return nil, err
 			}
 			opertionList = append(opertionList, &crec)
@@ -136,7 +135,7 @@ func getApplicationByToken(token string) (*application, error) {
 
 	if err := row.Scan(&application.Id, &application.Name, &application.Token, &application.Type, &application.Status,
 		&application.Sort, &application.Level, &application.Avatar, &application.TenantId, &application.Created, &application.Updated, &application.PYInitial, &application.PYQuanPin); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return nil, err
 	}
@@ -162,7 +161,7 @@ func (*device) GetApplicationList(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -214,7 +213,7 @@ func (*device) GetAppOperationList(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)

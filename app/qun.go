@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -72,7 +71,7 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 
 		return
 	}
@@ -130,9 +129,9 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 	qunUsers = append(qunUsers, creator)
 
 	if createQun(&qun, qunUsers) {
-		glog.Infof("Created Qun [id=%s]", qid)
+		logger.Infof("Created Qun [id=%s]", qid)
 	} else {
-		glog.Error("Create Qun faild")
+		logger.Error("Create Qun faild")
 		baseRes.ErrMsg = "Create Qun faild"
 		baseRes.Ret = InternalErr
 	}
@@ -190,7 +189,7 @@ func (*device) GetUsersInQun(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -256,7 +255,7 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 
 		return
 	}
@@ -334,7 +333,7 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		glog.Error("update Qun Topic  faild")
+		logger.Error("update Qun Topic  faild")
 		baseRes.ErrMsg = "update Qun Topic  faild"
 		baseRes.Ret = InternalErr
 	}
@@ -356,7 +355,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 
 		return
 	}
@@ -412,7 +411,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			baseRes.ErrMsg = err.Error()
 			baseRes.Ret = InternalErr
-			glog.Error("get Qun Member faild")
+			logger.Error("get Qun Member faild")
 			return
 		}
 		res["memberList"] = members
@@ -480,7 +479,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		glog.Error("add Qun Member   faild")
+		logger.Error("add Qun Member   faild")
 		baseRes.ErrMsg = "add Qun Member faild"
 		baseRes.Ret = InternalErr
 	}
@@ -502,7 +501,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 
 		return
 	}
@@ -548,7 +547,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 	} else { // 删除操作需检验是否是创建者
 		creatorId := qun.CreatorId
 		if creatorId != user.Uid {
-			glog.Error("delete Qun Member   faild,only qun creater can delete")
+			logger.Error("delete Qun Member   faild,only qun creater can delete")
 			baseRes.ErrMsg = "delete Qun Member faild,only qun creater can delete"
 			baseRes.Ret = InternalErr
 			return
@@ -569,7 +568,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			baseRes.ErrMsg = err.Error()
 			baseRes.Ret = InternalErr
-			glog.Error("get Qun Member faild")
+			logger.Error("get Qun Member faild")
 			return
 		}
 		res["memberList"] = members
@@ -639,7 +638,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
-		glog.Error("delete Qun Member   faild")
+		logger.Error("delete Qun Member   faild")
 		baseRes.ErrMsg = "delete Qun Member faild"
 		baseRes.Ret = InternalErr
 	}
@@ -650,22 +649,22 @@ func updateQunTopicById(qunId string, topic string) bool {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
 	_, err = tx.Exec(UpdateQunTopicByIdSQL, topic, qunId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		return false
 	}
 	if err = tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -677,7 +676,7 @@ func createQun(qun *Qun, qunUsers []QunUser) bool {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -686,10 +685,10 @@ func createQun(qun *Qun, qunUsers []QunUser) bool {
 	_, err = tx.Exec(InsertQunSQL, qun.Id, qun.CreatorId, qun.Name, qun.Description, qun.MaxMember, qun.Avatar,
 		qun.TenantId, qun.Created, qun.Updated)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		return false
@@ -700,10 +699,10 @@ func createQun(qun *Qun, qunUsers []QunUser) bool {
 		_, err = tx.Exec(InsertQunUserSQL, qunUser.Id, qunUser.QunId, qunUser.UserId, qunUser.Sort, qunUser.Role, qunUser.Created, qunUser.Updated, qunUser.QunId, qunUser.UserId)
 
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			if err := tx.Rollback(); err != nil {
-				glog.Error(err)
+				logger.Error(err)
 			}
 
 			return false
@@ -711,7 +710,7 @@ func createQun(qun *Qun, qunUsers []QunUser) bool {
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -724,7 +723,7 @@ func addQunmember(qunUsers []QunUser) bool {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -732,17 +731,17 @@ func addQunmember(qunUsers []QunUser) bool {
 	for _, qunUser := range qunUsers {
 		_, err = tx.Exec(InsertQunUserSQL, qunUser.Id, qunUser.QunId, qunUser.UserId, qunUser.Sort, qunUser.Role, qunUser.Created, qunUser.Updated, qunUser.QunId, qunUser.UserId)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			if err := tx.Rollback(); err != nil {
-				glog.Error(err)
+				logger.Error(err)
 			}
 
 			return false
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -756,7 +755,7 @@ func DelQunMember(qunUsers []QunUser) bool {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -764,17 +763,17 @@ func DelQunMember(qunUsers []QunUser) bool {
 	for _, qunUser := range qunUsers {
 		_, err = tx.Exec(DelQunMemberByQunidAndUserid, qunUser.QunId, qunUser.UserId)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			if err := tx.Rollback(); err != nil {
-				glog.Error(err)
+				logger.Error(err)
 			}
 
 			return false
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
@@ -785,10 +784,10 @@ func DelQunMember(qunUsers []QunUser) bool {
 // 在数据库中查询群内用户.
 func getUsersInQun(qunId string) ([]member, error) {
 	ret := []member{}
-	glog.Infoln("qunId", qunId)
+	logger.Infof("qunId:%s \n", qunId)
 	rows, err := db.MySQL.Query(SelectQunUserSQL, qunId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return nil, err
 	}
@@ -798,7 +797,7 @@ func getUsersInQun(qunId string) ([]member, error) {
 		rec := member{}
 
 		if err := rows.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin, &rec.Mobile, &rec.Area); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			return nil, err
 		}
@@ -809,7 +808,7 @@ func getUsersInQun(qunId string) ([]member, error) {
 	}
 
 	if err := rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return nil, err
 	}
@@ -823,7 +822,7 @@ func getUserIdsInQun(qunId string) ([]string, error) {
 
 	rows, err := db.MySQL.Query(SelectQunUserIdSQL, qunId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return nil, err
 	}
@@ -833,7 +832,7 @@ func getUserIdsInQun(qunId string) ([]string, error) {
 		var uid string
 
 		if err := rows.Scan(&uid); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			return nil, err
 		}
@@ -842,7 +841,7 @@ func getUserIdsInQun(qunId string) ([]string, error) {
 	}
 
 	if err := rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return nil, err
 	}
@@ -856,7 +855,7 @@ func getQunById(qunId string) (*Qun, error) {
 
 	qun := Qun{}
 	if err := row.Scan(&qun.Id, &qun.CreatorId, &qun.Name, &qun.Description, &qun.MaxMember, &qun.Avatar, &qun.TenantId, &qun.Created, &qun.Updated); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return nil, err
 	}

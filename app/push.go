@@ -6,7 +6,6 @@ import (
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
 	"github.com/EPICPaaS/appmsgsrv/session"
 	apns "github.com/anachronistic/apns"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -42,7 +41,7 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -178,18 +177,18 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		msgBytes, err := json.Marshal(msg)
 		if err != nil {
 			baseRes.Ret = ParamErr
-			glog.Error(err)
+			logger.Error(err)
 
 			return
 		}
 
 		//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
 		s, _ := session.GetSessionsByUserId(name.Id)
-		glog.Infof("start apns push , session[%v], UserId[%v]", len(*s), name.Id)
+		logger.Infof("start apns push , session[%v], UserId[%v]", len(*s), name.Id)
 		if len(*s) == 0 {
 			resources, _ := GetResourceByTenantId(application.TenantId)
 			apnsToken, _ := getApnsToken(name.Id)
-			glog.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", name.Id, msg, resources, apnsToken)
+			logger.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", name.Id, msg, resources, apnsToken)
 			go pushAPNS(msg, resources, apnsToken)
 		}
 
@@ -197,7 +196,7 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		if OK != result {
 			baseRes.Ret = result
 
-			glog.Errorf("Push message failed [%v]", msg)
+			logger.Errorf("Push message failed [%v]", msg)
 
 			// 推送分发过程中失败不立即返回，继续下一个推送
 		}
@@ -240,7 +239,7 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		baseRes.Ret = ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -332,11 +331,11 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	}
 	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
 	s, _ := session.GetSessionsByUserId(toUserID)
-	glog.Infof("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
+	logger.Infof("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
 	if len(*s) == 0 {
 		resources, _ := GetResourceByTenantId(user.TenantId)
 		apnsToken, _ := getApnsToken(toUserID)
-		glog.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
+		logger.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
 		go pushAPNS(msg, resources, apnsToken)
 	}
 
@@ -458,11 +457,11 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 
 	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
 	s, _ := session.GetSessionsByUserId(toUserID)
-	glog.Infof("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
+	logger.Infof("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
 	if len(*s) == 0 {
 		resources, _ := GetResourceByTenantId(user.TenantId)
 		apnsToken, _ := getApnsToken(toUserID)
-		glog.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
+		logger.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
 		go pushAPNS(msg, resources, apnsToken)
 	}
 
@@ -506,7 +505,7 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 	}
 
 	if certFile == "" || keyFile == "" {
-		glog.Errorf("Push message failed. CertFile [%v] or KeyFile[%v] has a error ", certFile, keyFile)
+		logger.Errorf("Push message failed. CertFile [%v] or KeyFile[%v] has a error ", certFile, keyFile)
 		return
 	}
 
@@ -540,20 +539,20 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 		resp := client.Send(pn)
 		alert, _ := pn.PayloadString()
 		if !resp.Success {
-			glog.Errorf("Push message failed. ApnsToken[%v],Content[%v],Error[%v],Host[%v],CertFile [%v], KeyFile[%v]", t.ApnsToken, alert, resp.Error, host, certFile, keyFile)
+			logger.Errorf("Push message failed. ApnsToken[%v],Content[%v],Error[%v],Host[%v],CertFile [%v], KeyFile[%v]", t.ApnsToken, alert, resp.Error, host, certFile, keyFile)
 			// 推送分发过程中失败不立即返回，继续下一个推送
 
 			//只删除失效类型
 			if resp.Error.Error() == apns.ApplePushResponses[8] || resp.Error.Error() == apns.ApplePushResponses[5] {
 				if deleteApnsToken(t.ApnsToken) {
-					glog.V(3).Info("delete INVALID_TOKEN  succeed")
+					logger.Trace("delete INVALID_TOKEN  succeed")
 				} else {
-					glog.V(3).Info("delete  INVALID_TOKEN failure")
+					logger.Trace("delete  INVALID_TOKEN failure")
 				}
 			}
 
 		} else {
-			glog.Infof("Push message successed. ApnsToken[%v],Content[%v],Host[%v]", t.ApnsToken, alert, host)
+			logger.Infof("Push message successed. ApnsToken[%v],Content[%v],Host[%v]", t.ApnsToken, alert, host)
 		}
 		// TODO: APNs 回调处理
 
@@ -654,14 +653,14 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 
 		msgBytes, err := json.Marshal(msg)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			return ParamErr
 		}
 
 		result := push(key, msgBytes, expire)
 		if OK != result {
-			glog.Errorf("Push message failed [%v]", msg)
+			logger.Errorf("Push message failed [%v]", msg)
 
 			// 推送分发过程中失败不立即返回，继续下一个推送
 		}
@@ -679,14 +678,14 @@ func push(key string, msgBytes []byte, expire int) int {
 	node := myrpc.GetComet(key)
 
 	if node == nil || node.CometRPC == nil {
-		glog.Errorf("Get comet node failed [key=%s]", key)
+		logger.Errorf("Get comet node failed [key=%s]", key)
 
 		return NotFoundServer
 	}
 
 	client := node.CometRPC.Get()
 	if client == nil {
-		glog.Errorf("Get comet node RPC client failed [key=%s]", key)
+		logger.Errorf("Get comet node RPC client failed [key=%s]", key)
 
 		return NotFoundServer
 	}
@@ -695,12 +694,12 @@ func push(key string, msgBytes []byte, expire int) int {
 
 	ret := OK
 	if err := client.Call(myrpc.CometServicePushPrivate, pushArgs, &ret); err != nil {
-		glog.Errorf("client.Call(\"%s\", \"%v\", &ret) error(%v)", myrpc.CometServicePushPrivate, string(msgBytes), err)
+		logger.Errorf("client.Call(\"%s\", \"%v\", &ret) error(%v)", myrpc.CometServicePushPrivate, string(msgBytes), err)
 
 		return InternalErr
 	}
 
-	glog.V(3).Infof("Pushed a message to [key=%s]", key)
+	logger.Tracef("Pushed a message to [key=%s]", key)
 
 	return ret
 }
@@ -788,7 +787,7 @@ func getNames(toUserName string, sessionArgs []string) (names []*Name, pushType 
 
 		return names, USER_SUFFIX
 	} else if strings.HasSuffix(toUserName, APP_SUFFIX) { // 应用推
-		glog.Warningf("应用推需要走单独的接口")
+		logger.Warn("应用推需要走单独的接口")
 		return names, APP_SUFFIX
 	} else {
 		return names, "@UNDEFINDED"
