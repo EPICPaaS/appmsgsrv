@@ -271,7 +271,7 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	fromUserID := fromUserName[:strings.Index(fromUserName, "@")]
 	toUserName := msg["toUserName"].(string)
 	toUserID := toUserName[:strings.Index(toUserName, "@")]
-	/*deviceID*/
+	/*deviceID 用于屏蔽当前设备和过滤当前客户端离线消息*/
 	msg["deviceID"] = baseReq["deviceID"].(string)
 	sessionArgs := []string{}
 	_, exists := args["sessions"]
