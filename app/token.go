@@ -283,11 +283,13 @@ func (*device) ValidateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	baseReq := args["baseRequest"].(map[string]interface{})
-	token, _ := baseReq["token"].(string)
-
+	validToken, ok := args["validToken"].(string)
+	if !ok {
+		baseRes.Ret = ParamErr
+		return
+	}
 	//token校验
-	user := getUserByToken(token)
+	user := getUserByToken(validToken)
 	if nil == user {
 		baseRes.Ret = NotFoundServer
 		return
