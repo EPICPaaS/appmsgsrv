@@ -19,7 +19,6 @@ package main
 import (
 	"code.google.com/p/go.net/websocket"
 	"github.com/EPICPaaS/appmsgsrv/session"
-	"github.com/golang/glog"
 	"net"
 	"net/http"
 	"strconv"
@@ -34,17 +33,17 @@ type KeepAliveListener struct {
 func (l *KeepAliveListener) Accept() (c net.Conn, err error) {
 	c, err = l.Listener.Accept()
 	if err != nil {
-		glog.Errorf("Listener.Accept() error(%v)", err)
+		logger.Errorf("Listener.Accept() error(%v)", err)
 		return
 	}
 	// set keepalive
 	if tc, ok := c.(*net.TCPConn); !ok {
-		glog.Error("net.TCPConn assection type failed")
+		logger.Error("net.TCPConn assection type failed")
 		panic("Assection type failed c.(net.TCPConn)")
 	} else {
 		err = tc.SetKeepAlive(true)
 		if err != nil {
-			glog.Errorf("tc.SetKeepAlive(true) error(%v)", err)
+			logger.Errorf("tc.SetKeepAlive(true) error(%v)", err)
 			return
 		}
 	}
@@ -54,7 +53,7 @@ func (l *KeepAliveListener) Accept() (c net.Conn, err error) {
 // StartHttp start http listen.
 func StartHttp() {
 	for _, bind := range Conf.WebsocketBind {
-		glog.V(5).Infof("start websocket listen addr:\"%s\"", bind)
+		logger.Tracef("start websocket listen addr:\"%s\"", bind)
 		go websocketListen(bind)
 	}
 }
@@ -66,16 +65,16 @@ func websocketListen(bind string) {
 		server := &http.Server{Handler: httpServeMux}
 		l, err := net.Listen("tcp", bind)
 		if err != nil {
-			glog.Errorf("net.Listen(\"tcp\", \"%s\") error(%v)", bind, err)
+			logger.Errorf("net.Listen(\"tcp\", \"%s\") error(%v)", bind, err)
 			panic(err)
 		}
 		if err := server.Serve(&KeepAliveListener{Listener: l}); err != nil {
-			glog.Errorf("server.Serve(\"%s\") error(%v)", bind, err)
+			logger.Errorf("server.Serve(\"%s\") error(%v)", bind, err)
 			panic(err)
 		}
 	} else {
 		if err := http.ListenAndServe(bind, httpServeMux); err != nil {
-			glog.Errorf("http.ListenAdServe(\"%s\") error(%v)", bind, err)
+			logger.Errorf("http.ListenAdServe(\"%s\") error(%v)", bind, err)
 			panic(err)
 		}
 	}
@@ -91,7 +90,7 @@ func SubscribeHandle(ws *websocket.Conn) {
 
 	if key == "" {
 		ws.Write(ParamReply)
-		glog.Warningf("<%s> key param error", addr)
+		logger.Warnf("<%s> key param error", addr)
 		return
 	}
 
@@ -100,36 +99,36 @@ func SubscribeHandle(ws *websocket.Conn) {
 	i, err := strconv.Atoi(heartbeatStr)
 	if err != nil {
 		ws.Write(ParamReply)
-		glog.Errorf("<%s> user_key:\"%s\" heartbeat argument error(%s)", addr, key, err)
+		logger.Errorf("<%s> user_key:\"%s\" heartbeat argument error(%s)", addr, key, err)
 		return
 	}
 	if i < minHearbeatSec {
 		ws.Write(ParamReply)
-		glog.Warningf("<%s> user_key:\"%s\" heartbeat argument error, less than %d", addr, key, minHearbeatSec)
+		logger.Warnf("<%s> user_key:\"%s\" heartbeat argument error, less than %d", addr, key, minHearbeatSec)
 		return
 	}
 
 	heartbeat := i + delayHeartbeatSec
 	token := params.Get("token")
 	version := params.Get("ver")
-	glog.V(5).Infof("<%s> subscribe to key = %s, heartbeat = %d, token = %s, version = %s", addr, key, heartbeat, token, version)
+	logger.Tracef("<%s> subscribe to key = %s, heartbeat = %d, token = %s, version = %s", addr, key, heartbeat, token, version)
 	// fetch subscriber from the channel
 	c, err := UserChannel.Get(key, true)
 	if err != nil {
 		ws.Write(ChannelReply)
-		glog.Errorf("<%s> user_key:\"%s\" can't get a channel error(%s)", addr, key, err)
+		logger.Errorf("<%s> user_key:\"%s\" can't get a channel error(%s)", addr, key, err)
 		return
 	}
 	// auth token
 	if ok := c.AuthToken(key, token); !ok {
 		ws.Write(AuthReply)
-		glog.Errorf("<%s> user_key:\"%s\" auth token \"%s\" failed", addr, key, token)
+		logger.Errorf("<%s> user_key:\"%s\" auth token \"%s\" failed", addr, key, token)
 		return
 	}
 	// add a conn to the channel
 	connElem, err := c.AddConn(key, &Connection{Conn: ws, Proto: WebsocketProto, Version: version})
 	if err != nil {
-		glog.Errorf("<%s> user_key:\"%s\" add conn error(%s)", addr, key, err)
+		logger.Errorf("<%s> user_key:\"%s\" add conn error(%s)", addr, key, err)
 		return
 	}
 
@@ -171,23 +170,23 @@ func SubscribeHandle(ws *websocket.Conn) {
 		// more then 1 sec, reset the timer
 		if end-begin >= Second {
 			if err = ws.SetReadDeadline(time.Now().Add(time.Second * time.Duration(heartbeat))); err != nil {
-				glog.Errorf("<%s> user_key:\"%s\" websocket.SetReadDeadline() error(%s)", addr, key, err)
+				logger.Errorf("<%s> user_key:\"%s\" websocket.SetReadDeadline() error(%s)", addr, key, err)
 				break
 			}
 			begin = end
 		}
 		if err = websocket.Message.Receive(ws, &reply); err != nil {
-			glog.Errorf("<%s> user_key:\"%s\" websocket.Message.Receive() error(%s)", addr, key, err)
+			logger.Errorf("<%s> user_key:\"%s\" websocket.Message.Receive() error(%s)", addr, key, err)
 			break
 		}
 		if reply == Heartbeat {
 			if _, err = ws.Write(HeartbeatReply); err != nil {
-				glog.Errorf("<%s> user_key:\"%s\" write heartbeat to client error(%s)", addr, key, err)
+				logger.Errorf("<%s> user_key:\"%s\" write heartbeat to client error(%s)", addr, key, err)
 				break
 			}
-			glog.V(1).Infof("<%s> user_key:\"%s\" receive heartbeat", addr, key)
+			logger.Tracef("<%s> user_key:\"%s\" receive heartbeat", addr, key)
 		} else {
-			glog.Warningf("<%s> user_key:\"%s\" unknown heartbeat protocol", addr, key)
+			logger.Warnf("<%s> user_key:\"%s\" unknown heartbeat protocol", addr, key)
 			break
 		}
 		end = time.Now().UnixNano()
@@ -197,7 +196,7 @@ func SubscribeHandle(ws *websocket.Conn) {
 	tickerFlagStop <- true
 	// remove exists conn
 	if err := c.RemoveConn(key, connElem); err != nil {
-		glog.Errorf("<%s> user_key:\"%s\" remove conn error(%s)", addr, key, err)
+		logger.Errorf("<%s> user_key:\"%s\" remove conn error(%s)", addr, key, err)
 	}
 
 	//移除会话session

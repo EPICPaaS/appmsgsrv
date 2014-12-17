@@ -20,7 +20,6 @@ import (
 	"errors"
 	"github.com/EPICPaaS/appmsgsrv/hash"
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
-	"github.com/golang/glog"
 	"net"
 	"net/rpc"
 )
@@ -34,7 +33,7 @@ func StartRPC() {
 	c := &CometRPC{}
 	rpc.Register(c)
 	for _, bind := range Conf.RPCBind {
-		glog.V(5).Infof("start listen rpc addr: \"%s\"", bind)
+		logger.Tracef("start listen rpc addr: \"%s\"", bind)
 		go rpcListen(bind)
 	}
 }
@@ -42,14 +41,14 @@ func StartRPC() {
 func rpcListen(bind string) {
 	l, err := net.Listen("tcp", bind)
 	if err != nil {
-		glog.Errorf("net.Listen(\"tcp\", \"%s\") error(%v)", bind, err)
+		logger.Errorf("net.Listen(\"tcp\", \"%s\") error(%v)", bind, err)
 		panic(err)
 	}
 	// if process exit, then close the rpc bind
 	defer func() {
-		glog.V(5).Infof("rpc addr: \"%s\" close", bind)
+		logger.Tracef("rpc addr: \"%s\" close", bind)
 		if err := l.Close(); err != nil {
-			glog.Errorf("listener.Close() error(%v)", err)
+			logger.Errorf("listener.Close() error(%v)", err)
 		}
 	}()
 	rpc.Accept(l)
@@ -67,11 +66,11 @@ func (c *CometRPC) New(args *myrpc.CometNewArgs, ret *int) error {
 	// create a new channel for the user
 	ch, err := UserChannel.New(args.Key)
 	if err != nil {
-		glog.Errorf("UserChannel.New(\"%s\") error(%v)", args.Key, err)
+		logger.Errorf("UserChannel.New(\"%s\") error(%v)", args.Key, err)
 		return err
 	}
 	if err = ch.AddToken(args.Key, args.Token); err != nil {
-		glog.Errorf("ch.AddToken(\"%s\", \"%s\") error(%v)", args.Key, args.Token)
+		logger.Errorf("ch.AddToken(\"%s\", \"%s\") error(%v)", args.Key, args.Token)
 		return err
 	}
 	return nil
@@ -85,12 +84,12 @@ func (c *CometRPC) Close(key string, ret *int) error {
 	// close the channle for the user
 	ch, err := UserChannel.Delete(key)
 	if err != nil {
-		glog.Errorf("UserChannel.Delete(\"%s\") error(%v)", key, err)
+		logger.Errorf("UserChannel.Delete(\"%s\") error(%v)", key, err)
 		return err
 	}
 	// ignore channel close error, only log a warnning
 	if err := ch.Close(); err != nil {
-		glog.Errorf("ch.Close() error(%v)", err)
+		logger.Errorf("ch.Close() error(%v)", err)
 		return err
 	}
 	return nil
@@ -104,13 +103,13 @@ func (c *CometRPC) PushPrivate(args *myrpc.CometPushPrivateArgs, ret *int) error
 	// get a user channel
 	ch, err := UserChannel.New(args.Key)
 	if err != nil {
-		glog.Errorf("UserChannel.New(\"%s\") error(%v)", args.Key, err)
+		logger.Errorf("UserChannel.New(\"%s\") error(%v)", args.Key, err)
 		return err
 	}
 	// use the channel push message
 	m := &myrpc.Message{Msg: args.Msg}
 	if err = ch.PushMsg(args.Key, m, args.Expire); err != nil {
-		glog.Errorf("ch.PushMsg(\"%s\", \"%v\") error(%v)", args.Key, m, err)
+		logger.Errorf("ch.PushMsg(\"%s\", \"%v\") error(%v)", args.Key, m, err)
 		return err
 	}
 	return nil
@@ -129,7 +128,7 @@ func (c *CometRPC) Migrate(args *myrpc.CometMigrateArgs, ret *int) error {
 		}
 	}
 	if !has {
-		glog.Error("make sure your migrate nodes right, there is no %s in nodes, this will cause all the node hit miss", Conf.ZookeeperCometNode)
+		logger.Error("make sure your migrate nodes right, there is no %s in nodes, this will cause all the node hit miss", Conf.ZookeeperCometNode)
 		return ErrMigrate
 	}
 	// init ketama
@@ -144,29 +143,29 @@ func (c *CometRPC) Migrate(args *myrpc.CometMigrateArgs, ret *int) error {
 			if hn != Conf.ZookeeperCometNode {
 				channels = append(channels, v)
 				keys = append(keys, k)
-				glog.V(1).Infof("migrate key:\"%s\" hit node:\"%s\"", k, hn)
+				logger.Tracef("migrate key:\"%s\" hit node:\"%s\"", k, hn)
 			}
 		}
 		for _, k := range keys {
 			delete(c.Data, k)
-			glog.V(5).Infof("migrate delete channel key \"%s\"", k)
+			logger.Tracef("migrate delete channel key \"%s\"", k)
 		}
 		c.Unlock()
-		glog.V(5).Infof("migrate channel bucket:%d finished", i)
+		logger.Tracef("migrate channel bucket:%d finished", i)
 	}
 	// close all the migrate channels
-	glog.V(5).Info("close all the migrate channels")
+	logger.Trace("close all the migrate channels")
 	for _, channel := range channels {
 		if err := channel.Close(); err != nil {
-			glog.Errorf("channel.Close() error(%v)", err)
+			logger.Errorf("channel.Close() error(%v)", err)
 			continue
 		}
 	}
-	glog.V(5).Info("close all the migrate channels finished")
+	logger.Trace("close all the migrate channels finished")
 	return nil
 }
 
 func (c *CometRPC) Ping(args int, ret *int) error {
-	glog.V(2).Info("ping ok")
+	logger.Trace("ping ok")
 	return nil
 }

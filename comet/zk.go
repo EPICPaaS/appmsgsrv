@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"github.com/EPICPaaS/appmsgsrv/rpc"
 	myzk "github.com/EPICPaaS/appmsgsrv/zk"
-	"github.com/golang/glog"
 	"github.com/samuel/go-zookeeper/zk"
 	"path"
 	"strings"
@@ -33,12 +32,12 @@ import (
 func InitZK() (*zk.Conn, error) {
 	conn, err := myzk.Connect(Conf.ZookeeperAddr, Conf.ZookeeperTimeout)
 	if err != nil {
-		glog.Errorf("zk.Connect() error(%v)", err)
+		logger.Errorf("zk.Connect() error(%v)", err)
 		return nil, err
 	}
 	fpath := path.Join(Conf.ZookeeperCometPath, Conf.ZookeeperCometNode)
 	if err = myzk.Create(conn, fpath); err != nil {
-		glog.Errorf("zk.Create() error(%v)", err)
+		logger.Errorf("zk.Create() error(%v)", err)
 		return conn, err
 	}
 	// tcp, websocket and rpc bind address store in the zk
@@ -53,9 +52,9 @@ func InitZK() (*zk.Conn, error) {
 		data += fmt.Sprintf("rpc://%s,", addr)
 	}
 	data = strings.TrimRight(data, ",")
-	glog.V(1).Infof("zk data: \"%s\"", data)
+	logger.Tracef("zk data: \"%s\"", data)
 	if err = myzk.RegisterTemp(conn, fpath, data); err != nil {
-		glog.Errorf("zk.RegisterTemp() error(%v)", err)
+		logger.Errorf("zk.RegisterTemp() error(%v)", err)
 		return conn, err
 	}
 	rpc.InitMessage(conn, Conf.ZookeeperMessagePath, Conf.RPCRetry, Conf.RPCPing)

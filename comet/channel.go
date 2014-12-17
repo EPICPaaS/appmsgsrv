@@ -25,7 +25,6 @@ import (
 	"github.com/EPICPaaS/appmsgsrv/hash"
 	"github.com/EPICPaaS/appmsgsrv/hlist"
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
-	"github.com/golang/glog"
 )
 
 var (
@@ -68,11 +67,11 @@ func (c *Connection) HandleWrite(key string) {
 			n   int
 			err error
 		)
-		glog.V(5).Infof("user_key: \"%s\" HandleWrite goroutine start", key)
+		logger.Tracef("user_key: \"%s\" HandleWrite goroutine start", key)
 		for {
 			msg, ok := <-c.Buf
 			if !ok {
-				glog.V(5).Infof("user_key: \"%s\" HandleWrite goroutine stop", key)
+				logger.Tracef("user_key: \"%s\" HandleWrite goroutine stop", key)
 				return
 			}
 			if c.Proto == WebsocketProto {
@@ -83,15 +82,15 @@ func (c *Connection) HandleWrite(key string) {
 				msg = []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(msg), string(msg)))
 				n, err = c.Conn.Write(msg)
 			} else {
-				glog.Errorf("unknown connection protocol: %d", c.Proto)
+				logger.Errorf("unknown connection protocol: %d", c.Proto)
 				panic(ErrConnProto)
 			}
 			// update stat
 			if err != nil {
-				glog.Errorf("user_key: \"%s\" conn.Write() error(%v)", key, err)
+				logger.Errorf("user_key: \"%s\" conn.Write() error(%v)", key, err)
 				MsgStat.IncrFailed(1)
 			} else {
-				glog.V(5).Infof("user_key: \"%s\" write \r\n========%s(%d)========", key, string(msg), n)
+				logger.Tracef("user_key: \"%s\" write \r\n========%s(%d)========", key, string(msg), n)
 				MsgStat.IncrSucceed(1)
 			}
 		}
@@ -104,7 +103,7 @@ func (c *Connection) Write(key string, msg []byte) {
 	case c.Buf <- msg:
 	default:
 		c.Conn.Close()
-		glog.Warningf("user_key: \"%s\" discard message: \"%s\" and close connection", key, string(msg))
+		logger.Warnf("user_key: \"%s\" discard message: \"%s\" and close connection", key, string(msg))
 	}
 }
 
@@ -133,7 +132,7 @@ func (c *ChannelBucket) Unlock() {
 func NewChannelList() *ChannelList {
 	l := &ChannelList{Channels: []*ChannelBucket{}}
 	// split hashmap to many bucket
-	glog.V(5).Infof("create %d ChannelBucket", Conf.ChannelBucket)
+	logger.Tracef("create %d ChannelBucket", Conf.ChannelBucket)
 	for i := 0; i < Conf.ChannelBucket; i++ {
 		c := &ChannelBucket{
 			Data:  map[string]Channel{},
@@ -158,7 +157,7 @@ func (l *ChannelList) bucket(key string) *ChannelBucket {
 	h := hash.NewMurmur3C()
 	h.Write([]byte(key))
 	idx := uint(h.Sum32()) & uint(Conf.ChannelBucket-1)
-	glog.V(5).Infof("user_key:\"%s\" hit channel bucket index:%d", key, idx)
+	logger.Tracef("user_key:\"%s\" hit channel bucket index:%d", key, idx)
 	return l.Channels[idx]
 }
 
@@ -170,14 +169,14 @@ func (l *ChannelList) New(key string) (Channel, error) {
 	if c, ok := b.Data[key]; ok {
 		b.Unlock()
 		ChStat.IncrAccess()
-		glog.V(5).Infof("user_key:\"%s\" refresh channel bucket expire time", key)
+		logger.Tracef("user_key:\"%s\" refresh channel bucket expire time", key)
 		return c, nil
 	} else {
 		c = NewSeqChannel()
 		b.Data[key] = c
 		b.Unlock()
 		ChStat.IncrCreate()
-		glog.V(5).Infof("user_key:\"%s\" create a new channel", key)
+		logger.Tracef("user_key:\"%s\" create a new channel", key)
 		return c, nil
 	}
 }
@@ -193,17 +192,17 @@ func (l *ChannelList) Get(key string, newOne bool) (Channel, error) {
 			b.Data[key] = c
 			b.Unlock()
 			ChStat.IncrCreate()
-			glog.V(5).Infof("user_key:\"%s\" create a new channel", key)
+			logger.Tracef("user_key:\"%s\" create a new channel", key)
 			return c, nil
 		} else {
 			b.Unlock()
-			glog.Warningf("user_key:\"%s\" channle not exists", key)
+			logger.Warnf("user_key:\"%s\" channle not exists", key)
 			return nil, ErrChannelNotExist
 		}
 	} else {
 		b.Unlock()
 		ChStat.IncrAccess()
-		glog.V(5).Infof("user_key:\"%s\" refresh channel bucket expire time", key)
+		logger.Tracef("user_key:\"%s\" refresh channel bucket expire time", key)
 		return c, nil
 	}
 }
@@ -215,20 +214,20 @@ func (l *ChannelList) Delete(key string) (Channel, error) {
 	b.Lock()
 	if c, ok := b.Data[key]; !ok {
 		b.Unlock()
-		glog.Warningf("user_key:\"%s\" delete channle not exists", key)
+		logger.Warnf("user_key:\"%s\" delete channle not exists", key)
 		return nil, ErrChannelNotExist
 	} else {
 		delete(b.Data, key)
 		b.Unlock()
 		ChStat.IncrDelete()
-		glog.V(5).Infof("user_key:\"%s\" delete channel", key)
+		logger.Tracef("user_key:\"%s\" delete channel", key)
 		return c, nil
 	}
 }
 
 // Close close all channel.
 func (l *ChannelList) Close() {
-	glog.V(5).Info("channel close")
+	logger.Trace("channel close")
 	chs := make([]Channel, 0, l.Count())
 	for _, c := range l.Channels {
 		c.Lock()
@@ -240,7 +239,7 @@ func (l *ChannelList) Close() {
 	// close all channels
 	for _, c := range chs {
 		if err := c.Close(); err != nil {
-			glog.Errorf("c.Close() error(%v)", err)
+			logger.Errorf("c.Close() error(%v)", err)
 		}
 	}
 }

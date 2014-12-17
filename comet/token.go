@@ -19,7 +19,6 @@ package main
 import (
 	"container/list"
 	"errors"
-	"github.com/golang/glog"
 	"time"
 )
 
@@ -59,7 +58,7 @@ func (t *Token) Add(ticket string) error {
 		e = t.lru.PushBack(&TokenData{Ticket: ticket, Expire: time.Now().Add(Conf.TokenExpire)})
 		t.token[ticket] = e
 	} else {
-		glog.Warningf("token \"%s\" exist", ticket)
+		logger.Warnf("token \"%s\" exist", ticket)
 		return ErrTokenExist
 	}
 	t.clean()
@@ -69,13 +68,13 @@ func (t *Token) Add(ticket string) error {
 // Auth auth a token is valid
 func (t *Token) Auth(ticket string) error {
 	if e, ok := t.token[ticket]; !ok {
-		glog.Warningf("token \"%s\" not exist", ticket)
+		logger.Warnf("token \"%s\" not exist", ticket)
 		return ErrTokenNotExist
 	} else {
 		td, _ := e.Value.(*TokenData)
 		if time.Now().After(td.Expire) {
 			t.clean()
-			glog.Warningf("token \"%s\" expired", ticket)
+			logger.Warnf("token \"%s\" expired", ticket)
 			return ErrTokenExpired
 		}
 		td.Expire = time.Now().Add(Conf.TokenExpire)
@@ -95,7 +94,7 @@ func (t *Token) clean() {
 		}
 		td, _ := e.Value.(*TokenData)
 		if now.After(td.Expire) {
-			glog.Warningf("token \"%s\" expired", td.Ticket)
+			logger.Warnf("token \"%s\" expired", td.Ticket)
 			o := e.Next()
 			delete(t.token, td.Ticket)
 			t.lru.Remove(e)

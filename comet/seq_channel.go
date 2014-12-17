@@ -23,7 +23,6 @@ import (
 	"github.com/EPICPaaS/appmsgsrv/hlist"
 	"github.com/EPICPaaS/appmsgsrv/id"
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
-	"github.com/golang/glog"
 )
 
 var (
@@ -68,7 +67,7 @@ func (c *SeqChannel) AddToken(key, token string) error {
 	c.mutex.Lock()
 	if err := c.token.Add(token); err != nil {
 		c.mutex.Unlock()
-		glog.Errorf("user_key:\"%s\" c.token.Add(\"%s\") error(%v)", key, token, err)
+		logger.Errorf("user_key:\"%s\" c.token.Add(\"%s\") error(%v)", key, token, err)
 		return err
 	}
 	c.mutex.Unlock()
@@ -83,7 +82,7 @@ func (c *SeqChannel) AuthToken(key, token string) bool {
 	c.mutex.Lock()
 	if err := c.token.Auth(token); err != nil {
 		c.mutex.Unlock()
-		glog.Errorf("user_key:\"%s\" c.token.Auth(\"%s\") error(%v)", key, token, err)
+		logger.Errorf("user_key:\"%s\" c.token.Auth(\"%s\") error(%v)", key, token, err)
 		return false
 	}
 	c.mutex.Unlock()
@@ -110,7 +109,7 @@ func (c *SeqChannel) PushMsg(key string, m *myrpc.Message, expire uint) error {
 		ret := 0
 		if err = client.Call(myrpc.MessageServiceSavePrivate, args, &ret); err != nil {
 			c.mutex.Unlock()
-			glog.Errorf("%s(\"%s\", \"%v\", &ret) error(%v)", myrpc.MessageServiceSavePrivate, key, args, err)
+			logger.Errorf("%s(\"%s\", \"%v\", &ret) error(%v)", myrpc.MessageServiceSavePrivate, key, args, err)
 			return err
 		}
 	}
@@ -148,13 +147,13 @@ func (c *SeqChannel) AddConn(key string, conn *Connection) (*hlist.Element, erro
 	c.mutex.Lock()
 	if c.conn.Len()+1 > Conf.MaxSubscriberPerChannel {
 		c.mutex.Unlock()
-		glog.Errorf("user_key:\"%s\" exceed conn", key)
+		logger.Errorf("user_key:\"%s\" exceed conn", key)
 		return nil, ErrMaxConn
 	}
 	// send first heartbeat to tell client service is ready for accept heartbeat
 	if _, err := conn.Conn.Write(HeartbeatReply); err != nil {
 		c.mutex.Unlock()
-		glog.Errorf("user_key:\"%s\" write first heartbeat to client error(%v)", key, err)
+		logger.Errorf("user_key:\"%s\" write first heartbeat to client error(%v)", key, err)
 		return nil, err
 	}
 	// add conn
@@ -163,7 +162,7 @@ func (c *SeqChannel) AddConn(key string, conn *Connection) (*hlist.Element, erro
 	e := c.conn.PushFront(conn)
 	c.mutex.Unlock()
 	ConnStat.IncrAdd()
-	glog.V(5).Infof("user_key:\"%s\" add conn = %d", key, c.conn.Len())
+	logger.Tracef("user_key:\"%s\" add conn = %d", key, c.conn.Len())
 	return e, nil
 }
 
@@ -178,7 +177,7 @@ func (c *SeqChannel) RemoveConn(key string, e *hlist.Element) error {
 	}
 	close(conn.Buf)
 	ConnStat.IncrRemove()
-	glog.V(5).Infof("user_key:\"%s\" remove conn = %d", key, c.conn.Len())
+	logger.Tracef("user_key:\"%s\" remove conn = %d", key, c.conn.Len())
 	return nil
 }
 
@@ -192,7 +191,7 @@ func (c *SeqChannel) Close() error {
 		} else {
 			if err := conn.Conn.Close(); err != nil {
 				// ignore close error
-				glog.Warningf("conn.Close() error(%v)", err)
+				logger.Warnf("conn.Close() error(%v)", err)
 			}
 		}
 	}

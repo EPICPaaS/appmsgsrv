@@ -22,24 +22,30 @@ import (
 	"github.com/EPICPaaS/appmsgsrv/perf"
 	"github.com/EPICPaaS/appmsgsrv/process"
 	"github.com/EPICPaaS/appmsgsrv/ver"
-	"github.com/golang/glog"
+	"github.com/b3log/wide/log"
+	"os"
 	"runtime"
 	"time"
 )
 
+var logger = log.NewLogger(os.Stdout)
+
 func main() {
+
+	logLevel := flag.String("log_level", "info", "logger level")
 	// parse cmd-line arguments
 	flag.Parse()
-	glog.Infof("comet ver: \"%s\" start", ver.Version)
-	defer glog.Flush()
+	log.SetLevel(*logLevel)
+	logger.Infof("comet ver: \"%s\" start", ver.Version)
+
 	// init config
 	if err := InitConfig(); err != nil {
-		glog.Errorf("InitConfig() error(%v)", err)
+		logger.Errorf("InitConfig() error(%v)", err)
 		return
 	}
 	//init db config
 	if err := db.InitConfig(); err != nil {
-		glog.Error("db-InitConfig() wrror(%v)", err)
+		logger.Error("db-InitConfig() wrror(%v)", err)
 		return
 	}
 
@@ -63,7 +69,7 @@ func main() {
 	// init zookeeper
 	zkConn, err := InitZK()
 	if err != nil {
-		glog.Errorf("InitZookeeper() error(%v)", err)
+		logger.Errorf("InitZookeeper() error(%v)", err)
 		return
 	}
 	// if process exit, close zk
@@ -72,12 +78,12 @@ func main() {
 	// sleep one second, let the listen start
 	time.Sleep(time.Second)
 	if err = process.Init(Conf.User, Conf.Dir, Conf.PidFile); err != nil {
-		glog.Errorf("process.Init(\"%s\", \"%s\", \"%s\") error(%v)", Conf.User, Conf.Dir, Conf.PidFile, err)
+		logger.Errorf("process.Init(\"%s\", \"%s\", \"%s\") error(%v)", Conf.User, Conf.Dir, Conf.PidFile, err)
 		return
 	}
 	// init signals, block wait signals
 	signalCH := InitSignal()
 	HandleSignal(signalCH)
 	// exit
-	glog.Info("comet stop")
+	logger.Info("comet stop")
 }
