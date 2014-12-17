@@ -2,11 +2,11 @@ package session
 
 import (
 	"database/sql"
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/b3log/wide/log"
+	"os"
 	"strings"
 	"time"
-
-	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/golang/glog"
 )
 
 const (
@@ -39,6 +39,8 @@ type Session struct {
 
 //一个星期扫描一次
 var ScanSessionTime = time.NewTicker(168 * time.Hour)
+
+var logger = log.NewLogger(os.Stdout)
 
 // 根据 args 参数获取用户 uid 的会话集.
 //
@@ -78,17 +80,17 @@ func GetSessions(uid string, args []string) []*Session {
 		defer rows.Close()
 	}
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return ret
 	}
 	if err := rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return ret
 	}
 	for rows.Next() {
 		session := &Session{}
 		if err := rows.Scan(&session.Id, &session.Type, &session.UserId, &session.State, &session.Created, &session.Updated); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			return ret
 		}
 		ret = append(ret, session)
@@ -105,7 +107,7 @@ func CreatSession(session *Session) bool {
 	}
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
@@ -113,11 +115,11 @@ func CreatSession(session *Session) bool {
 	if err != nil {
 		if !strings.Contains(err.Error(), "Duplicate entry") {
 			// 非主键重复的异常才打日志
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		return false
@@ -125,7 +127,7 @@ func CreatSession(session *Session) bool {
 
 	//提交操作
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -134,14 +136,14 @@ func CreatSession(session *Session) bool {
 func IsExistSession(sessionId string) bool {
 	rows, err := db.MySQL.Query(EXIST_SESSION, sessionId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 
 	defer rows.Close()
 
 	if err = rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return rows.Next()
@@ -151,20 +153,20 @@ func IsExistSession(sessionId string) bool {
 func UpdateSessionUserID(sessionId, userId string) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	_, err = tx.Exec(SET_USERID, userId, sessionId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 	//提交操作
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -175,20 +177,20 @@ func RemoveSessionById(id string) bool {
 
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	_, err = tx.Exec(DELETE_SESSION_BYID, id)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 	//提交操作
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -199,20 +201,20 @@ func RemoveSessionByUserId(usreId string) bool {
 
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	_, err = tx.Exec(DELETE_SESSION_BYUSERID, usreId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 	//提交操作
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -222,20 +224,20 @@ func RemoveSessionByUserId(usreId string) bool {
 func UpdateSessionUpdated(sessionId string, updated time.Time) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	_, err = tx.Exec(UPDATE_SESSION_UPDATED, updated, sessionId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 	//提交操作
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -260,20 +262,20 @@ func TickerTaskUpdateSession(sessionId string, tickerFlagStop chan bool) {
 func SetSessionStat(sessionId, state string) bool {
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	_, err = tx.Exec(UPDATE_SESSION_STATE, state, sessionId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return false
 	}
 	//提交操作
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return false
 	}
 	return true
@@ -287,7 +289,7 @@ func GetSessionsByUserId(userId string) (*[]Session, error) {
 		defer rows.Close()
 	}
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -295,13 +297,13 @@ func GetSessionsByUserId(userId string) (*[]Session, error) {
 	for rows.Next() {
 		session := Session{}
 		if err := rows.Scan(&session.Id, &session.Type, &session.UserId, &session.State, &session.Created, &session.Updated); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			return nil, err
 		}
 		sessions = append(sessions, session)
 	}
 	if err := rows.Err(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, err
 	}
 	return &sessions, nil
@@ -312,11 +314,11 @@ func ScanSession() {
 
 	tx, err := db.MySQL.Begin()
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 	}
 	for t := range ScanSessionTime.C {
 
-		glog.Info(t.Format("2006/01/02 15:04:05"), "执行了定时扫描session表操作-----------------------------")
+		logger.Info(t.Format("2006/01/02 15:04:05"), "执行了定时扫描session表操作-----------------------------")
 		//创建过时时间
 		hours, _ := time.ParseDuration("-24h")
 		pastTime := time.Now().Local()
@@ -324,14 +326,14 @@ func ScanSession() {
 
 		_, err = tx.Exec(DELETE_SESSION_PAST, pastTime)
 		if err != nil {
-			glog.Error(err)
+			logger.Error(err)
 			if err := tx.Rollback(); err != nil {
-				glog.Error(err)
+				logger.Error(err)
 			}
 		}
 		//提交操作
 		if err := tx.Commit(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 	}
 }
