@@ -23,7 +23,6 @@ import (
 	"github.com/EPICPaaS/appmsgsrv/ketama"
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/glog"
 	"strconv"
 	"strings"
 	"time"
@@ -61,17 +60,17 @@ func NewMySQLStorage() *MySQLStorage {
 		nw = strings.Split(n, ":")
 		if len(nw) != 2 {
 			err = errors.New("node config error, it's nodeN:W")
-			glog.Errorf("strings.Split(\"%s\", :) failed (%v)", n, err)
+			logger.Errorf("strings.Split(\"%s\", :) failed (%v)", n, err)
 			panic(err)
 		}
 		w, err = strconv.Atoi(nw[1])
 		if err != nil {
-			glog.Errorf("strconv.Atoi(\"%s\") failed (%v)", nw[1], err)
+			logger.Errorf("strconv.Atoi(\"%s\") failed (%v)", nw[1], err)
 			panic(err)
 		}
 		db, err = sql.Open("mysql", source)
 		if err != nil {
-			glog.Errorf("sql.Open(\"mysql\", %s) failed (%v)", source, err)
+			logger.Errorf("sql.Open(\"mysql\", %s) failed (%v)", source, err)
 			panic(err)
 		}
 		dbPool[nw[0]] = db
@@ -92,7 +91,7 @@ func (s *MySQLStorage) SavePrivate(key string, msg json.RawMessage, mid int64, e
 	now := time.Now()
 	_, err := db.Exec(savePrivateMsgSQL, key, mid, now.Unix()+int64(expire), []byte(msg), now, now)
 	if err != nil {
-		glog.Errorf("db.Exec(\"%s\",\"%s\",%d,%d,%d,\"%s\",now,now) failed (%v)", savePrivateMsgSQL, key, mid, expire, string(msg), err)
+		logger.Errorf("db.Exec(\"%s\",\"%s\",%d,%d,%d,\"%s\",now,now) failed (%v)", savePrivateMsgSQL, key, mid, expire, string(msg), err)
 		return err
 	}
 	return nil
@@ -107,7 +106,7 @@ func (s *MySQLStorage) GetPrivate(key string, mid int64) ([]*myrpc.Message, erro
 	now := time.Now().Unix()
 	rows, err := db.Query(getPrivateMsgSQL, key, mid)
 	if err != nil {
-		glog.Errorf("db.Query(\"%s\",\"%s\",%d,now) failed (%v)", getPrivateMsgSQL, key, mid, err)
+		logger.Errorf("db.Query(\"%s\",\"%s\",%d,now) failed (%v)", getPrivateMsgSQL, key, mid, err)
 		return nil, err
 	}
 	msgs := []*myrpc.Message{}
@@ -116,11 +115,11 @@ func (s *MySQLStorage) GetPrivate(key string, mid int64) ([]*myrpc.Message, erro
 		cmid := int64(0)
 		msg := []byte{}
 		if err := rows.Scan(&cmid, &expire, &msg); err != nil {
-			glog.Errorf("rows.Scan() failed (%v)", err)
+			logger.Errorf("rows.Scan() failed (%v)", err)
 			return nil, err
 		}
 		if now > expire {
-			glog.Warningf("user_key: \"%s\" mid: %d expired", key, cmid)
+			logger.Warnf("user_key: \"%s\" mid: %d expired", key, cmid)
 			continue
 		}
 		msgs = append(msgs, &myrpc.Message{MsgId: cmid, GroupId: myrpc.PrivateGroupId, Msg: json.RawMessage(msg)})
@@ -136,38 +135,38 @@ func (s *MySQLStorage) DelPrivate(key string) error {
 	}
 	res, err := db.Exec(delPrivateMsgSQL, key)
 	if err != nil {
-		glog.Errorf("db.Exec(\"%s\", \"%s\") error(%v)", delPrivateMsgSQL, key, err)
+		logger.Errorf("db.Exec(\"%s\", \"%s\") error(%v)", delPrivateMsgSQL, key, err)
 		return err
 	}
 	rows, err := res.RowsAffected()
 	if err != nil {
-		glog.Errorf("res.RowsAffected() error(%v)", err)
+		logger.Errorf("res.RowsAffected() error(%v)", err)
 		return err
 	}
-	glog.Infof("user_key: \"%s\" clean message num: %d", rows)
+	logger.Infof("user_key: \"%s\" clean message num: %d", rows)
 	return nil
 }
 
 // clean delete expired messages peroridly.
 func (s *MySQLStorage) clean() {
 	for {
-		glog.Info("clean mysql expired message start")
+		logger.Info("clean mysql expired message start")
 		now := time.Now().Unix()
 		affect := int64(0)
 		for _, db := range s.pool {
 			res, err := db.Exec(delExpiredPrivateMsgSQL, now)
 			if err != nil {
-				glog.Errorf("db.Exec(\"%s\", %d) failed (%v)", delExpiredPrivateMsgSQL, now, err)
+				logger.Errorf("db.Exec(\"%s\", %d) failed (%v)", delExpiredPrivateMsgSQL, now, err)
 				continue
 			}
 			aff, err := res.RowsAffected()
 			if err != nil {
-				glog.Errorf("res.RowsAffected() error(%v)", err)
+				logger.Errorf("res.RowsAffected() error(%v)", err)
 				continue
 			}
 			affect += aff
 		}
-		glog.Infof("clean mysql expired message finish, num: %d", affect)
+		logger.Infof("clean mysql expired message finish, num: %d", affect)
 		time.Sleep(Conf.MySQLClean)
 	}
 }
@@ -180,9 +179,9 @@ func (s *MySQLStorage) getConn(key string) *sql.DB {
 	node := s.ring.Hash(key)
 	p, ok := s.pool[node]
 	if !ok {
-		glog.Warningf("user_key: \"%s\" hit mysql node: \"%s\" not in pool", key, node)
+		logger.Warnf("user_key: \"%s\" hit mysql node: \"%s\" not in pool", key, node)
 		return nil
 	}
-	glog.V(1).Infof("user_key: \"%s\" hit mysql node: \"%s\"", key, node)
+	logger.Tracef("user_key: \"%s\" hit mysql node: \"%s\"", key, node)
 	return p
 }

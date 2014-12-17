@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/EPICPaaS/appmsgsrv/rpc"
-	"github.com/golang/glog"
 )
 
 const (
@@ -48,7 +47,7 @@ func InitStorage() error {
 	} else if Conf.StorageType == MySQLStorageType {
 		UseStorage = NewMySQLStorage()
 	} else {
-		glog.Errorf("unknown storage type: \"%s\"", Conf.StorageType)
+		logger.Errorf("unknown storage type: \"%s\"", Conf.StorageType)
 		return ErrStorageType
 	}
 	return nil

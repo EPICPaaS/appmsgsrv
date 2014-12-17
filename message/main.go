@@ -21,17 +21,22 @@ import (
 	"github.com/EPICPaaS/appmsgsrv/perf"
 	"github.com/EPICPaaS/appmsgsrv/process"
 	"github.com/EPICPaaS/appmsgsrv/ver"
-	"github.com/golang/glog"
+	"github.com/b3log/wide/log"
+	"os"
 	"runtime"
 	"time"
 )
 
+var logger = log.NewLogger(os.Stdout)
+
 func main() {
+	logLevel := flag.String("log_level", "info", "logger level")
 	flag.Parse()
-	glog.Infof("message ver: \"%s\" start", ver.Version)
-	defer glog.Flush()
+	log.SetLevel(*logLevel)
+	logger.Infof("message ver: \"%s\" start", ver.Version)
+
 	if err := InitConfig(); err != nil {
-		glog.Errorf("InitConfig() error(%v)", err)
+		logger.Errorf("InitConfig() error(%v)", err)
 		return
 	}
 	// Set max routine
@@ -40,7 +45,7 @@ func main() {
 	perf.Init(Conf.PprofBind)
 	// Initialize redis
 	if err := InitStorage(); err != nil {
-		glog.Errorf("InitStorage() error(%v)", err)
+		logger.Errorf("InitStorage() error(%v)", err)
 		return
 	}
 	// init rpc service
@@ -48,7 +53,7 @@ func main() {
 	// init zookeeper
 	zk, err := InitZK()
 	if err != nil {
-		glog.Errorf("InitZK() error(%v)", err)
+		logger.Errorf("InitZK() error(%v)", err)
 		if zk != nil {
 			zk.Close()
 		}
@@ -60,12 +65,12 @@ func main() {
 	// sleep one second, let the listen start
 	time.Sleep(time.Second)
 	if err = process.Init(Conf.User, Conf.Dir, Conf.PidFile); err != nil {
-		glog.Errorf("process.Init(\"%s\", \"%s\", \"%s\") error(%v)", Conf.User, Conf.Dir, Conf.PidFile, err)
+		logger.Errorf("process.Init(\"%s\", \"%s\", \"%s\") error(%v)", Conf.User, Conf.Dir, Conf.PidFile, err)
 		return
 	}
 	// init signals, block wait signals
 	sig := InitSignal()
 	HandleSignal(sig)
 	// exit
-	glog.Info("message stop")
+	logger.Info("message stop")
 }

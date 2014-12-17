@@ -22,7 +22,6 @@ package main
 
 import (
 	myzk "github.com/EPICPaaS/appmsgsrv/zk"
-	"github.com/golang/glog"
 	"github.com/samuel/go-zookeeper/zk"
 	"strings"
 )
@@ -31,18 +30,18 @@ import (
 func InitZK() (*zk.Conn, error) {
 	conn, err := myzk.Connect(Conf.ZookeeperAddr, Conf.ZookeeperTimeout)
 	if err != nil {
-		glog.Errorf("zk.Connect() error(%v)", err)
+		logger.Errorf("zk.Connect() error(%v)", err)
 		return nil, err
 	}
 	if err = myzk.Create(conn, Conf.ZookeeperPath); err != nil {
-		glog.Errorf("zk.Create() error(%v)", err)
+		logger.Errorf("zk.Create() error(%v)", err)
 		return conn, err
 	}
 	data := strings.Join(Conf.RPCBind, ",")
-	glog.V(1).Infof("zk data: \"%s\"", data)
+	logger.Tracef("zk data: \"%s\"", data)
 	// tcp, websocket and rpc bind address store in the zk
 	if err = myzk.RegisterTemp(conn, Conf.ZookeeperPath, data); err != nil {
-		glog.Errorf("zk.RegisterTemp() error(%v)", err)
+		logger.Errorf("zk.RegisterTemp() error(%v)", err)
 		return conn, err
 	}
 	return conn, nil
