@@ -20,13 +20,16 @@ import (
 	"flag"
 	"fmt"
 	"github.com/Terry-Mao/goconf"
-	"github.com/golang/glog"
+	"github.com/b3log/wide/log"
+	"os"
 )
 
 var (
 	Conf     *Config
 	confFile string
 )
+
+var logger = log.NewLogger(os.Stdout)
 
 // InitConfig initialize config file path
 func init() {
@@ -45,12 +48,12 @@ func InitConfig() error {
 	gconf := goconf.New()
 	if err := gconf.Parse(confFile); err != nil {
 		fmt.Println("confFile", confFile)
-		glog.Errorf("goconf.Parse(\"%s\") error(%v)", confFile, err)
+		logger.Errorf("goconf.Parse(\"%s\") error(%v)", confFile, err)
 		return err
 	}
 	Conf = &Config{}
 	if err := gconf.Unmarshal(Conf); err != nil {
-		glog.Errorf("goconf.Unmarshall() error(%v)", err)
+		logger.Errorf("goconf.Unmarshall() error(%v)", err)
 		return err
 	}
 

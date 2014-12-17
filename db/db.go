@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/glog"
 	"os"
 )
 
@@ -12,31 +11,31 @@ var MySQL *sql.DB
 
 // 初始化数据库连接.
 func InitDB() {
-	glog.Info("Connecting DB....")
+	logger.Info("Connecting DB....")
 
 	var err error
 	MySQL, err = sql.Open("mysql", Conf.AppDBURL)
 
 	if nil != err {
-		glog.Error(err)
+		logger.Error(err)
 		os.Exit(-1)
 	}
 
 	// 实际测试一次
 	test := 0
 	if err := MySQL.QueryRow("SELECT 1").Scan(&test); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		os.Exit(-1)
 	}
 
-	glog.Infof("DB max idle conns [%d]", Conf.AppDBMaxIdleConns)
-	glog.Infof("DB max open conns [%d]", Conf.AppDBMaxOpenConns)
+	logger.Infof("DB max idle conns [%d]", Conf.AppDBMaxIdleConns)
+	logger.Infof("DB max open conns [%d]", Conf.AppDBMaxOpenConns)
 
 	MySQL.SetMaxIdleConns(Conf.AppDBMaxIdleConns)
 	MySQL.SetMaxOpenConns(Conf.AppDBMaxOpenConns)
 
-	glog.Info("DB connected")
+	logger.Info("DB connected")
 }
 
 // 关闭数据库连接.
