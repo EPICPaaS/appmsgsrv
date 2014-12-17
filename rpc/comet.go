@@ -22,14 +22,17 @@ import (
 	"fmt"
 	"github.com/EPICPaaS/appmsgsrv/hash"
 	myzk "github.com/EPICPaaS/appmsgsrv/zk"
-	"github.com/golang/glog"
+	"github.com/b3log/wide/log"
 	"github.com/samuel/go-zookeeper/zk"
 	"net/rpc"
+	"os"
 	"path"
 	"sort"
 	"strings"
 	"time"
 )
+
+var logger = log.NewLogger(os.Stdout)
 
 const (
 	// protocol of Comet subcription
@@ -99,18 +102,18 @@ func watchCometRoot(conn *zk.Conn, fpath string, ch chan *CometNodeEvent) error 
 	for {
 		nodes, watch, err := myzk.GetNodesW(conn, fpath)
 		if err == myzk.ErrNodeNotExist {
-			glog.Warningf("zk don't have node \"%s\", retry in %d second", fpath, waitNodeDelay)
+			logger.Warnf("zk don't have node \"%s\", retry in %d second", fpath, waitNodeDelay)
 			time.Sleep(waitNodeDelaySecond)
 			continue
 		} else if err == myzk.ErrNoChild {
-			glog.Warningf("zk don't have any children in \"%s\", retry in %d second", fpath, waitNodeDelay)
+			logger.Warnf("zk don't have any children in \"%s\", retry in %d second", fpath, waitNodeDelay)
 			for node, _ := range cometNodeInfoMap {
 				ch <- &CometNodeEvent{Event: eventNodeDel, Key: node}
 			}
 			time.Sleep(waitNodeDelaySecond)
 			continue
 		} else if err != nil {
-			glog.Errorf("getNodes error(%v), retry in %d second", err, waitNodeDelay)
+			logger.Errorf("getNodes error(%v), retry in %d second", err, waitNodeDelay)
 			time.Sleep(waitNodeDelaySecond)
 			continue
 		}
@@ -130,7 +133,7 @@ func watchCometRoot(conn *zk.Conn, fpath string, ch chan *CometNodeEvent) error 
 		}
 		// blocking wait node changed
 		event := <-watch
-		glog.Infof("zk path: \"%s\" receive a event %v", fpath, event)
+		logger.Infof("zk path: \"%s\" receive a event %v", fpath, event)
 	}
 }
 
@@ -145,17 +148,17 @@ func handleCometNodeEvent(conn *zk.Conn, fpath string, retry, ping time.Duration
 		}
 		// handle event
 		if ev.Event == eventNodeAdd {
-			glog.Infof("add node: \"%s\"", ev.Key)
+			logger.Infof("add node: \"%s\"", ev.Key)
 			tmpMap[ev.Key] = nil
 			go watchCometNode(conn, ev.Key, fpath, retry, ping, ch)
 		} else if ev.Event == eventNodeDel {
-			glog.Infof("del node: \"%s\"", ev.Key)
+			logger.Infof("del node: \"%s\"", ev.Key)
 			delete(tmpMap, ev.Key)
 		} else if ev.Event == eventNodeUpdate {
-			glog.Infof("update node: \"%s\"", ev.Key)
+			logger.Infof("update node: \"%s\"", ev.Key)
 			tmpMap[ev.Key] = ev.Value
 		} else {
-			glog.Errorf("unknown node event: %d", ev.Event)
+			logger.Errorf("unknown node event: %d", ev.Event)
 			panic("unknown node event")
 		}
 		// if exist old node info, destroy
@@ -172,7 +175,7 @@ func handleCometNodeEvent(conn *zk.Conn, fpath string, retry, ping time.Duration
 			nodes = append(nodes, k)
 		}
 		cometHash = hash.NewKetama2(nodes, 255)
-		glog.V(5).Infof("cometNodeInfoMap len: %d", len(cometNodeInfoMap))
+		logger.Tracef("cometNodeInfoMap len: %d", len(cometNodeInfoMap))
 	}
 }
 
@@ -182,14 +185,14 @@ func watchCometNode(conn *zk.Conn, node, fpath string, retry, ping time.Duration
 	for {
 		nodes, watch, err := myzk.GetNodesW(conn, fpath)
 		if err == myzk.ErrNodeNotExist {
-			glog.Warningf("zk don't have node \"%s\"", fpath)
+			logger.Warnf("zk don't have node \"%s\"", fpath)
 			break
 		} else if err == myzk.ErrNoChild {
-			glog.Warningf("zk don't have any children in \"%s\", retry in %d second", fpath, waitNodeDelay)
+			logger.Warnf("zk don't have any children in \"%s\", retry in %d second", fpath, waitNodeDelay)
 			time.Sleep(waitNodeDelaySecond)
 			continue
 		} else if err != nil {
-			glog.Errorf("zk path: \"%s\" getNodes error(%v), retry in %d second", fpath, err, waitNodeDelay)
+			logger.Errorf("zk path: \"%s\" getNodes error(%v), retry in %d second", fpath, err, waitNodeDelay)
 			time.Sleep(waitNodeDelaySecond)
 			continue
 		}
@@ -197,7 +200,7 @@ func watchCometNode(conn *zk.Conn, node, fpath string, retry, ping time.Duration
 		// register node
 		sort.Strings(nodes)
 		if info, err := registerCometNode(conn, nodes[0], fpath, retry, ping); err != nil {
-			glog.Errorf("zk path: \"%s\" registerNode error(%v)", fpath, err)
+			logger.Errorf("zk path: \"%s\" registerNode error(%v)", fpath, err)
 			time.Sleep(waitNodeDelaySecond)
 			continue
 		} else {
@@ -206,29 +209,29 @@ func watchCometNode(conn *zk.Conn, node, fpath string, retry, ping time.Duration
 		}
 		// blocking receive event
 		event := <-watch
-		glog.Infof("zk path: \"%s\" receive a event: (%v)", fpath, event)
+		logger.Infof("zk path: \"%s\" receive a event: (%v)", fpath, event)
 	}
 	// WARN, if no persistence node and comet rpc not config
-	glog.Warningf("zk path: \"%s\" never watch again till recreate", fpath)
+	logger.Warnf("zk path: \"%s\" never watch again till recreate", fpath)
 }
 
 func registerCometNode(conn *zk.Conn, node, fpath string, retry, ping time.Duration) (*CometNodeInfo, error) {
 	fpath = path.Join(fpath, node)
 	data, _, err := conn.Get(fpath)
 	if err != nil {
-		glog.Errorf("zk.Get(\"%s\") error(%v)", fpath, err)
+		logger.Errorf("zk.Get(\"%s\") error(%v)", fpath, err)
 		return nil, err
 	}
 	// fetch and parse comet info
 	addrs, err := parseCometNode(string(data))
 	if err != nil {
-		glog.Errorf("parseCometNode(\"%s\") error(%v)", string(data), err)
+		logger.Errorf("parseCometNode(\"%s\") error(%v)", string(data), err)
 		return nil, err
 	}
 	info := &CometNodeInfo{Addr: addrs}
 	rpcAddr, ok := addrs[cometProtocolRPC]
 	if !ok || len(rpcAddr) == 0 {
-		glog.Errorf("zk nodes: \"%s\" don't have rpc addr", fpath)
+		logger.Errorf("zk nodes: \"%s\" don't have rpc addr", fpath)
 		return nil, ErrCometRPC
 	}
 	// init comet rpc
@@ -236,18 +239,18 @@ func registerCometNode(conn *zk.Conn, node, fpath string, retry, ping time.Durat
 	for _, addr := range rpcAddr {
 		r, err := rpc.Dial("tcp", addr)
 		if err != nil {
-			glog.Errorf("rpc.Dial(\"%s\") error(%v)", addr, err)
+			logger.Errorf("rpc.Dial(\"%s\") error(%v)", addr, err)
 			return nil, err
 		}
 		clients[addr] = r
 	}
 	lb, err := NewRandLB(clients, rpcAddr, cometService, retry, ping, true)
 	if err != nil {
-		glog.Errorf("NewRandLR() error(%v)", err)
+		logger.Errorf("NewRandLR() error(%v)", err)
 		panic(err)
 	}
 	info.CometRPC = lb
-	glog.Infof("zk path: \"%s\" register nodes: \"%s\"", fpath, node)
+	logger.Infof("zk path: \"%s\" register nodes: \"%s\"", fpath, node)
 	return info, nil
 }
 
@@ -291,7 +294,7 @@ func GetComet(key string) *CometNodeInfo {
 		return nil
 	}
 	node := cometHash.Node(key)
-	glog.V(5).Infof("cometHash hits \"%s\"", node)
+	logger.Tracef("cometHash hits \"%s\"", node)
 	return cometNodeInfoMap[node]
 }
 

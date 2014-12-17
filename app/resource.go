@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/EPICPaaS/appmsgsrv/db"
+
 	//"github.com/EPICPaaS/go-uuid/uuid"
-	"github.com/golang/glog"
 )
 
 const (
@@ -45,7 +45,7 @@ func GetResourceById(resourceId string) (*Resource, error) {
 
 	resource := Resource{}
 	if err := row.Scan(&resource.Id, &resource.CustomerId, &resource.Name, &resource.Description, &resource.Type, &resource.Content, &resource.Created, &resource.Updated); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func GetResourceByTenantId(tenantId string) ([]*Resource, error) {
 	for rows.Next() {
 		resource := &Resource{}
 		if err := rows.Scan(&resource.Id, &resource.CustomerId, &resource.Name, &resource.Description, &resource.Type, &resource.Content, &resource.Created, &resource.Updated); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 
 			return nil, err
 		}
@@ -79,23 +79,23 @@ func AddResource(resource *Resource) (*Resource, bool) {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, false
 	}
 
 	// 创建资源记录
 	_, err = tx.Exec(InsertResourceSQL, resource.Id, resource.CustomerId, resource.Name, resource.Description, resource.Type, resource.Content, resource.Created, resource.Updated)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return nil, false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, false
 	}
 	return resource, true
@@ -106,23 +106,23 @@ func UpdateResource(resource *Resource) (*Resource, bool) {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, false
 	}
 
 	// 创建资源记录
 	_, err = tx.Exec(UpdateResourceByIdSQL, resource.CustomerId, resource.Name, resource.Description, resource.Type, resource.Content, resource.Created, resource.Updated, resource.Id)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 		return nil, false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 		return nil, false
 	}
 	return resource, true
@@ -133,24 +133,24 @@ func DeleteResourceById(resourceId string) bool {
 	tx, err := db.MySQL.Begin()
 
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}
 
 	_, err = tx.Exec(DelResourceByIdSQL, resourceId)
 	if err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		if err := tx.Rollback(); err != nil {
-			glog.Error(err)
+			logger.Error(err)
 		}
 
 		return false
 	}
 
 	if err := tx.Commit(); err != nil {
-		glog.Error(err)
+		logger.Error(err)
 
 		return false
 	}

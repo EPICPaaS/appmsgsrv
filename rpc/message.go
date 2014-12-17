@@ -19,7 +19,6 @@ package rpc
 import (
 	"encoding/json"
 	myzk "github.com/EPICPaaS/appmsgsrv/zk"
-	"github.com/golang/glog"
 	"github.com/samuel/go-zookeeper/zk"
 	"net/rpc"
 	"path"
@@ -63,7 +62,7 @@ type OldMessage struct {
 func (m *Message) Bytes() ([]byte, error) {
 	byteJson, err := json.Marshal(m)
 	if err != nil {
-		glog.Errorf("json.Marshal(%v) error(%v)", m, err)
+		logger.Errorf("json.Marshal(%v) error(%v)", m, err)
 		return nil, err
 	}
 	return byteJson, nil
@@ -74,7 +73,7 @@ func (m *Message) OldBytes() ([]byte, error) {
 	om := &OldMessage{Msg: string(m.Msg), MsgId: m.MsgId, GroupId: m.GroupId}
 	byteJson, err := json.Marshal(om)
 	if err != nil {
-		glog.Errorf("json.Marshal(%v) error(%v)", om, err)
+		logger.Errorf("json.Marshal(%v) error(%v)", om, err)
 		return nil, err
 	}
 	return byteJson, nil
@@ -119,20 +118,20 @@ func watchMessageRoot(conn *zk.Conn, fpath string, ch chan *MessageNodeEvent) er
 	for {
 		nodes, watch, err := myzk.GetNodesW(conn, fpath)
 		if err == myzk.ErrNodeNotExist {
-			glog.Warningf("zk don't have node \"%s\", retry in %d second", fpath, waitNodeDelay)
+			logger.Warnf("zk don't have node \"%s\", retry in %d second", fpath, waitNodeDelay)
 			time.Sleep(waitNodeDelaySecond)
 			continue
 		} else if err == myzk.ErrNoChild {
-			glog.Warningf("zk don't have any children in \"%s\", retry in %d second", fpath, waitNodeDelay)
+			logger.Warnf("zk don't have any children in \"%s\", retry in %d second", fpath, waitNodeDelay)
 			// all child died, kick all the nodes
 			for node, _ := range MessageRPC.Clients {
-				glog.V(1).Infof("node: \"%s\" send del node event", node)
+				logger.Tracef("node: \"%s\" send del node event", node)
 				ch <- &MessageNodeEvent{Event: eventNodeDel, Key: node}
 			}
 			time.Sleep(waitNodeDelaySecond)
 			continue
 		} else if err != nil {
-			glog.Errorf("getNodes error(%v), retry in %d second", err, waitNodeDelay)
+			logger.Errorf("getNodes error(%v), retry in %d second", err, waitNodeDelay)
 			time.Sleep(waitNodeDelaySecond)
 			continue
 		}
@@ -141,7 +140,7 @@ func watchMessageRoot(conn *zk.Conn, fpath string, ch chan *MessageNodeEvent) er
 		for _, node := range nodes {
 			data, _, err := conn.Get(path.Join(fpath, node))
 			if err != nil {
-				glog.Errorf("zk.Get(\"%s\") error(%v)", path.Join(fpath, node), err)
+				logger.Errorf("zk.Get(\"%s\") error(%v)", path.Join(fpath, node), err)
 				continue
 			}
 			// may contains many addrs split by ,
@@ -162,7 +161,7 @@ func watchMessageRoot(conn *zk.Conn, fpath string, ch chan *MessageNodeEvent) er
 		}
 		// blocking wait node changed
 		event := <-watch
-		glog.Infof("zk path: \"%s\" receive a event %v", fpath, event)
+		logger.Infof("zk path: \"%s\" receive a event %v", fpath, event)
 	}
 }
 
@@ -177,30 +176,30 @@ func handleMessageNodeEvent(conn *zk.Conn, retry, ping time.Duration, ch chan *M
 		}
 		// handle event
 		if ev.Event == eventNodeAdd {
-			glog.Infof("add message rpc node: \"%s\"", ev.Key)
+			logger.Infof("add message rpc node: \"%s\"", ev.Key)
 			// if exist old node info, reuse
 			if client, ok := MessageRPC.Clients[ev.Key]; ok && client != nil {
 				tmpMessageRPCMap[ev.Key] = client
-				glog.Infof("reuse message rpc node: \"%s\"", ev.Key)
+				logger.Infof("reuse message rpc node: \"%s\"", ev.Key)
 			} else {
 				rpcTmp, err := rpc.Dial("tcp", ev.Key)
 				if err != nil {
-					glog.Errorf("rpc.Dial(\"tcp\", \"%s\") error(%v)", ev.Key, err)
-					glog.Warningf("discard message rpc node: \"%s\", connect failed", ev.Key)
+					logger.Errorf("rpc.Dial(\"tcp\", \"%s\") error(%v)", ev.Key, err)
+					logger.Warnf("discard message rpc node: \"%s\", connect failed", ev.Key)
 					continue
 				}
 				tmpMessageRPCMap[ev.Key] = rpcTmp
 			}
 		} else if ev.Event == eventNodeDel {
-			glog.Infof("del message rpc node: \"%s\"", ev.Key)
+			logger.Infof("del message rpc node: \"%s\"", ev.Key)
 			delete(tmpMessageRPCMap, ev.Key)
 			// if exist old node info, close
 			if client, ok := MessageRPC.Clients[ev.Key]; ok && client != nil {
 				client.Close()
-				glog.Infof("close message rpc node: \"%s\"", ev.Key)
+				logger.Infof("close message rpc node: \"%s\"", ev.Key)
 			}
 		} else {
-			glog.Errorf("unknown node event: %d", ev.Event)
+			logger.Errorf("unknown node event: %d", ev.Event)
 			panic("unknown node event")
 		}
 		addrs := make([]string, 0, len(tmpMessageRPCMap))
@@ -209,13 +208,13 @@ func handleMessageNodeEvent(conn *zk.Conn, retry, ping time.Duration, ch chan *M
 		}
 		tmpMessageRPC, err := NewRandLB(tmpMessageRPCMap, addrs, MessageService, retry, ping, true)
 		if err != nil {
-			glog.Errorf("NewRandLR() error(%v)", err)
+			logger.Errorf("NewRandLR() error(%v)", err)
 			panic(err)
 		}
 		// atomic update
 		MessageRPC.Stop()
 		MessageRPC = tmpMessageRPC
-		glog.V(1).Infof("MessageRPC.Client length: %d", len(MessageRPC.Clients))
+		logger.Tracef("MessageRPC.Client length: %d", len(MessageRPC.Clients))
 	}
 }
 

@@ -17,10 +17,13 @@
 package perf
 
 import (
-	"github.com/golang/glog"
+	"github.com/b3log/wide/log"
 	"net/http"
 	"net/http/pprof"
+	"os"
 )
+
+var logger = log.NewLogger(os.Stdout)
 
 // StartPprof start http pprof.
 func Init(pprofBind []string) {
@@ -32,7 +35,7 @@ func Init(pprofBind []string) {
 	for _, addr := range pprofBind {
 		go func() {
 			if err := http.ListenAndServe(addr, pprofServeMux); err != nil {
-				glog.Errorf("http.ListenAndServe(\"%s\", pprofServeMux) error(%v)", addr, err)
+				logger.Errorf("http.ListenAndServe(\"%s\", pprofServeMux) error(%v)", addr, err)
 				panic(err)
 			}
 		}()
