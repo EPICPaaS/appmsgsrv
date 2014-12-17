@@ -23,7 +23,6 @@ import (
 
 	"github.com/EPICPaaS/appmsgsrv/app"
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
-	"github.com/golang/glog"
 )
 
 // GetServer handle for server get
@@ -44,7 +43,7 @@ func GetServer(w http.ResponseWriter, r *http.Request) {
 	}
 	proto, err := strconv.Atoi(protoStr)
 	if err != nil {
-		glog.Errorf("strconv.Atoi(\"%s\") error(%v)", protoStr, err)
+		logger.Errorf("strconv.Atoi(\"%s\") error(%v)", protoStr, err)
 		res["ret"] = app.ParamErr
 		return
 	}
@@ -63,10 +62,10 @@ func GetServer(w http.ResponseWriter, r *http.Request) {
 	// Select the best ip
 	if app.Conf.Router != "" {
 		server = routerCN.SelectBest(r.RemoteAddr, addr)
-		glog.V(5).Infof("select the best ip:\"%s\" match with remoteAddr:\"%s\" , from ip list:\"%v\"", server, r.RemoteAddr, addr)
+		logger.Tracef("select the best ip:\"%s\" match with remoteAddr:\"%s\" , from ip list:\"%v\"", server, r.RemoteAddr, addr)
 	}
 	if server == "" {
-		glog.V(5).Infof("remote addr: \"%s\" chose the ip: \"%s\"", r.RemoteAddr, addr[0])
+		logger.Tracef("remote addr: \"%s\" chose the ip: \"%s\"", r.RemoteAddr, addr[0])
 		server = addr[0]
 	}
 	res["data"] = map[string]interface{}{"server": server}
@@ -92,7 +91,7 @@ func GetOfflineMsg(w http.ResponseWriter, r *http.Request) {
 	mid, err := strconv.ParseInt(midStr, 10, 64)
 	if err != nil {
 		res["ret"] = app.ParamErr
-		glog.Errorf("strconv.ParseInt(\"%s\", 10, 64) error(%v)", midStr, err)
+		logger.Errorf("strconv.ParseInt(\"%s\", 10, 64) error(%v)", midStr, err)
 		return
 	}
 	// RPC get offline messages
@@ -104,7 +103,7 @@ func GetOfflineMsg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := client.Call(myrpc.MessageServiceGetPrivate, args, reply); err != nil {
-		glog.Errorf("myrpc.MessageRPC.Call(\"%s\", \"%v\", reply) error(%v)", myrpc.MessageServiceGetPrivate, args, err)
+		logger.Errorf("myrpc.MessageRPC.Call(\"%s\", \"%v\", reply) error(%v)", myrpc.MessageServiceGetPrivate, args, err)
 		res["ret"] = app.InternalErr
 		return
 	}

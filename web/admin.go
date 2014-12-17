@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"github.com/EPICPaaS/appmsgsrv/app"
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -43,7 +42,7 @@ func PushPrivate(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = app.ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
@@ -57,7 +56,7 @@ func PushPrivate(w http.ResponseWriter, r *http.Request) {
 	expire, err := strconv.ParseUint(expireStr, 10, 32)
 	if err != nil {
 		res["ret"] = app.ParamErr
-		glog.Errorf("strconv.ParseUint(\"%s\", 10, 32) error(%v)", expireStr, err)
+		logger.Errorf("strconv.ParseUint(\"%s\", 10, 32) error(%v)", expireStr, err)
 		return
 	}
 	node := myrpc.GetComet(key)
@@ -74,13 +73,13 @@ func PushPrivate(w http.ResponseWriter, r *http.Request) {
 	msg, err := rm.MarshalJSON()
 	if err != nil {
 		res["ret"] = app.ParamErr
-		glog.Errorf("json.RawMessage(\"%s\").MarshalJSON() error(%v)", body, err)
+		logger.Errorf("json.RawMessage(\"%s\").MarshalJSON() error(%v)", body, err)
 		return
 	}
 	args := &myrpc.CometPushPrivateArgs{Msg: json.RawMessage(msg), Expire: uint(expire), Key: key}
 	ret := 0
 	if err := client.Call(myrpc.CometServicePushPrivate, args, &ret); err != nil {
-		glog.Errorf("client.Call(\"%s\", \"%v\", &ret) error(%v)", myrpc.CometServicePushPrivate, args, err)
+		logger.Errorf("client.Call(\"%s\", \"%v\", &ret) error(%v)", myrpc.CometServicePushPrivate, args, err)
 		res["ret"] = app.InternalErr
 		return
 	}
@@ -100,13 +99,13 @@ func DelPrivate(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		res["ret"] = app.ParamErr
-		glog.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
+		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return
 	}
 	body = string(bodyBytes)
 	params, err := url.ParseQuery(body)
 	if err != nil {
-		glog.Errorf("url.ParseQuery(\"%s\") error(%v)", body, err)
+		logger.Errorf("url.ParseQuery(\"%s\") error(%v)", body, err)
 		res["ret"] = app.ParamErr
 		return
 	}
@@ -117,13 +116,13 @@ func DelPrivate(w http.ResponseWriter, r *http.Request) {
 	}
 	client := myrpc.MessageRPC.Get()
 	if client == nil {
-		glog.Warningf("user_key: \"%s\" can't not find message rpc node", key)
+		logger.Warnf("user_key: \"%s\" can't not find message rpc node", key)
 		res["ret"] = app.InternalErr
 		return
 	}
 	ret := 0
 	if err := client.Call(myrpc.MessageServiceDelPrivate, key, &ret); err != nil {
-		glog.Errorf("client.Call(\"%s\", \"%s\", &ret) error(%v)", myrpc.MessageServiceDelPrivate, key, err)
+		logger.Errorf("client.Call(\"%s\", \"%s\", &ret) error(%v)", myrpc.MessageServiceDelPrivate, key, err)
 		res["ret"] = app.InternalErr
 		return
 	}

@@ -20,14 +20,13 @@ import (
 	"github.com/EPICPaaS/appmsgsrv/app"
 	myrpc "github.com/EPICPaaS/appmsgsrv/rpc"
 	myzk "github.com/EPICPaaS/appmsgsrv/zk"
-	"github.com/golang/glog"
 	"github.com/samuel/go-zookeeper/zk"
 )
 
 func InitZK() (*zk.Conn, error) {
 	conn, err := myzk.Connect(app.Conf.ZookeeperAddr, app.Conf.ZookeeperTimeout)
 	if err != nil {
-		glog.Errorf("zk.Connect() error(%v)", err)
+		logger.Errorf("zk.Connect() error(%v)", err)
 		return nil, err
 	}
 	myrpc.InitComet(conn, app.Conf.ZookeeperCometPath, app.Conf.RPCRetry, app.Conf.RPCPing)

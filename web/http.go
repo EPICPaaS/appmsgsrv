@@ -25,7 +25,6 @@ import (
 
 	"github.com/EPICPaaS/appmsgsrv/app"
 	"github.com/b3log/wide/util"
-	"github.com/golang/glog"
 )
 
 const (
@@ -96,17 +95,17 @@ func StartHTTP() {
 	appAppServeMux.HandleFunc("/app/user/erweima", app.UserErWeiMa)
 
 	for _, bind := range app.Conf.HttpBind {
-		glog.Infof("start http listen addr:\"%s\"", bind)
+		logger.Infof("start http listen addr:\"%s\"", bind)
 		go httpListen(httpServeMux, bind)
 	}
 
 	for _, bind := range app.Conf.AdminBind {
-		glog.Infof("start admin http listen addr:\"%s\"", bind)
+		logger.Infof("start admin http listen addr:\"%s\"", bind)
 		go httpListen(httpAdminServeMux, bind)
 	}
 
 	for _, bind := range app.Conf.AppBind {
-		glog.Infof("start app http listen addr:\"%s\"", bind)
+		logger.Infof("start app http listen addr:\"%s\"", bind)
 		go httpListen(appAppServeMux, bind)
 	}
 }
@@ -115,11 +114,11 @@ func httpListen(mux *http.ServeMux, bind string) {
 	server := &http.Server{Handler: mux, ReadTimeout: httpReadTimeout * time.Second}
 	l, err := net.Listen("tcp", bind)
 	if err != nil {
-		glog.Errorf("net.Listen(\"tcp\", \"%s\") error(%v)", bind, err)
+		logger.Errorf("net.Listen(\"tcp\", \"%s\") error(%v)", bind, err)
 		panic(err)
 	}
 	if err := server.Serve(l); err != nil {
-		glog.Errorf("server.Serve() error(%v)", err)
+		logger.Errorf("server.Serve() error(%v)", err)
 		panic(err)
 	}
 }
@@ -169,7 +168,7 @@ func stopwatch(handler func(w http.ResponseWriter, r *http.Request)) func(w http
 		start := time.Now()
 
 		defer func() {
-			glog.V(5).Infof("[%s] [%s]", r.RequestURI, time.Since(start))
+			logger.Tracef("[%s] [%s]", r.RequestURI, time.Since(start))
 		}()
 
 		handler(w, r)

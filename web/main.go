@@ -29,26 +29,26 @@ import (
 	"github.com/EPICPaaS/appmsgsrv/ver"
 
 	"github.com/b3log/wide/log"
-	"github.com/golang/glog"
 )
+
+var logger = log.NewLogger(os.Stdout)
 
 func main() {
 	var err error
 	// Parse cmd-line arguments
+	logLevel := flag.String("log_level", "info", "logger level")
 	flag.Parse()
+	log.SetLevel(*logLevel)
 
-	logger := log.NewLogger(os.Stdout, log.Info)
-	logger.Info("Web is running")
+	logger.Infof("web ver: \"%s\" start", ver.Version)
 
-	glog.Infof("web ver: \"%s\" start", ver.Version)
-	defer glog.Flush()
 	if err = app.InitConfig(); err != nil {
-		glog.Errorf("InitConfig() error(%v)", err)
+		logger.Errorf("InitConfig() error(%v)", err)
 		return
 	}
 	//init db config
 	if err = db.InitConfig(); err != nil {
-		glog.Error("db-InitConfig() error(%v)", err)
+		logger.Error("db-InitConfig() error(%v)", err)
 		return
 	}
 	// Set max routine
@@ -56,7 +56,7 @@ func main() {
 	// init zookeeper
 	zkConn, err := InitZK()
 	if err != nil {
-		glog.Errorf("InitZookeeper() error(%v)", err)
+		logger.Errorf("InitZookeeper() error(%v)", err)
 		return
 	}
 	// if process exit, close zk
@@ -66,7 +66,7 @@ func main() {
 	// Init network router
 	if app.Conf.Router != "" {
 		if err := InitRouter(); err != nil {
-			glog.Errorf("InitRouter() failed(%v)", err)
+			logger.Errorf("InitRouter() failed(%v)", err)
 			return
 		}
 	}
@@ -82,7 +82,7 @@ func main() {
 	// sleep one second, let the listen start
 	time.Sleep(time.Second)
 	if err = process.Init(app.Conf.User, app.Conf.Dir, app.Conf.PidFile); err != nil {
-		glog.Errorf("process.Init() error(%v)", err)
+		logger.Errorf("process.Init() error(%v)", err)
 		return
 	}
 
@@ -96,5 +96,5 @@ func main() {
 	signalCH := InitSignal()
 	HandleSignal(signalCH)
 
-	glog.Info("web stop")
+	logger.Info("web stop")
 }

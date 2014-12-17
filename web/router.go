@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/EPICPaaS/appmsgsrv/app"
 	"github.com/EPICPaaS/appmsgsrv/router"
-	"github.com/golang/glog"
 )
 
 const (
@@ -37,7 +36,7 @@ func InitRouter() error {
 	case NetworkRouterCN:
 		r, err := router.InitCN(app.Conf.QQWryPath)
 		if err != nil {
-			glog.Errorf("init china network router failed(%v)", err)
+			logger.Errorf("init china network router failed(%v)", err)
 			return err
 		}
 		routerCN = r
