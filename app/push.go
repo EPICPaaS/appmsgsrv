@@ -332,7 +332,7 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	}
 	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
 	s, _ := session.GetSessionsByUserId(toUserID)
-	logger.Infof("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
+	logger.Debugf("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
 	if len(*s) == 0 {
 		resources, _ := GetResourceByTenantId(user.TenantId)
 		apnsToken, _ := getApnsToken(toUserID)
@@ -700,7 +700,7 @@ func push(key string, msgBytes []byte, expire int) int {
 		return InternalErr
 	}
 
-	logger.Tracef("Pushed a message to [key=%s]", key)
+	logger.Infof("Pushed a message to [key=%s]", key)
 
 	return ret
 }
