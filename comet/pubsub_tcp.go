@@ -282,10 +282,10 @@ func SubscribeTCPHandle(conn net.Conn, args []string) {
 		}
 		if _, err = conn.Read(reply); err != nil {
 			if err != io.EOF {
-				logger.Warnf("<%s> user_key:\"%s\" conn.Read() failed, read heartbeat timedout error(%v)", addr, key, err)
+				logger.Debugf("<%s> user_key:\"%s\" conn.Read() failed, read heartbeat timedout error(%v)", addr, key, err)
 			} else {
 				// client connection close
-				logger.Warnf("<%s> user_key:\"%s\" client connection close error(%s)", addr, key, err)
+				logger.Debugf("<%s> user_key:\"%s\" client connection close error(%s)", addr, key, err)
 			}
 			break
 		}
@@ -296,7 +296,7 @@ func SubscribeTCPHandle(conn net.Conn, args []string) {
 			}
 			logger.Tracef("<%s> user_key:\"%s\" receive heartbeat (%s)", addr, key, reply)
 		} else {
-			logger.Warnf("<%s> user_key:\"%s\" unknown heartbeat protocol (%s)", addr, key, reply)
+			logger.Debugf("<%s> user_key:\"%s\" unknown heartbeat protocol (%s)", addr, key, reply)
 			break
 		}
 		end = time.Now().UnixNano()
