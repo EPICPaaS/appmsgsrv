@@ -154,7 +154,7 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 	msg["fromUserName"] = qid + QUN_SUFFIX
 	msg["fromDisplayName"] = topic
 	msg["msgType"] = 51
-	msg["content"] = "你创建了群\"" + topic + "\""
+	msg["content"] = "您创建了群\"" + topic + "\""
 
 	//准备pushCnt（推送统计）信息
 	tenant := getTenantById(user.TenantId)
@@ -309,7 +309,7 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 		msg["msgType"] = 51
 
 		// 给修改者发送消息
-		msg["content"] = "你修改了群名为\"" + topic + "\""
+		msg["content"] = "您修改了群名为\"" + topic + "\""
 
 		if pushSessions(msg, user.Uid+USER_SUFFIX, []string{"all"}, 600, pushCnt) != OK {
 			baseRes.Ret = OverQuotaPush
