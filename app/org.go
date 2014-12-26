@@ -1485,7 +1485,7 @@ func searchUser(tenantId, nickName string, offset, limit int) (members, int) {
 		ret = append(ret, &rec)
 	}
 
-	sql = "select count(*) from user where nickname like ?"
+	sql = "select count(*) from user where tenant_id=?  and  nickname like ?"
 	smt, err = db.MySQL.Prepare(sql)
 	if smt != nil {
 		defer smt.Close()
@@ -1497,7 +1497,7 @@ func searchUser(tenantId, nickName string, offset, limit int) (members, int) {
 		return nil, 0
 	}
 
-	row, err = smt.Query("%" + nickName + "%")
+	row, err = smt.Query(tenantId, "%"+nickName+"%")
 	if row != nil {
 		defer row.Close()
 	} else {
