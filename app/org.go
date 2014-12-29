@@ -1,17 +1,17 @@
 package app
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/EPICPaaS/go-uuid/uuid"
 	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
 	"text/template"
 	"time"
-
-	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/EPICPaaS/go-uuid/uuid"
 )
 
 // 成员结构体.
@@ -47,6 +47,16 @@ type Tenant struct {
 	Updated    time.Time `json:"updated"`
 }
 
+type ExternalInterface struct {
+	Id         string    `json:"id"`
+	CustomerId string    `json:"customerId"`
+	Type       string    `json:"type"`
+	Owner      int       `json:"owner"`
+	HttpUrl    string    `json:"httpUrl"`
+	Created    time.Time `json:"created"`
+	Updated    time.Time `json:"updated"`
+}
+
 // 用户身份验证接口.
 //
 //  1. 根据指定的 tenantId 查询 customerId
@@ -54,6 +64,39 @@ type Tenant struct {
 //  3. 根据接口地址调用验证接口
 func loginAuth(username, password, tenantId string) bool {
 	// TODO: 旭东
+	tenant := getTenantById(tenantId)
+	if tenant != nil {
+		EI := GetExtInterface(tenant.CustomerId, "login")
+		if EI != nil {
+			data := []byte(`{
+			     "userName":` + username + `,
+			     "password":` + password +
+				`}`)
+			body := bytes.NewReader(data)
+			res, err := http.Post(EI.HttpUrl, "text/plain;charset=UTF-8", body)
+			if err != nil {
+				logger.Error(err)
+				return false
+			}
+
+			resBodyByte, err := ioutil.ReadAll(res.Body)
+			defer res.Body.Close()
+			if err != nil {
+				logger.Error(err)
+				return false
+			}
+			var respBody map[string]interface{}
+			if err := json.Unmarshal(resBodyByte, &respBody); err != nil {
+				logger.Errorf("convert to json failed (%s)", err.Error())
+				return false
+			}
+			r, ok := respBody["data"].(bool)
+			if !ok {
+				return false
+			}
+			return r
+		}
+	}
 	return true
 }
 
@@ -1705,4 +1748,27 @@ func (*app) UserAuth(w http.ResponseWriter, r *http.Request) {
 		baseRes.ErrMsg = "auth failure"
 		return
 	}
+}
+
+//根据customer_id 和type获取客户 提供的结构地址
+func GetExtInterface(customer_id, Type string) *ExternalInterface {
+
+	rows, err := db.MySQL.Query("select id , customer_id , type ,owner,http_url,created,updated from external_interface where customer_id = ? and type =?", customer_id, Type)
+	if rows != nil {
+		defer rows.Close()
+	}
+	if err != nil {
+		logger.Error(err)
+		return nil
+	}
+	for rows.Next() {
+		ei := &ExternalInterface{}
+		if err := rows.Scan(ei.Id, ei.CustomerId, ei.Type, ei.Owner, ei.HttpUrl, &ei.Created, &ei.Updated); err != nil {
+			logger.Error(err)
+			return nil
+		}
+
+		return ei
+	}
+	return nil
 }
