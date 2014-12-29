@@ -2,8 +2,9 @@ package db
 
 import (
 	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
 	"os"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // 数据库操作句柄.

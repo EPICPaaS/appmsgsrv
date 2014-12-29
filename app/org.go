@@ -3,19 +3,18 @@ package app
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/EPICPaaS/go-uuid/uuid"
 	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
 	"text/template"
 	"time"
-	//"github.com/EPICPaaS/appmsgsrv/session"
-	"fmt"
+
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/EPICPaaS/go-uuid/uuid"
 )
 
-/*成员结构体*/
+// 成员结构体.
 type member struct {
 	Uid         string    `json:"uid"`
 	UserName    string    `json:"userName"`
@@ -46,6 +45,16 @@ type Tenant struct {
 	CustomerId string    `json:"customerId"`
 	Created    time.Time `json:"created"`
 	Updated    time.Time `json:"updated"`
+}
+
+// 用户身份验证接口.
+//
+//  1. 根据指定的 tenantId 查询 customerId
+//  2. 在 external_interface 表中根据 customerId、type = 'login' 等信息查询接口地址
+//  3. 根据接口地址调用验证接口
+func auth(username, password, tenantId string) bool {
+	// TODO: 旭东
+	return false
 }
 
 /*根据userId获取成员信息*/
@@ -232,9 +241,8 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	logger.Tracef("uid [%s], deviceId [%s], deviceType [%s], userName [%s], password [%s]",
 		uid, deviceId, deviceType, userName, password)
 
-	// TODO: 登录验证逻辑
 	member := getUserByCode(userName)
-	if nil == member {
+	if nil == member || !auth(userName, password, member.TenantId) {
 		baseRes.ErrMsg = "auth failed"
 		baseRes.Ret = ParamErr
 
@@ -300,7 +308,8 @@ func (*appWeb) WebLogin(w http.ResponseWriter, r *http.Request) {
 		} else {
 			resJsonStr = string(resJson)
 		}
-		fmt.Fprintln(w, *callback, "(", resJsonStr, ")")
+
+		logger.Info(w, *callback, "(", resJsonStr, ")")
 	}()
 
 	//获取请求数据
@@ -315,7 +324,6 @@ func (*appWeb) WebLogin(w http.ResponseWriter, r *http.Request) {
 	logger.Tracef("uid [%s], deviceType [%s], userName [%s], password [%s]",
 		uid, deviceType, userName, password)
 
-	// TODO: 登录验证逻辑
 	member := getUserByUid(uid)
 	if nil == member || member.Password != password {
 		baseRes.ErrMsg = "auth failed"
