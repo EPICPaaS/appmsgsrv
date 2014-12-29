@@ -62,45 +62,55 @@ type ExternalInterface struct {
 //  1. 根据指定的 tenantId 查询 customerId
 //  2. 在 external_interface 表中根据 customerId、type = 'login' 等信息查询接口地址
 //  3. 根据接口地址调用验证接口
-func loginAuth(username, password, tenantId string) bool {
+func loginAuth(username, password string) (bool, *member) {
+
 	// TODO: 旭东
-	tenant := getTenantById(tenantId)
+	member := getUserByCode(username)
+	if member == nil {
+		return false, nil
+	}
+
+	tenant := getTenantById(member.TenantId)
 	if tenant != nil {
 		EI := GetExtInterface(tenant.CustomerId, "login")
-		if EI.Owner == 0 {
-			return true
-		}
+
 		if EI != nil {
-			data := []byte(`{
-			     "userName":` + username + `,
-			     "password":` + password +
-				`}`)
-			body := bytes.NewReader(data)
-			res, err := http.Post(EI.HttpUrl, "text/plain;charset=UTF-8", body)
-			if err != nil {
-				logger.Error(err)
-				return false
+			if EI.Owner == 0 { //自己的登录
+				if member.Password != password {
+					return false, nil
+				}
+			} else {
+				data := []byte(`{
+					     "userName":` + username + `,
+					     "password":` + password +
+					`}`)
+				body := bytes.NewReader(data)
+				res, err := http.Post(EI.HttpUrl, "text/plain;charset=UTF-8", body)
+				if err != nil {
+					logger.Error(err)
+					return false, nil
+				}
+
+				resBodyByte, err := ioutil.ReadAll(res.Body)
+				defer res.Body.Close()
+				if err != nil {
+					logger.Error(err)
+					return false, nil
+				}
+				var respBody map[string]interface{}
+				if err := json.Unmarshal(resBodyByte, &respBody); err != nil {
+					logger.Errorf("convert to json failed (%s)", err.Error())
+					return false, nil
+				}
+				r, ok := respBody["data"].(bool)
+				if !ok || !r {
+					return false, nil
+				}
 			}
 
-			resBodyByte, err := ioutil.ReadAll(res.Body)
-			defer res.Body.Close()
-			if err != nil {
-				logger.Error(err)
-				return false
-			}
-			var respBody map[string]interface{}
-			if err := json.Unmarshal(resBodyByte, &respBody); err != nil {
-				logger.Errorf("convert to json failed (%s)", err.Error())
-				return false
-			}
-			r, ok := respBody["data"].(bool)
-			if !ok {
-				return false
-			}
-			return r
 		}
 	}
-	return true
+	return true, member
 }
 
 /*根据userId获取成员信息*/
@@ -287,11 +297,10 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	logger.Tracef("uid [%s], deviceId [%s], deviceType [%s], userName [%s], password [%s]",
 		uid, deviceId, deviceType, userName, password)
 
-	member := getUserByCode(userName)
-	if nil == member || !loginAuth(userName, password, member.TenantId) {
+	loginOK, member := loginAuth(userName, password)
+	if !loginOK {
 		baseRes.ErrMsg = "auth failed"
 		baseRes.Ret = ParamErr
-
 		return
 	}
 
@@ -1766,7 +1775,7 @@ func GetExtInterface(customer_id, Type string) *ExternalInterface {
 	}
 	for rows.Next() {
 		ei := &ExternalInterface{}
-		if err := rows.Scan(ei.Id, ei.CustomerId, ei.Type, ei.Owner, ei.HttpUrl, &ei.Created, &ei.Updated); err != nil {
+		if err := rows.Scan(&ei.Id, &ei.CustomerId, &ei.Type, &ei.Owner, &ei.HttpUrl, &ei.Created, &ei.Updated); err != nil {
 			logger.Error(err)
 			return nil
 		}
