@@ -67,6 +67,9 @@ func loginAuth(username, password, tenantId string) bool {
 	tenant := getTenantById(tenantId)
 	if tenant != nil {
 		EI := GetExtInterface(tenant.CustomerId, "login")
+		if EI.Owner == 0 {
+			return true
+		}
 		if EI != nil {
 			data := []byte(`{
 			     "userName":` + username + `,
