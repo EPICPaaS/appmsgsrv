@@ -52,9 +52,9 @@ type Tenant struct {
 //  1. 根据指定的 tenantId 查询 customerId
 //  2. 在 external_interface 表中根据 customerId、type = 'login' 等信息查询接口地址
 //  3. 根据接口地址调用验证接口
-func auth(username, password, tenantId string) bool {
+func loginAuth(username, password, tenantId string) bool {
 	// TODO: 旭东
-	return false
+	return true
 }
 
 /*根据userId获取成员信息*/
@@ -242,7 +242,7 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 		uid, deviceId, deviceType, userName, password)
 
 	member := getUserByCode(userName)
-	if nil == member || !auth(userName, password, member.TenantId) {
+	if nil == member || !loginAuth(userName, password, member.TenantId) {
 		baseRes.ErrMsg = "auth failed"
 		baseRes.Ret = ParamErr
 
