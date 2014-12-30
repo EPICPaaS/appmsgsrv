@@ -300,7 +300,7 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	loginOK, member := loginAuth(userName, password)
 	if !loginOK {
 		baseRes.ErrMsg = "auth failed"
-		baseRes.Ret = ParamErr
+		baseRes.Ret = AuthErr
 		return
 	}
 
