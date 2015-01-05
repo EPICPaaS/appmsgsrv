@@ -19,6 +19,7 @@ type Name struct {
 	SessionId        string
 	ActiveSessionIds []string
 	Suffix           string
+	DisplayName      string
 }
 
 // 转换为推送 key.
@@ -170,6 +171,7 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		key := name.toKey()
 
 		msg["toUserName"] = name.Id + name.Suffix
+		msg["toDisplayName"] = name.DisplayName
 		msg["toUserKey"] = key
 
 		msg["activeSessions"] = name.ActiveSessionIds
@@ -608,6 +610,7 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 	myUserName := pushCnt.CallerId + USER_SUFFIX
 
 	/*群消息不需要查出自己的会话，来自群消息（群通知）也不需要查出自己的会话， 自己给自己发的时候也不需查出发送者的会话*/
+	/*是群推，并且自己有多个设备（多台手机）要同步群消息*/
 	isFromQun := strings.HasSuffix(fromUserName, QUN_SUFFIX)
 	if !isQunPush && !isFromQun && (fromUserName != toUserName) {
 		myUserNames, _ := getNames(myUserName, []string{"all"})
@@ -621,6 +624,8 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 	for _, name := range names {
 
 		msg["toUserName"] = name.Id + name.Suffix
+		msg["toDisplayName"] = name.DisplayName
+
 		//发送给群同步给自己
 		if isQunPush && name.Id == pushCnt.CallerId { //不能屏蔽群发送给用户的通知消息
 			// 不用推送给当前设备
@@ -709,6 +714,11 @@ func push(key string, msgBytes []byte, expire int) int {
 func buildNames(userIds []string, sessionArgs []string) (names []*Name) {
 	for _, userId := range userIds {
 		sessions := session.GetSessions(userId, sessionArgs)
+		m := getUserByUid(userId)
+		displayName := ""
+		if nil != m {
+			displayName = m.NickName
+		}
 
 		activeSessionIds := []string{}
 		for _, s := range sessions {
@@ -719,11 +729,11 @@ func buildNames(userIds []string, sessionArgs []string) (names []*Name) {
 
 		// id@user (i.e. for offline msg)发送离线消息使用
 		name := &Name{Id: userId, SessionId: userId /* user_id 作为 session_id */, ActiveSessionIds: activeSessionIds,
-			Suffix: USER_SUFFIX}
+			Suffix: USER_SUFFIX, DisplayName: displayName}
 		names = append(names, name)
 
 		for _, s := range sessions {
-			name := &Name{Id: userId, SessionId: s.Id, ActiveSessionIds: activeSessionIds, Suffix: USER_SUFFIX}
+			name := &Name{Id: userId, SessionId: s.Id, ActiveSessionIds: activeSessionIds, Suffix: USER_SUFFIX, DisplayName: displayName}
 			names = append(names, name)
 		}
 	}
