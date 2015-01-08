@@ -125,8 +125,33 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	}
 	userLen := 0
 	qunLen := 0
+	appLen := 0
+
 	// 会话分发
 	for _, userName := range toUserNames {
+
+		if strings.HasPrefix(userName.(string), APP_SUFFIX) { //推消息给应用,就直接推送
+
+			msg["toUserName"] = userName.(string)
+			appId := userName.(string)[:strings.Index(userName.(string), "@")]
+			application, err = getApplication(appId) //查找
+			if err != nil {
+				continue
+			}
+			msg["toDisplayName"] = application.Name
+			msg["toUserKey"] = userName.(string)
+
+			msgBytes, err := json.Marshal(msg)
+			if err != nil {
+				baseRes.Ret = ParamErr
+				logger.Error(err)
+				return
+			}
+
+			push(userName.(string), msgBytes, expire)
+			appLen++
+			continue
+		}
 
 		ns, _ := getNames(userName.(string), sessionArgs)
 		names = append(names, ns...)
@@ -217,6 +242,12 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 			pushCnt.PushType = QUN_SUFFIX
 			StatisticsPush(pushCnt)
 		}
+		//统计推应用
+		if appLen != 0 {
+			pushCnt.Count = appLen
+			pushCnt.PushType = APP_SUFFIX
+			StatisticsPush(pushCnt)
+		}
 	}()
 
 	return
@@ -275,6 +306,12 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	toUserID := toUserName[:strings.Index(toUserName, "@")]
 	/*deviceID 用于屏蔽当前设备和过滤当前客户端离线消息*/
 	msg["deviceID"] = baseReq["deviceID"].(string)
+	// 消息过期时间（单位：秒）
+	exp := msg["expire"]
+	expire := 600
+	if nil != exp {
+		expire = int(exp.(float64))
+	}
 	sessionArgs := []string{}
 	_, exists := args["sessions"]
 	if !exists {
@@ -322,16 +359,29 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		msg["content"] = fromUserName + "|" + m.Name + "|" + m.NickName + "&&" + msg["content"].(string)
 		msg["fromDisplayName"] = qun.Name
 		msg["fromUserName"] = toUserName
+
+	} else if strings.HasSuffix(toUserName, APP_SUFFIX) {
+
+		pushType = APP_SUFFIX
+		m := getUserByUid(fromUserID)
+		msg["fromDisplayName"] = m.NickName
+		msgBytes, err := json.Marshal(msg)
+
+		if err != nil {
+			logger.Error(err)
+			baseRes.Ret = ParamErr
+			return
+		}
+
+		if push(toUserName, msgBytes, expire) != OK {
+			baseRes.Ret = ParamErr
+		}
+		return
+
 	} else { // TODO: 组织机构（部门/单位）推送消息体处理
 
 	}
 
-	// 消息过期时间（单位：秒）
-	exp := msg["expire"]
-	expire := 600
-	if nil != exp {
-		expire = int(exp.(float64))
-	}
 	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
 	s, _ := session.GetSessionsByUserId(toUserID)
 	logger.Debugf("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
