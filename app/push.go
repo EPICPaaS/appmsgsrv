@@ -130,7 +130,7 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	// 会话分发
 	for _, userName := range toUserNames {
 
-		if strings.HasPrefix(userName.(string), APP_SUFFIX) { //推消息给应用,就直接推送
+		if strings.HasSuffix(userName.(string), APP_SUFFIX) { //推消息给应用,就直接推送
 
 			msg["toUserName"] = userName.(string)
 			appId := userName.(string)[:strings.Index(userName.(string), "@")]
