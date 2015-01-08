@@ -365,18 +365,6 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		pushType = APP_SUFFIX
 		m := getUserByUid(fromUserID)
 		msg["fromDisplayName"] = m.NickName
-		msgBytes, err := json.Marshal(msg)
-
-		if err != nil {
-			logger.Error(err)
-			baseRes.Ret = ParamErr
-			return
-		}
-
-		if push(toUserName, msgBytes, expire) != OK {
-			baseRes.Ret = ParamErr
-		}
-		return
 
 	} else { // TODO: 组织机构（部门/单位）推送消息体处理
 
@@ -653,77 +641,95 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 		go SaveFileLinK(fileLink)
 	}
 
-	isQunPush := strings.HasSuffix(toUserName, QUN_SUFFIX)
-	names, _ := getNames(toUserName, sessionArgs)
-
-	fromUserName := msg["fromUserName"].(string)
-	myUserName := pushCnt.CallerId + USER_SUFFIX
-
-	/*群消息不需要查出自己的会话，来自群消息（群通知）也不需要查出自己的会话， 自己给自己发的时候也不需查出发送者的会话*/
-	/*是群推，并且自己有多个设备（多台手机）要同步群消息*/
-	isFromQun := strings.HasSuffix(fromUserName, QUN_SUFFIX)
-	if !isQunPush && !isFromQun && (fromUserName != toUserName) {
-		myUserNames, _ := getNames(myUserName, []string{"all"})
-		names = append(names, myUserNames...)
-	}
-
-	newContent := msg["content"].(string)
-	originalContent := msg["content"].(string)
-	originalContent = newContent[strings.Index(newContent, "&&")+2 : len(newContent)]
-	// 推送
-	for _, name := range names {
-
-		msg["toUserName"] = name.Id + name.Suffix
-		msg["toDisplayName"] = name.DisplayName
-
-		//发送给群同步给自己
-		if isQunPush && name.Id == pushCnt.CallerId { //不能屏蔽群发送给用户的通知消息
-			// 不用推送给当前设备
-			deviceID, ok := msg["deviceID"].(string)
-			if ok && strings.HasSuffix(name.SessionId, deviceID) {
-				continue
-			}
-
-			msg["fromUserName"] = myUserName
-			msg["toUserName"] = toUserName
-			msg["content"] = originalContent
-
-		} else if name.Id == pushCnt.CallerId && !isFromQun { //发送给人,同步给自己
-			// 不用推送给当前设备
-			deviceID, ok := msg["deviceID"].(string)
-			if ok && strings.HasSuffix(name.SessionId, deviceID) {
-				continue
-			}
-			msg["toUserName"] = toUserName
-
-		} else if isQunPush { // 群发时给其他用户，还原msg信息
-			//复制拼接后的content
-			msg["content"] = newContent
-			msg["fromUserName"] = fromUserName
-		}
-
-		key := name.toKey()
-
-		msg["toUserKey"] = key
-		msg["activeSessions"] = name.ActiveSessionIds
+	/*推送逻辑*/
+	pushLen := 0
+	if strings.HasSuffix(toUserName, APP_SUFFIX) { //推应用,不走会话机制
 
 		msgBytes, err := json.Marshal(msg)
 		if err != nil {
 			logger.Error(err)
-
 			return ParamErr
 		}
+		r := push(toUserName, msgBytes, expire)
+		if r != OK {
+			return r
+		}
+		pushLen = 1
 
-		result := push(key, msgBytes, expire)
-		if OK != result {
-			logger.Errorf("Push message failed [%v]", msg)
+	} else {
+		isQunPush := strings.HasSuffix(toUserName, QUN_SUFFIX)
+		names, _ := getNames(toUserName, sessionArgs)
 
-			// 推送分发过程中失败不立即返回，继续下一个推送
+		fromUserName := msg["fromUserName"].(string)
+		myUserName := pushCnt.CallerId + USER_SUFFIX
+
+		/*群消息不需要查出自己的会话，来自群消息（群通知）也不需要查出自己的会话， 自己给自己发的时候也不需查出发送者的会话*/
+		/*是群推，并且自己有多个设备（多台手机）要同步群消息*/
+		isFromQun := strings.HasSuffix(fromUserName, QUN_SUFFIX)
+		if !isQunPush && !isFromQun && (fromUserName != toUserName) {
+			myUserNames, _ := getNames(myUserName, []string{"all"})
+			names = append(names, myUserNames...)
 		}
 
+		newContent := msg["content"].(string)
+		originalContent := msg["content"].(string)
+		originalContent = newContent[strings.Index(newContent, "&&")+2 : len(newContent)]
+		// 推送
+		for _, name := range names {
+
+			msg["toUserName"] = name.Id + name.Suffix
+			msg["toDisplayName"] = name.DisplayName
+
+			//发送给群同步给自己
+			if isQunPush && name.Id == pushCnt.CallerId { //不能屏蔽群发送给用户的通知消息
+				// 不用推送给当前设备
+				deviceID, ok := msg["deviceID"].(string)
+				if ok && strings.HasSuffix(name.SessionId, deviceID) {
+					continue
+				}
+
+				msg["fromUserName"] = myUserName
+				msg["toUserName"] = toUserName
+				msg["content"] = originalContent
+
+			} else if name.Id == pushCnt.CallerId && !isFromQun { //发送给人,同步给自己
+				// 不用推送给当前设备
+				deviceID, ok := msg["deviceID"].(string)
+				if ok && strings.HasSuffix(name.SessionId, deviceID) {
+					continue
+				}
+				msg["toUserName"] = toUserName
+
+			} else if isQunPush { // 群发时给其他用户，还原msg信息
+				//复制拼接后的content
+				msg["content"] = newContent
+				msg["fromUserName"] = fromUserName
+			}
+
+			key := name.toKey()
+
+			msg["toUserKey"] = key
+			msg["activeSessions"] = name.ActiveSessionIds
+
+			msgBytes, err := json.Marshal(msg)
+			if err != nil {
+				logger.Error(err)
+
+				return ParamErr
+			}
+
+			result := push(key, msgBytes, expire)
+			if OK != result {
+				logger.Errorf("Push message failed [%v]", msg)
+
+				// 推送分发过程中失败不立即返回，继续下一个推送
+			}
+
+		}
+		pushLen = len(names)
 	}
 	//统计消息推送记录
-	pushCnt.Count = len(names)
+	pushCnt.Count = pushLen
 	go StatisticsPush(&pushCnt)
 
 	return OK
