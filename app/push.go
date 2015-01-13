@@ -123,6 +123,7 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		baseRes.Ret = OverQuotaPush
 		return
 	}
+
 	userLen := 0
 	qunLen := 0
 	appLen := 0
@@ -191,8 +192,23 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		go SaveFileLinK(fileLink)
 	}
 
+	shieldMsgs := GetShieldTargetMsg(application.Id, 1)
 	// 推送
 	for _, name := range names {
+
+		//判断该用户是否屏蔽里该消息
+		isShield := false
+		for _, s := range shieldMsgs {
+			if s.SourceId == name.Id {
+				isShield = true
+				break
+			}
+		}
+
+		if isShield {
+			continue
+		}
+
 		key := name.toKey()
 
 		msg["toUserName"] = name.Id + name.Suffix
