@@ -36,6 +36,7 @@ type member struct {
 	Email       string    `json:"email"`
 	Mobile      string    `json:"mobile"`
 	Area        string    `json:"area"`
+	Description string    `json:"description"`
 }
 type Tenant struct {
 	Id         string    `json:"id"`

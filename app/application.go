@@ -3,7 +3,7 @@ package app
 import (
 	//"database/sql"
 	"encoding/json"
-	"github.com/EPICPaaS/yixinappsrv/db"
+	"github.com/EPICPaaS/appmsgsrv/db"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -135,7 +135,7 @@ func getApplicationByToken(token string) (*application, error) {
 	application := application{}
 
 	if err := row.Scan(&application.Id, &application.Name, &application.Token, &application.Type, &application.Status,
-		&application.Sort, &application.Level, &application.Avatar, &application.TenantId, &application.Created, &application.Updated, &application.PYInitial, &application.PYQuanPin); err != nil {
+		&application.Sort, &application.Level, &application.Avatar, &application.TenantId, &application.Created, &application.Updated, &application.PYInitial, &application.PYQuanPin, &application.Description); err != nil {
 		logger.Error(err)
 
 		return nil, err
