@@ -3,7 +3,7 @@ package app
 import (
 	//"database/sql"
 	"encoding/json"
-	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/EPICPaaS/yixinappsrv/db"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -14,7 +14,7 @@ const (
 	// 根据 id 查询应用记录.
 	SelectApplicationById = "SELECT  * FROM `application` WHERE `id` = ?"
 	// 查询应用记录.
-	SelectAllApplication = "SELECT `id`, `name`, `name`,`status`, `sort`,`avatar`, `tenant_id`, `name_py`, `name_quanpin` FROM `application`"
+	SelectAllApplication = "SELECT `id`, `name`, `name`,`status`, `sort`,`avatar`, `tenant_id`, `name_py`, `name_quanpin` ,`description` FROM `application`"
 	// 根据 token 获取应用记录.
 	SelectApplicationByToken = "SELECT * FROM `application` WHERE `token` = ?"
 	//根据应用ID查询应用操作项列表
@@ -25,19 +25,20 @@ const (
 
 // 应用结构.
 type application struct {
-	Id        string    `json:"id"`
-	Name      string    `json:"name"`
-	Token     string    `json:"token"`
-	Type      string    `json:"type"`
-	Status    int       `json:"status"`
-	Sort      int       `json:"sort"`
-	Level     int       `json:"level"`
-	Avatar    string    `json:"avatar"`
-	TenantId  string    `json:tenantId`
-	Created   time.Time `json:"created"`
-	Updated   time.Time `json:"updated"`
-	PYInitial string    `json:"pYInitial"`
-	PYQuanPin string    `json:"pYQuanPin"`
+	Id          string    `json:"id"`
+	Name        string    `json:"name"`
+	Token       string    `json:"token"`
+	Type        string    `json:"type"`
+	Status      int       `json:"status"`
+	Sort        int       `json:"sort"`
+	Level       int       `json:"level"`
+	Avatar      string    `json:"avatar"`
+	TenantId    string    `json:tenantId`
+	Created     time.Time `json:"created"`
+	Updated     time.Time `json:"updated"`
+	PYInitial   string    `json:"pYInitial"`
+	PYQuanPin   string    `json:"pYQuanPin"`
+	Description string    `json:"description"`
 }
 
 // 应用操作项
@@ -59,7 +60,7 @@ func getApplication(appId string) (*application, error) {
 	application := application{}
 
 	if err := row.Scan(&application.Id, &application.Name, &application.Token, &application.Type, &application.Status,
-		&application.Sort, &application.Level, &application.Avatar, &application.TenantId, &application.Created, &application.Updated, &application.PYInitial, &application.PYQuanPin); err != nil {
+		&application.Sort, &application.Level, &application.Avatar, &application.TenantId, &application.Created, &application.Updated, &application.PYInitial, &application.PYQuanPin, &application.Description); err != nil {
 		logger.Error(err)
 
 		return nil, err
@@ -77,7 +78,7 @@ func getAllApplication() ([]*member, error) {
 	for rows.Next() {
 		rec := member{}
 
-		if err := rows.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Sort, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin); err != nil {
+		if err := rows.Scan(&rec.Uid, &rec.Name, &rec.NickName, &rec.Status, &rec.Sort, &rec.Avatar, &rec.TenantId, &rec.PYInitial, &rec.PYQuanPin, &rec.Description); err != nil {
 			logger.Error(err)
 
 			return nil, err
