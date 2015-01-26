@@ -68,6 +68,7 @@ type Config struct {
 	RedisKetamaBase      int               `goconf:"redis:ketama.base"`
 	TokenExpire          int               `goconf:"token:expire"`
 	ApnsType             string            `goconf:"apns:type"`
+	WeedfsAddr           string            `goconf:"weedfs:address:"`
 }
 
 // InitConfig init configuration file.

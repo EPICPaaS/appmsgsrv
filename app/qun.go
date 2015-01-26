@@ -802,8 +802,11 @@ func getUsersInQun(qunId string) ([]member, error) {
 			return nil, err
 		}
 
+		if len(rec.Avatar) > 0 {
+			rec.Avatar = strings.Replace(rec.Avatar, ",", "/", 1)
+			rec.Avatar = "http://" + Conf.WeedfsAddr + "/" + rec.Avatar
+		}
 		rec.UserName = rec.Uid + USER_SUFFIX
-
 		ret = append(ret, rec)
 	}
 
