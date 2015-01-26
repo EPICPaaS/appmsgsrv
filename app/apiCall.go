@@ -62,7 +62,7 @@ type Quota struct {
 //记录api调用次数
 func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 
-	baseRes := baseResponse{AuthErr, "request is not available"}
+	baseRes := baseResponse{LoginErr, "request is not available"}
 	res := map[string]interface{}{"baseResponse": &baseRes}
 	resBody := "request is not available"
 
