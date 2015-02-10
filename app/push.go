@@ -693,9 +693,6 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 		// 推送
 		for _, name := range names {
 
-			msg["toUserName"] = name.Id + name.Suffix
-			msg["toDisplayName"] = name.DisplayName
-
 			//发送给群同步给自己
 			if isQunPush && name.Id == pushCnt.CallerId { //不能屏蔽群发送给用户的通知消息
 				// 不用推送给当前设备
@@ -715,11 +712,14 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 					continue
 				}
 				msg["toUserName"] = toUserName
+				msg["toDisplayName"] = name.DisplayName
 
 			} else if isQunPush { // 群发时给其他用户，还原msg信息
 				//复制拼接后的content
 				msg["content"] = newContent
 				msg["fromUserName"] = fromUserName
+				msg["toUserName"] = name.Id + name.Suffix
+				msg["toDisplayName"] = name.DisplayName
 			}
 
 			key := name.toKey()
