@@ -39,6 +39,7 @@ type application struct {
 	PYInitial   string    `json:"pYInitial"`
 	PYQuanPin   string    `json:"pYQuanPin"`
 	Description string    `json:"description"`
+	Follow      string    `json:"follow"`
 }
 
 // 应用操作项
@@ -60,7 +61,7 @@ func getApplication(appId string) (*application, error) {
 	application := application{}
 
 	if err := row.Scan(&application.Id, &application.Name, &application.Token, &application.Type, &application.Status,
-		&application.Sort, &application.Level, &application.Avatar, &application.TenantId, &application.Created, &application.Updated, &application.PYInitial, &application.PYQuanPin, &application.Description); err != nil {
+		&application.Sort, &application.Level, &application.Avatar, &application.TenantId, &application.Created, &application.Updated, &application.PYInitial, &application.PYQuanPin, &application.Description, &application.Follow); err != nil {
 		logger.Error(err)
 
 		return nil, err
@@ -135,7 +136,7 @@ func getApplicationByToken(token string) (*application, error) {
 	application := application{}
 
 	if err := row.Scan(&application.Id, &application.Name, &application.Token, &application.Type, &application.Status,
-		&application.Sort, &application.Level, &application.Avatar, &application.TenantId, &application.Created, &application.Updated, &application.PYInitial, &application.PYQuanPin, &application.Description); err != nil {
+		&application.Sort, &application.Level, &application.Avatar, &application.TenantId, &application.Created, &application.Updated, &application.PYInitial, &application.PYQuanPin, &application.Description, &application.Follow); err != nil {
 		logger.Error(err)
 
 		return nil, err
