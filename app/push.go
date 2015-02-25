@@ -234,7 +234,7 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 			logger.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", name.Id, msg, resources, apnsToken)
 			go pushAPNS(msg, resources, apnsToken)
 		}
-
+		logger.Infof("toKey [%v] ", key)
 		result := push(key, msgBytes, expire)
 		if OK != result {
 			baseRes.Ret = result
@@ -666,6 +666,7 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 			logger.Error(err)
 			return ParamErr
 		}
+		logger.Infof("toKey [%v] ", toUserName)
 		r := push(toUserName, msgBytes, expire)
 		if r != OK {
 			return r
@@ -712,6 +713,7 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 					continue
 				}
 				msg["toUserName"] = toUserName
+				msg["toDisplayName"] = name.DisplayName
 
 			} else if isQunPush { // 群发时给其他用户，还原msg信息
 				//复制拼接后的content
@@ -731,7 +733,7 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 
 				return ParamErr
 			}
-
+			logger.Infof("toKey [%v] ", key)
 			result := push(key, msgBytes, expire)
 			if OK != result {
 				logger.Errorf("Push message failed [%v]", msg)
