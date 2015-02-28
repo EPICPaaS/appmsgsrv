@@ -98,7 +98,7 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 
 	// 消息过期时间（单位：秒）
 	exp := args["expire"]
-	expire := 600
+	expire := Conf.MsgExpire
 	if nil != exp {
 		expire = int(exp.(float64))
 	}
@@ -324,7 +324,7 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	msg["deviceID"] = baseReq["deviceID"].(string)
 	// 消息过期时间（单位：秒）
 	exp := msg["expire"]
-	expire := 600
+	expire := Conf.MsgExpire
 	if nil != exp {
 		expire = int(exp.(float64))
 	}
@@ -503,7 +503,7 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 
 	// 消息过期时间（单位：秒）
 	exp := r.FormValue("msg[expire]")
-	expire := 600
+	expire := Conf.MsgExpire
 	if len(exp) > 0 {
 		expire, err = strconv.Atoi(exp)
 		if err != nil {

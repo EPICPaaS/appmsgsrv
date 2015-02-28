@@ -69,6 +69,7 @@ type Config struct {
 	TokenExpire          int               `goconf:"token:expire"`
 	ApnsType             string            `goconf:"apns:type"`
 	WeedfsAddr           string            `goconf:"weedfs:address:"`
+	MsgExpire            int               `goconf:"msg:expire"`
 }
 
 // InitConfig init configuration file.
