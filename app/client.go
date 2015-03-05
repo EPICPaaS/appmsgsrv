@@ -16,7 +16,7 @@ const (
 	SelectLatestClientVerByType = "SELECT * FROM `client_version` WHERE `type` = ? ORDER BY `ver_code` DESC LIMIT 1"
 	//持久话apns_token
 	InsertApnsToken               = "INSERT INTO `apns_token`(`id`,`user_id`,`device_id`,`apns_token`,`created`,`updated`) VALUES(?,?,?,?,?,?)"
-	SelectApnsTokenByUserId       = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? "
+	SelectApnsTokenByUserId       = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? and `apns_token` is not null "
 	SelectApnsTokenByUserIdTokens = "SELECT `id`,`user_id`,`device_id`,`apns_token`,`created`,`updated` FROM `apns_token` WHERE `user_id`=? AND `apns_token`=?"
 	DeleteApnsToken               = "DELETE FROM apns_token where apns_token = ?"
 	DeleteApnsTokenByUid          = "DELETE FROM apns_token where apns_token = ?  and user_id = ? "

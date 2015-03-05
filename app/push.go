@@ -225,15 +225,8 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
-		s, _ := session.GetSessionsByUserId(name.Id)
-		logger.Infof("start apns push , session[%v], UserId[%v]", len(*s), name.Id)
-		if len(*s) == 0 {
-			resources, _ := GetResourceByTenantId(application.TenantId)
-			apnsToken, _ := getApnsToken(name.Id)
-			logger.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", name.Id, msg, resources, apnsToken)
-			go pushAPNS(msg, resources, apnsToken)
-		}
+		go pushWithAPNS(application.TenantId, name.Id, msg)
+
 		logger.Infof("toKey [%v] ", key)
 		result := push(key, msgBytes, expire)
 		if OK != result {
@@ -342,8 +335,10 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	if strings.HasSuffix(toUserName, USER_SUFFIX) { // 如果是推人
 		pushType = USER_SUFFIX
 		m := getUserByUid(fromUserID)
-
 		msg["fromDisplayName"] = m.NickName
+
+		go pushWithAPNS(user.TenantId, toUserID, msg)
+
 	} else if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 如果是推群
 		pushType = QUN_SUFFIX
 		m := getUserByUid(fromUserID)
@@ -376,6 +371,14 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		msg["fromDisplayName"] = qun.Name
 		msg["fromUserName"] = toUserName
 
+		go func() {
+			logger.Infof("qunUserIds[%v]", qunUserIds)
+			for _, usid := range qunUserIds {
+				logger.Infof("usid[%v]", usid)
+				pushWithAPNS(user.TenantId, usid, msg)
+			}
+		}()
+
 	} else if strings.HasSuffix(toUserName, APP_SUFFIX) {
 
 		pushType = APP_SUFFIX
@@ -384,16 +387,6 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 
 	} else { // TODO: 组织机构（部门/单位）推送消息体处理
 
-	}
-
-	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
-	s, _ := session.GetSessionsByUserId(toUserID)
-	logger.Debugf("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
-	if len(*s) == 0 {
-		resources, _ := GetResourceByTenantId(user.TenantId)
-		apnsToken, _ := getApnsToken(toUserID)
-		logger.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
-		go pushAPNS(msg, resources, apnsToken)
 	}
 
 	//准备pushCnt（推送统计）信息
@@ -484,6 +477,9 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 		m := getUserByUid(fromUserID)
 		msg["fromDisplayName"] = m.NickName
 		msg["content"] = r.FormValue("msg[content]")
+
+		go pushWithAPNS(user.TenantId, toUserID, msg)
+
 	} else if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 如果是推群
 		pushType = QUN_SUFFIX
 		m := getUserByUid(fromUserID)
@@ -494,9 +490,36 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		/*校验该用户是否存在于该群*/
+		qunUserIds, err := getUserIdsInQun(toUserID)
+		if nil != err {
+			baseRes.Ret = InternalErr
+			return
+		}
+		isQunUser := false
+		for _, userId := range qunUserIds {
+			if userId == fromUserID {
+				isQunUser = true
+				break
+			}
+		}
+		if !isQunUser {
+			baseRes.Ret = DeleteUser
+			return
+		}
+
 		msg["content"] = fromUserName + "|" + m.Name + "|" + m.NickName + "&&" + r.FormValue("msg[content]")
 		msg["fromDisplayName"] = qun.Name
 		msg["fromUserName"] = toUserName
+
+		go func() {
+			logger.Infof("qunUserIds[%v]", qunUserIds)
+			for _, usid := range qunUserIds {
+				logger.Infof("usid[%v]", usid)
+				pushWithAPNS(user.TenantId, usid, msg)
+			}
+		}()
+
 	} else { // TODO: 组织机构（部门/单位）推送消息体处理
 
 	}
@@ -510,16 +533,6 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 			baseRes.Ret = ParamErr
 			return
 		}
-	}
-
-	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
-	s, _ := session.GetSessionsByUserId(toUserID)
-	logger.Infof("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
-	if len(*s) == 0 {
-		resources, _ := GetResourceByTenantId(user.TenantId)
-		apnsToken, _ := getApnsToken(toUserID)
-		logger.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
-		go pushAPNS(msg, resources, apnsToken)
 	}
 
 	//准备pushCnt（推送统计）信息
@@ -541,6 +554,55 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 
 	res["msgID"] = "msgid"
 	res["clientMsgId"] = r.FormValue("msg[clientMsgId]")
+}
+
+//apns消息封装
+func pushWithAPNS(tenantId, userId string, msg map[string]interface{}) {
+	//1用户为离线状态的设备（多个设备只发离线的）  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
+	apnsToken, _ := getApnsToken(userId)
+	logger.Infof("apnsToken[%v], UserId[%v]", apnsToken, userId)
+	if len(apnsToken) > 0 {
+		s, _ := session.GetSessionsByUserId(userId)
+		// sessionId的规则是   用户ID_设备类型-设备号     9B706D583BF450D82127C7117F821B9F_iOS-b3afa122e562d91b39e330a11ad
+
+		//var device_type = ""
+		var device_id = ""
+		for _, t := range *s {
+			logger.Infof("%v", t.Id)
+			parts := strings.Split(t.Id, "_")
+			if len(parts) > 1 {
+				tmp := strings.Split(parts[1], "-")
+				//device_type = tmp[0]
+				device_id = tmp[1]
+				//排除在线的设备
+				for k, v := range apnsToken {
+					if v.DeviceId == device_id {
+						kk := k + 1
+						apnsToken = append(apnsToken[:k], apnsToken[kk:]...)
+					}
+				}
+
+			}
+		}
+
+		resources, _ := GetResourceByTenantId(tenantId)
+		logger.Infof("toUserId[%v], msg[%v] ,  resources[%v],	 apnsToken[%v]", userId, msg, resources, apnsToken)
+		pushAPNS(msg, resources, apnsToken)
+	}
+	/**
+	s, _ := session.GetSessionsByUserId(userId)
+	logger.Infof("start apns push , session[%v], UserId[%v]", len(*s), userId)
+	if len(*s) == 0 {
+		apnsToken, _ := getApnsToken(userId)
+		logger.Infof("apnsToken[%v], UserId[%v]", apnsToken, userId)
+		if len(apnsToken) > 0 {
+
+			resources, _ := GetResourceByTenantId(tenantId)
+			logger.Infof("toUserId[%v], msg[%v] ,  resources[%v],	 apnsToken[%v]", userId, msg, resources, apnsToken)
+			pushAPNS(msg, resources, apnsToken)
+		}
+	}
+	**/
 }
 
 //推送IOS离线消息
@@ -567,8 +629,16 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 	}
 
 	for _, t := range apnsToken {
+		content := msg["content"].(string)
+		toUserName := msg["toUserName"].(string)
 
-		contentMsg := msg["fromDisplayName"].(string) + ":" + msg["content"].(string)
+		if strings.HasSuffix(toUserName, QUN_SUFFIX) {
+			if strings.Contains(content, "&&") {
+				content = strings.Split(content, "&&")[1]
+			}
+		}
+		contentMsg := msg["fromDisplayName"].(string) + ":" + content
+		logger.Infof(" contentMsg[%v] ", contentMsg)
 
 		if len(contentMsg) > 256 {
 			contentMsg = substr(contentMsg, 0, 250) + "..."
