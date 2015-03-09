@@ -391,16 +391,15 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 
 	//准备pushCnt（推送统计）信息
 	tenant := getTenantById(user.TenantId)
-	if tenant == nil {
-		baseRes.Ret = InternalErr
-		return
-	}
 	pushCnt := PushCnt{
-		CustomerId: tenant.CustomerId,
-		TenantId:   user.TenantId,
-		CallerId:   user.Uid,
-		Type:       deviceType,
-		PushType:   pushType,
+		TenantId: user.TenantId,
+		CallerId: user.Uid,
+		Type:     deviceType,
+		PushType: pushType,
+	}
+	/*不属于任何组织结构的用户就不统计配额*/
+	if tenant != nil {
+		pushCnt.CustomerId = tenant.CustomerId
 	}
 	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
 
@@ -538,18 +537,15 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 	//准备pushCnt（推送统计）信息
 	//获取租户信息
 	tenant := getTenantById(user.TenantId)
-	if tenant == nil {
-		baseRes.Ret = InternalErr
-		return
-	}
 	pushCnt := PushCnt{
-		CustomerId: tenant.CustomerId,
-		TenantId:   user.TenantId,
-		CallerId:   user.Uid,
-		Type:       APPWEB_TYPE,
-		PushType:   pushType,
+		TenantId: user.TenantId,
+		CallerId: user.Uid,
+		Type:     APPWEB_TYPE,
+		PushType: pushType,
 	}
-
+	if tenant != nil {
+		pushCnt.CustomerId = tenant.CustomerId
+	}
 	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
 
 	res["msgID"] = "msgid"
@@ -697,7 +693,9 @@ func substr(s string, pos, length int) string {
 
 // 按会话推送.
 func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int, pushCnt PushCnt) int {
-	if !ValidPush(&pushCnt) {
+
+	//不属于任何组织机构的不统计配额不限制
+	if len(pushCnt.TenantId) != 0 && !ValidPush(&pushCnt) {
 		return OverQuotaPush
 	}
 

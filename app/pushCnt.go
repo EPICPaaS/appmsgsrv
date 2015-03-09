@@ -38,6 +38,10 @@ var lock sync.Mutex
 //统计消息推送
 func StatisticsPush(pushCnt *PushCnt) {
 
+	//不属于任何组织机构的不统计配额
+	if len(pushCnt.TenantId) == 0 {
+		return
+	}
 	if len(pushCnt.Type) > 0 {
 		pushCnt.Type = strings.ToLower(pushCnt.Type)
 	}

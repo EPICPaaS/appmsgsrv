@@ -132,14 +132,15 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 		tenantId = application.TenantId
 		cllerId = application.Id
 	}
-	//获取租户信息
+
+	//TODO 修改当用户不属于任何组织机构时不能推送消息
+	//获取租户信息,
 	tenant := getTenantById(tenantId)
-	if tenant == nil {
-		logger.Errorf("not found tenantId : %s", tenantId)
-		baseRes.Ret = OverQuotaApicall
-		baseRes.ErrMsg = "not found tenant"
+	if tenant == nil { //不属于与何组织机构时,不统计配额信息
+		logger.Infof("not found tenantId : %s", tenantId)
+		baseRes.Ret = OK
 		RetPWriteJSON(w, r, res, &resBody, time.Now())
-		return false
+		return true
 	}
 	apiCall := &ApiCall{
 		CustomerId: tenant.CustomerId,
