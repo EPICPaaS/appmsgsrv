@@ -96,7 +96,7 @@ func (c *CometRPC) Close(key string, ret *int) error {
 }
 
 // PushPrivate expored a method for publishing a user private message for the channel
-func (c *CometRPC) PushPrivate(args *myrpc.CometPushPrivateArgs, ret *int) error {
+func (c *CometRPC) PushPrivate(args *myrpc.CometPushPrivateArgs, ret *int64) error {
 	if args == nil || args.Key == "" || args.Msg == nil {
 		return myrpc.ErrParam
 	}
@@ -112,6 +112,8 @@ func (c *CometRPC) PushPrivate(args *myrpc.CometPushPrivateArgs, ret *int) error
 		logger.Errorf("ch.PushMsg(\"%s\", \"%v\") error(%v)", args.Key, m, err)
 		return err
 	}
+
+	*ret = m.MsgId
 	return nil
 }
 
