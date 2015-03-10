@@ -228,7 +228,9 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		go pushWithAPNS(application.TenantId, name.Id, msg)
 
 		logger.Infof("toKey [%v] ", key)
-		result := push(key, msgBytes, expire)
+
+		//TODO 应用推送消息忽略mid
+		result, _ := push(key, msgBytes, expire)
 		if OK != result {
 			baseRes.Ret = result
 
@@ -401,11 +403,12 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	if tenant != nil {
 		pushCnt.CustomerId = tenant.CustomerId
 	}
-	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
+	var mid int64 = 0
+	baseRes.Ret, mid = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
 
 	res["msgID"] = "msgid"
 	res["clientMsgId"] = msg["clientMsgId"]
-
+	res["mid"] = mid
 	return
 }
 
@@ -546,10 +549,12 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 	if tenant != nil {
 		pushCnt.CustomerId = tenant.CustomerId
 	}
-	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
+	var mid int64 = 0
+	baseRes.Ret, mid = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
 
 	res["msgID"] = "msgid"
 	res["clientMsgId"] = r.FormValue("msg[clientMsgId]")
+	res["mid"] = mid
 }
 
 //apns消息封装
@@ -692,11 +697,11 @@ func substr(s string, pos, length int) string {
 }
 
 // 按会话推送.
-func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int, pushCnt PushCnt) int {
+func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int, pushCnt PushCnt) (int, int64) {
 
 	//不属于任何组织机构的不统计配额不限制
 	if len(pushCnt.TenantId) != 0 && !ValidPush(&pushCnt) {
-		return OverQuotaPush
+		return OverQuotaPush, 0
 	}
 
 	/*记录发送文件信息*/
@@ -704,11 +709,11 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 	if ok && msgType == 2 {
 		objectContent, ok := msg["objectContent"].(map[string]interface{})
 		if !ok {
-			return ParamErr
+			return ParamErr, 0
 		}
 		responseUpload, ok := objectContent["responseUpload"].(map[string]interface{})
 		if !ok {
-			return ParamErr
+			return ParamErr, 0
 		}
 
 		fileId := responseUpload["fid"].(string)
@@ -727,17 +732,20 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 
 	/*推送逻辑*/
 	pushLen := 0
+	var result int = OK
+	var mid int64 = 0
 	if strings.HasSuffix(toUserName, APP_SUFFIX) { //推应用,不走会话机制
 
 		msgBytes, err := json.Marshal(msg)
 		if err != nil {
 			logger.Error(err)
-			return ParamErr
+			return ParamErr, mid
 		}
 		logger.Infof("toKey [%v] ", toUserName)
-		r := push(toUserName, msgBytes, expire)
-		if r != OK {
-			return r
+		//TODO 推应用
+		result, mid = push(toUserName, msgBytes, expire)
+		if result != OK {
+			return result, mid
 		}
 		pushLen = 1
 
@@ -799,10 +807,10 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 			if err != nil {
 				logger.Error(err)
 
-				return ParamErr
+				return ParamErr, mid
 			}
 			logger.Infof("toKey [%v] ", key)
-			result := push(key, msgBytes, expire)
+			result, mid = push(key, msgBytes, expire)
 			if OK != result {
 				logger.Errorf("Push message failed [%v]", msg)
 
@@ -816,38 +824,36 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 	pushCnt.Count = pushLen
 	go StatisticsPush(&pushCnt)
 
-	return OK
+	return result, mid
 }
 
 // 按 key 推送.
-func push(key string, msgBytes []byte, expire int) int {
+func push(key string, msgBytes []byte, expire int) (ret int, mid int64) {
 	node := myrpc.GetComet(key)
 
 	if node == nil || node.CometRPC == nil {
 		logger.Errorf("Get comet node failed [key=%s]", key)
 
-		return NotFoundServer
+		return NotFoundServer, 0
 	}
 
 	client := node.CometRPC.Get()
 	if client == nil {
 		logger.Errorf("Get comet node RPC client failed [key=%s]", key)
 
-		return NotFoundServer
+		return NotFoundServer, 0
 	}
 
 	pushArgs := &myrpc.CometPushPrivateArgs{Msg: json.RawMessage(msgBytes), Expire: uint(expire), Key: key}
 
-	ret := OK
-	if err := client.Call(myrpc.CometServicePushPrivate, pushArgs, &ret); err != nil {
+	if err := client.Call(myrpc.CometServicePushPrivate, pushArgs, &mid); err != nil {
 		logger.Errorf("client.Call(\"%s\", \"%v\", &ret) error(%v)", myrpc.CometServicePushPrivate, string(msgBytes), err)
 
-		return InternalErr
+		return InternalErr, 0
 	}
 
 	logger.Infof("Pushed a message to [key=%s]", key)
-
-	return ret
+	return OK, mid
 }
 
 // 构造推送 name 集.

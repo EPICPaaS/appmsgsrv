@@ -169,7 +169,7 @@ func (*device) CreateQun(w http.ResponseWriter, r *http.Request) {
 		Type:       deviceType,
 		PushType:   QUN_SUFFIX,
 	}
-	baseRes.Ret = pushSessions(msg, creatorId+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt)
+	baseRes.Ret, _ = pushSessions(msg, creatorId+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt)
 
 	return
 }
@@ -311,7 +311,7 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 		// 给修改者发送消息
 		msg["content"] = "您修改了群名为\"" + topic + "\""
 
-		if pushSessions(msg, user.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt) != OK {
+		if r, _ := pushSessions(msg, user.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt); r != OK {
 			baseRes.Ret = OverQuotaPush
 			return
 		}
@@ -326,7 +326,7 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 
-				if pushSessions(msg, mem.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt) != OK {
+				if r, _ := pushSessions(msg, mem.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt); r != OK {
 					baseRes.Ret = OverQuotaPush
 					return
 				}
@@ -447,7 +447,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 			//给自己发送消息
 			if menber.Uid == user.Uid {
 				msg["content"] = contentCreate
-				if pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt) != OK {
+				if r, _ := pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt); r != OK {
 					baseRes.Ret = OverQuotaPush
 					return
 				}
@@ -460,7 +460,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 				if menber.Uid == newMenber.UserId {
 					//您被xxx邀请加入群聊
 					msg["content"] = contentJoin
-					if pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt) != OK {
+					if r, _ := pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt); r != OK {
 						baseRes.Ret = OverQuotaPush
 						return
 					}
@@ -472,7 +472,7 @@ func (*device) AddQunMember(w http.ResponseWriter, r *http.Request) {
 
 			if flag {
 				msg["content"] = contentALL
-				if pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt) != OK {
+				if r, _ := pushSessions(msg, menber.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt); r != OK {
 					baseRes.Ret = OverQuotaPush
 					return
 				}
@@ -598,7 +598,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 			msg["content"] = user.NickName + "退出了群聊"
 			//发送给群成员
 			for _, member := range members {
-				if pushSessions(msg, member.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt) != OK {
+				if r, _ := pushSessions(msg, member.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt); r != OK {
 					baseRes.Ret = OverQuotaPush
 					return
 				}
@@ -617,7 +617,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 				} else {
 					msg["content"] = contentAll
 				}
-				if pushSessions(msg, member.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt) != OK {
+				if r, _ := pushSessions(msg, member.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt); r != OK {
 					baseRes.Ret = OverQuotaPush
 					return
 				}
@@ -630,7 +630,7 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 				} else {
 					msg["content"] = contentRemove
 				}
-				if pushSessions(msg, delQunUser.UserId+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt) != OK {
+				if r, _ := pushSessions(msg, delQunUser.UserId+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt); r != OK {
 					baseRes.Ret = OverQuotaPush
 					return
 				}
