@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"github.com/EPICPaaS/appmsgsrv/db"
-	"github.com/EPICPaaS/go-uuid/uuid"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -13,6 +11,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/EPICPaaS/appmsgsrv/db"
+	"github.com/EPICPaaS/go-uuid/uuid"
+	"github.com/b3log/wide/util"
 )
 
 const (
@@ -427,13 +429,17 @@ func GetQuotas(customerId, tenantId, apiName string) ([]Quota, error) {
 
 //初始化配额配置
 func InitQuotaAll() {
+	defer util.Recover()
+
 	rows, err := db.MySQL.Query(SELECT_QUOTA_ALL)
 	if err != nil {
 		logger.Errorf("load quota err [%s]", err)
+
+		return
 	}
-	if rows != nil {
-		defer rows.Close()
-	}
+
+	defer rows.Close()
+
 	QuotaAll = nil
 	QuotaAll = make(map[string]Quota)
 	key := bytes.Buffer{}
