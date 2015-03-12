@@ -386,6 +386,7 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		pushType = APP_SUFFIX
 		m := getUserByUid(fromUserID)
 		msg["fromDisplayName"] = m.NickName
+		msg["token"] = token
 
 	} else { // TODO: 组织机构（部门/单位）推送消息体处理
 

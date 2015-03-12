@@ -332,7 +332,7 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 
 	uid := baseReq["uid"].(string)
 	deviceId := baseReq["deviceID"].(string)
-	customer_id := baseReq["customer_id"].(string)
+	//customer_id := baseReq["customer_id"].(string)
 	deviceType := baseReq["deviceType"].(string)
 	userName := args["userName"].(string)
 	password := args["password"].(string)
@@ -340,8 +340,16 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	logger.Tracef("uid [%s], deviceId [%s], deviceType [%s], userName [%s], password [%s]",
 		uid, deviceId, deviceType, userName, password)
 
-	loginOK, member := loginAuth(userName, password, customer_id)
-	if !loginOK {
+	//TODO  miicaa暂时不用第三方登录
+	//loginOK, member := loginAuth(userName, password, "1")
+	/*if !loginOK {
+		baseRes.ErrMsg = "auth failed"
+		baseRes.Ret = LoginErr
+		return
+	}*/
+
+	member := getUserByCode(userName)
+	if member == nil {
 		baseRes.ErrMsg = "auth failed"
 		baseRes.Ret = LoginErr
 		return
