@@ -606,10 +606,10 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 		} else { //删除
 			//消息内容
 			newNikNamesStr := strings.Join(newNikNames, "、")
-			l := strconv.Itoa(len(newNikNames))
-			contentAll := user.NickName + "将" + newNikNamesStr + "等" + l + "人移除了群聊"
+
+			contentAll := user.NickName + "将" + newNikNamesStr + "移除了群聊"
 			contentRemove := "您被" + user.NickName + "移出了群聊"
-			contentSelf := "您将" + newNikNamesStr + "等" + l + "人移出了群聊"
+			contentSelf := "您将" + newNikNamesStr + "移出了群聊"
 			//发送给群成员
 			for _, member := range members {
 				if member.Uid == user.Uid {
