@@ -373,11 +373,16 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		msg["fromDisplayName"] = qun.Name
 		msg["fromUserName"] = toUserName
 
+		/*拷贝msg , 提供推送苹果使用*/
+		iphoneMsg := map[string]interface{}{}
+		for k, v := range msg {
+			iphoneMsg[k] = v
+		}
 		go func() {
 			logger.Infof("qunUserIds[%v]", qunUserIds)
 			for _, usid := range qunUserIds {
 				logger.Infof("usid[%v]", usid)
-				pushWithAPNS(user.TenantId, usid, msg)
+				pushWithAPNS(user.TenantId, usid, iphoneMsg)
 			}
 		}()
 
