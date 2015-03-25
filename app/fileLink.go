@@ -118,19 +118,20 @@ func ScanExpireFileLink() {
 	subTime, _ := time.ParseDuration("-" + subTimeStr + "s")
 	/*定时任务删除，过期聊天文件*/
 	for _ = range ScanFileTime.C {
-		n := time.Now().Local()
-		expire := time.Now().Local().Add(subTime)
 
+		n := time.Now().Local()
+
+		expire := time.Now().Local().Add(subTime)
 		rows, err := db.MySQL.Query(SELECT_EXPIRE_FILELINK, expire)
 		if err != nil {
 			logger.Error(err)
-			return
+			continue
 		}
 
-		defer rows.Close()
 		if err := rows.Err(); err != nil {
+			rows.Close()
 			logger.Error(err)
-			return
+			continue
 		}
 
 		var delIds []string
@@ -138,6 +139,7 @@ func ScanExpireFileLink() {
 			var id, fileUrl string
 			if err := rows.Scan(&id, &fileUrl); err != nil {
 				logger.Error(err)
+				rows.Close()
 				continue
 			}
 
@@ -147,12 +149,15 @@ func ScanExpireFileLink() {
 			}
 		}
 
+		//查询完毕后关闭链接
+		rows.Close()
+
 		/*删除文件记录*/
 		if len(delIds) > 0 {
 			tx, err := db.MySQL.Begin()
 			if err != nil {
 				logger.Error(err)
-				return
+				continue
 			}
 			delSql := "delete  from file_link where  id   in ('" + strings.Join(delIds, "','") + "')"
 			_, err = tx.Exec(delSql)
@@ -161,12 +166,12 @@ func ScanExpireFileLink() {
 				if err := tx.Rollback(); err != nil {
 					logger.Error(err)
 				}
-				return
+				continue
 			}
 			//提交操作
 			if err := tx.Commit(); err != nil {
 				logger.Error(err)
-				return
+				continue
 			}
 		}
 		//为了查看扫描性能
