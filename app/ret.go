@@ -18,6 +18,7 @@ const (
 	OverQuotaApicall = 65536
 	OverQuotaPush    = 65537
 	DeleteUser       = 65538
+	LoginErr         = 65539
 )
 
 // 响应基础结构.

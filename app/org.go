@@ -35,7 +35,10 @@ type member struct {
 	TenantId    string    `json:"tenantId"`
 	Email       string    `json:"email"`
 	Mobile      string    `json:"mobile"`
+	Tel         string    `json:"tel"`
 	Area        string    `json:"area"`
+	Description string    `json:"description"`
+	OrgName     string    `json:"orgName"`
 }
 type Tenant struct {
 	Id         string    `json:"id"`
@@ -62,55 +65,94 @@ type ExternalInterface struct {
 //  1. 根据指定的 tenantId 查询 customerId
 //  2. 在 external_interface 表中根据 customerId、type = 'login' 等信息查询接口地址
 //  3. 根据接口地址调用验证接口
-func loginAuth(username, password string) (bool, *member) {
+func loginAuth(username, password, customer_id string) (loginOk bool, user *member) {
 
 	// TODO: 旭东
-	member := getUserByCode(username)
-	if member == nil {
-		return false, nil
-	}
-
-	tenant := getTenantById(member.TenantId)
-	if tenant != nil {
-		EI := GetExtInterface(tenant.CustomerId, "login")
-
-		if EI != nil {
-			if EI.Owner == 0 { //自己的登录
-				if member.Password != password {
-					return false, nil
-				}
+	EI := GetExtInterface(customer_id, "login")
+	if EI != nil {
+		if EI.Owner == 0 { //自己的登录
+			user = getUserByCode(username)
+			if user != nil && user.Password == password {
+				return true, user
 			} else {
-				data := []byte(`{
+				return false, nil
+			}
+		} else {
+			data := []byte(`{
 					     "userName":` + username + `,
 					     "password":` + password +
-					`}`)
-				body := bytes.NewReader(data)
-				res, err := http.Post(EI.HttpUrl, "text/plain;charset=UTF-8", body)
-				if err != nil {
-					logger.Error(err)
-					return false, nil
-				}
+				`}`)
+			body := bytes.NewReader(data)
+			res, err := http.Post(EI.HttpUrl, "text/plain;charset=UTF-8", body)
+			if err != nil {
+				logger.Error(err)
+				return false, nil
+			}
 
-				resBodyByte, err := ioutil.ReadAll(res.Body)
-				defer res.Body.Close()
+			resBodyByte, err := ioutil.ReadAll(res.Body)
+			defer res.Body.Close()
+			if err != nil {
+				logger.Error(err)
+				return false, nil
+			}
+			var respBody map[string]interface{}
+
+			if err := json.Unmarshal(resBodyByte, &respBody); err != nil {
+				logger.Errorf("convert to json failed (%s)", err.Error())
+				return false, nil
+			}
+			success, ok := respBody["success"].(bool)
+			if ok && success {
+				/*获取用户，同步*/
+				userBody, err := json.Marshal(respBody["user"])
 				if err != nil {
-					logger.Error(err)
-					return false, nil
-				}
-				var respBody map[string]interface{}
-				if err := json.Unmarshal(resBodyByte, &respBody); err != nil {
 					logger.Errorf("convert to json failed (%s)", err.Error())
 					return false, nil
 				}
-				r, ok := respBody["data"].(bool)
-				if !ok || !r {
+
+				if err := json.Unmarshal(userBody, &user); err != nil {
+					logger.Errorf("convert to json failed (%s)", err.Error())
 					return false, nil
 				}
-			}
 
+				exists := isUserExists(user.Uid)
+				if exists {
+					//有则更新
+					if !updateMember(user) {
+						return false, nil
+					}
+				} else {
+					//新增
+					if !addUser(user) {
+						return false, nil
+					}
+				}
+
+				/*获取租户信息，同步*/
+				tenantBody, err := json.Marshal(respBody["tenant"])
+				if err != nil {
+					logger.Errorf("convert to json failed (%s)", err.Error())
+					return false, nil
+				}
+				var tenant Tenant
+				if err := json.Unmarshal(tenantBody, &tenant); err != nil {
+					logger.Errorf("convert to json failed (%s)", err.Error())
+					return false, nil
+				}
+				tenant.CustomerId = customer_id
+				if !saveTennat(&tenant) {
+					logger.Error("登录设置tenant失败！")
+					return false, nil
+				}
+
+				//登录成功
+				return true, user
+			} else {
+				return false, nil
+			}
 		}
 	}
-	return true, member
+	return false, nil
 }
 
 /*根据userId获取成员信息*/
@@ -290,6 +332,7 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 
 	uid := baseReq["uid"].(string)
 	deviceId := baseReq["deviceID"].(string)
+	//customer_id := baseReq["customer_id"].(string)
 	deviceType := baseReq["deviceType"].(string)
 	userName := args["userName"].(string)
 	password := args["password"].(string)
@@ -297,10 +340,18 @@ func (*device) Login(w http.ResponseWriter, r *http.Request) {
 	logger.Tracef("uid [%s], deviceId [%s], deviceType [%s], userName [%s], password [%s]",
 		uid, deviceId, deviceType, userName, password)
 
-	loginOK, member := loginAuth(userName, password)
-	if !loginOK {
+	//TODO  miicaa暂时不用第三方登录
+	//loginOK, member := loginAuth(userName, password, "1")
+	/*if !loginOK {
 		baseRes.ErrMsg = "auth failed"
-		baseRes.Ret = ParamErr
+		baseRes.Ret = LoginErr
+		return
+	}*/
+
+	member := getUserByCode(userName)
+	if member == nil {
+		baseRes.ErrMsg = "auth failed"
+		baseRes.Ret = LoginErr
 		return
 	}
 
@@ -763,6 +814,31 @@ func updateUser(member *member, tx *sql.Tx) error {
 	_, err = st.Exec(member.Name, member.NickName, member.Avatar, member.PYInitial, member.PYQuanPin, member.Status, member.rand, member.Password, member.TenantId, time.Now(), member.Email, member.Uid)
 
 	return err
+}
+
+/*修改用户信息*/
+func updateMember(member *member) bool {
+	tx, err := db.MySQL.Begin()
+	if err != nil {
+		logger.Error(err)
+		return false
+	}
+
+	_, err = tx.Exec("update user set name=?, nickname=?, avatar=?, name_py=?, name_quanpin=?, status=?, rand=?, password=?, tenant_id=?, updated=?, email=? where id=?", member.Name, member.NickName, member.Avatar, member.PYInitial, member.PYQuanPin, member.Status, member.rand, member.Password, member.TenantId, time.Now(), member.Email, member.Uid)
+	if err != nil {
+
+		logger.Error(err)
+		if err := tx.Rollback(); err != nil {
+			logger.Error(err)
+		}
+		return false
+	}
+	//提交操作
+	if err := tx.Commit(); err != nil {
+		logger.Error(err)
+		return false
+	}
+	return true
 }
 
 /*添加用户信息*/
@@ -1648,7 +1724,7 @@ func saveTennat(tenant *Tenant) bool {
 
 	//修改
 	if isExistTennat(tenant.Id) {
-		_, err = tx.Exec("update tenant set code = ?,name=?,status=?,customer_id=?,created=?,updated=? where id =?", tenant.Code, tenant.Name, tenant.Status, tenant.CustomerId, tenant.Created, time.Now().Local(), tenant.Id)
+		_, err = tx.Exec("update tenant set code = ?,name=?,status=?,customer_id=?,updated=? where id =?", tenant.Code, tenant.Name, tenant.Status, tenant.CustomerId, time.Now().Local(), tenant.Id)
 	} else {
 		_, err = tx.Exec("insert into tenant(id,code,name,status,customer_id,created,updated) values(?,?,?,?,?,?,?)", tenant.Id, tenant.Code, tenant.Name, tenant.Status, tenant.CustomerId, time.Now().Local(), time.Now().Local())
 

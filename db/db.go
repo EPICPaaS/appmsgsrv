@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -19,15 +18,12 @@ func InitDB() {
 
 	if nil != err {
 		logger.Error(err)
-		os.Exit(-1)
 	}
 
 	// 实际测试一次
 	test := 0
 	if err := MySQL.QueryRow("SELECT 1").Scan(&test); err != nil {
 		logger.Error(err)
-
-		os.Exit(-1)
 	}
 
 	logger.Infof("DB max idle conns [%d]", Conf.AppDBMaxIdleConns)

@@ -241,7 +241,8 @@ func SubscribeTCPHandle(conn net.Conn, args []string) {
 	//链接添加成功 {userI_id}_{device_type}-{real_device_id}@{xx}
 	var sessionId string = ""
 	strs := strings.Split(key, "@")
-	if len(strs) > 0 {
+	isAPP := strings.HasSuffix(key, "@app")
+	if len(strs) > 0 && !isAPP {
 		sessionId = strs[0]
 		tmps := strings.Split(strs[0], "_")
 		if len(tmps) > 1 {
@@ -264,8 +265,9 @@ func SubscribeTCPHandle(conn net.Conn, args []string) {
 	}
 	//开始定时更新会话更新时间
 	var tickerFlagStop = make(chan bool, 1)
-	go session.TickerTaskUpdateSession(sessionId, tickerFlagStop)
-
+	if !isAPP {
+		go session.TickerTaskUpdateSession(sessionId, tickerFlagStop)
+	}
 	// blocking wait client heartbeat
 	reply := []byte{0}
 	// reply := make([]byte, HeartbeatLen)
@@ -302,17 +304,17 @@ func SubscribeTCPHandle(conn net.Conn, args []string) {
 		end = time.Now().UnixNano()
 	}
 
-	//结束定时更新会话定时任务
-	tickerFlagStop <- true
-
 	// remove exists conn
 	if err := c.RemoveConn(key, connElem); err != nil {
 		logger.Errorf("<%s> user_key:\"%s\" remove conn error(%s)", addr, key, err)
 	}
 
-	//移除会话session
-	session.RemoveSessionById(sessionId)
-
+	if !isAPP {
+		//结束定时更新会话定时任务
+		tickerFlagStop <- true
+		//移除会话session
+		session.RemoveSessionById(sessionId)
+	}
 	return
 }
 

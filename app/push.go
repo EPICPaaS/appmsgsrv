@@ -19,6 +19,7 @@ type Name struct {
 	SessionId        string
 	ActiveSessionIds []string
 	Suffix           string
+	DisplayName      string
 }
 
 // 转换为推送 key.
@@ -97,7 +98,7 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 
 	// 消息过期时间（单位：秒）
 	exp := args["expire"]
-	expire := 600
+	expire := Conf.MsgExpire
 	if nil != exp {
 		expire = int(exp.(float64))
 	}
@@ -122,10 +123,36 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		baseRes.Ret = OverQuotaPush
 		return
 	}
+
 	userLen := 0
 	qunLen := 0
+	appLen := 0
+
 	// 会话分发
 	for _, userName := range toUserNames {
+
+		if strings.HasSuffix(userName.(string), APP_SUFFIX) { //推消息给应用,就直接推送
+
+			msg["toUserName"] = userName.(string)
+			appId := userName.(string)[:strings.Index(userName.(string), "@")]
+			application, err = getApplication(appId) //查找
+			if err != nil {
+				continue
+			}
+			msg["toDisplayName"] = application.Name
+			msg["toUserKey"] = userName.(string)
+
+			msgBytes, err := json.Marshal(msg)
+			if err != nil {
+				baseRes.Ret = ParamErr
+				logger.Error(err)
+				return
+			}
+
+			push(userName.(string), msgBytes, expire)
+			appLen++
+			continue
+		}
 
 		ns, _ := getNames(userName.(string), sessionArgs)
 		names = append(names, ns...)
@@ -165,11 +192,27 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		go SaveFileLinK(fileLink)
 	}
 
+	shieldMsgs := GetShieldTargetMsg(application.Id, 1)
 	// 推送
 	for _, name := range names {
+
+		//判断该用户是否屏蔽里该消息
+		isShield := false
+		for _, s := range shieldMsgs {
+			if s.SourceId == name.Id {
+				isShield = true
+				break
+			}
+		}
+
+		if isShield {
+			continue
+		}
+
 		key := name.toKey()
 
 		msg["toUserName"] = name.Id + name.Suffix
+		msg["toDisplayName"] = name.DisplayName
 		msg["toUserKey"] = key
 
 		msg["activeSessions"] = name.ActiveSessionIds
@@ -182,17 +225,12 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
-		s, _ := session.GetSessionsByUserId(name.Id)
-		logger.Infof("start apns push , session[%v], UserId[%v]", len(*s), name.Id)
-		if len(*s) == 0 {
-			resources, _ := GetResourceByTenantId(application.TenantId)
-			apnsToken, _ := getApnsToken(name.Id)
-			logger.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", name.Id, msg, resources, apnsToken)
-			go pushAPNS(msg, resources, apnsToken)
-		}
+		go pushWithAPNS(application.TenantId, name.Id, msg)
 
-		result := push(key, msgBytes, expire)
+		logger.Infof("toKey [%v] ", key)
+
+		//TODO 应用推送消息忽略mid
+		result, _ := push(key, msgBytes, expire)
 		if OK != result {
 			baseRes.Ret = result
 
@@ -213,6 +251,12 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		if qunLen != 0 {
 			pushCnt.Count = qunLen
 			pushCnt.PushType = QUN_SUFFIX
+			StatisticsPush(pushCnt)
+		}
+		//统计推应用
+		if appLen != 0 {
+			pushCnt.Count = appLen
+			pushCnt.PushType = APP_SUFFIX
 			StatisticsPush(pushCnt)
 		}
 	}()
@@ -273,6 +317,12 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	toUserID := toUserName[:strings.Index(toUserName, "@")]
 	/*deviceID 用于屏蔽当前设备和过滤当前客户端离线消息*/
 	msg["deviceID"] = baseReq["deviceID"].(string)
+	// 消息过期时间（单位：秒）
+	exp := msg["expire"]
+	expire := Conf.MsgExpire
+	if nil != exp {
+		expire = int(exp.(float64))
+	}
 	sessionArgs := []string{}
 	_, exists := args["sessions"]
 	if !exists {
@@ -287,8 +337,10 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 	if strings.HasSuffix(toUserName, USER_SUFFIX) { // 如果是推人
 		pushType = USER_SUFFIX
 		m := getUserByUid(fromUserID)
-
 		msg["fromDisplayName"] = m.NickName
+
+		go pushWithAPNS(user.TenantId, toUserID, msg)
+
 	} else if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 如果是推群
 		pushType = QUN_SUFFIX
 		m := getUserByUid(fromUserID)
@@ -320,44 +372,49 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		msg["content"] = fromUserName + "|" + m.Name + "|" + m.NickName + "&&" + msg["content"].(string)
 		msg["fromDisplayName"] = qun.Name
 		msg["fromUserName"] = toUserName
+
+		/*拷贝msg , 提供推送苹果使用*/
+		iphoneMsg := map[string]interface{}{}
+		for k, v := range msg {
+			iphoneMsg[k] = v
+		}
+		go func() {
+			logger.Infof("qunUserIds[%v]", qunUserIds)
+			for _, usid := range qunUserIds {
+				logger.Infof("usid[%v]", usid)
+				pushWithAPNS(user.TenantId, usid, iphoneMsg)
+			}
+		}()
+
+	} else if strings.HasSuffix(toUserName, APP_SUFFIX) {
+
+		pushType = APP_SUFFIX
+		m := getUserByUid(fromUserID)
+		msg["fromDisplayName"] = m.NickName
+		msg["token"] = token
+
 	} else { // TODO: 组织机构（部门/单位）推送消息体处理
 
 	}
 
-	// 消息过期时间（单位：秒）
-	exp := msg["expire"]
-	expire := 600
-	if nil != exp {
-		expire = int(exp.(float64))
-	}
-	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
-	s, _ := session.GetSessionsByUserId(toUserID)
-	logger.Debugf("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
-	if len(*s) == 0 {
-		resources, _ := GetResourceByTenantId(user.TenantId)
-		apnsToken, _ := getApnsToken(toUserID)
-		logger.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
-		go pushAPNS(msg, resources, apnsToken)
-	}
-
 	//准备pushCnt（推送统计）信息
 	tenant := getTenantById(user.TenantId)
-	if tenant == nil {
-		baseRes.Ret = InternalErr
-		return
-	}
 	pushCnt := PushCnt{
-		CustomerId: tenant.CustomerId,
-		TenantId:   user.TenantId,
-		CallerId:   user.Uid,
-		Type:       deviceType,
-		PushType:   pushType,
+		TenantId: user.TenantId,
+		CallerId: user.Uid,
+		Type:     deviceType,
+		PushType: pushType,
 	}
-	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
+	/*不属于任何组织结构的用户就不统计配额*/
+	if tenant != nil {
+		pushCnt.CustomerId = tenant.CustomerId
+	}
+	var mid int64 = 0
+	baseRes.Ret, mid = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
 
 	res["msgID"] = "msgid"
 	res["clientMsgId"] = msg["clientMsgId"]
-
+	res["mid"] = mid
 	return
 }
 
@@ -428,6 +485,9 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 		m := getUserByUid(fromUserID)
 		msg["fromDisplayName"] = m.NickName
 		msg["content"] = r.FormValue("msg[content]")
+
+		go pushWithAPNS(user.TenantId, toUserID, msg)
+
 	} else if strings.HasSuffix(toUserName, QUN_SUFFIX) { // 如果是推群
 		pushType = QUN_SUFFIX
 		m := getUserByUid(fromUserID)
@@ -438,16 +498,43 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		/*校验该用户是否存在于该群*/
+		qunUserIds, err := getUserIdsInQun(toUserID)
+		if nil != err {
+			baseRes.Ret = InternalErr
+			return
+		}
+		isQunUser := false
+		for _, userId := range qunUserIds {
+			if userId == fromUserID {
+				isQunUser = true
+				break
+			}
+		}
+		if !isQunUser {
+			baseRes.Ret = DeleteUser
+			return
+		}
+
 		msg["content"] = fromUserName + "|" + m.Name + "|" + m.NickName + "&&" + r.FormValue("msg[content]")
 		msg["fromDisplayName"] = qun.Name
 		msg["fromUserName"] = toUserName
+
+		go func() {
+			logger.Infof("qunUserIds[%v]", qunUserIds)
+			for _, usid := range qunUserIds {
+				logger.Infof("usid[%v]", usid)
+				pushWithAPNS(user.TenantId, usid, msg)
+			}
+		}()
+
 	} else { // TODO: 组织机构（部门/单位）推送消息体处理
 
 	}
 
 	// 消息过期时间（单位：秒）
 	exp := r.FormValue("msg[expire]")
-	expire := 600
+	expire := Conf.MsgExpire
 	if len(exp) > 0 {
 		expire, err = strconv.Atoi(exp)
 		if err != nil {
@@ -456,35 +543,73 @@ func (*appWeb) WebPush(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//1用户为离线状态  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
-	s, _ := session.GetSessionsByUserId(toUserID)
-	logger.Infof("start apns push , session[%v], UserId[%v]", len(*s), toUserID)
-	if len(*s) == 0 {
-		resources, _ := GetResourceByTenantId(user.TenantId)
-		apnsToken, _ := getApnsToken(toUserID)
-		logger.Infof("toUserId[%v],	msg[%v] ,   resources[%v],	 apnsToken[%v]", toUserID, msg, resources, apnsToken)
-		go pushAPNS(msg, resources, apnsToken)
-	}
-
 	//准备pushCnt（推送统计）信息
 	//获取租户信息
 	tenant := getTenantById(user.TenantId)
-	if tenant == nil {
-		baseRes.Ret = InternalErr
-		return
-	}
 	pushCnt := PushCnt{
-		CustomerId: tenant.CustomerId,
-		TenantId:   user.TenantId,
-		CallerId:   user.Uid,
-		Type:       APPWEB_TYPE,
-		PushType:   pushType,
+		TenantId: user.TenantId,
+		CallerId: user.Uid,
+		Type:     APPWEB_TYPE,
+		PushType: pushType,
 	}
-
-	baseRes.Ret = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
+	if tenant != nil {
+		pushCnt.CustomerId = tenant.CustomerId
+	}
+	var mid int64 = 0
+	baseRes.Ret, mid = pushSessions(msg, toUserName, sessionArgs, expire, pushCnt)
 
 	res["msgID"] = "msgid"
 	res["clientMsgId"] = r.FormValue("msg[clientMsgId]")
+	res["mid"] = mid
+}
+
+//apns消息封装
+func pushWithAPNS(tenantId, userId string, msg map[string]interface{}) {
+	//1用户为离线状态的设备（多个设备只发离线的）  2 根据用户ID查询client是否有IOS，有就合并记录到表中等待推送
+	apnsToken, _ := getApnsToken(userId)
+	logger.Infof("apnsToken[%v], UserId[%v]", apnsToken, userId)
+	if len(apnsToken) > 0 {
+		s, _ := session.GetSessionsByUserId(userId)
+		// sessionId的规则是   用户ID_设备类型-设备号     9B706D583BF450D82127C7117F821B9F_iOS-b3afa122e562d91b39e330a11ad
+
+		//var device_type = ""
+		var device_id = ""
+		for _, t := range *s {
+			logger.Infof("%v", t.Id)
+			parts := strings.Split(t.Id, "_")
+			if len(parts) > 1 {
+				tmp := strings.Split(parts[1], "-")
+				//device_type = tmp[0]
+				device_id = tmp[1]
+				//排除在线的设备
+				for k, v := range apnsToken {
+					if v.DeviceId == device_id {
+						kk := k + 1
+						apnsToken = append(apnsToken[:k], apnsToken[kk:]...)
+					}
+				}
+
+			}
+		}
+
+		resources, _ := GetResourceByTenantId(tenantId)
+		logger.Infof("toUserId[%v], msg[%v] ,  resources[%v],	 apnsToken[%v]", userId, msg, resources, apnsToken)
+		pushAPNS(msg, resources, apnsToken)
+	}
+	/**
+	s, _ := session.GetSessionsByUserId(userId)
+	logger.Infof("start apns push , session[%v], UserId[%v]", len(*s), userId)
+	if len(*s) == 0 {
+		apnsToken, _ := getApnsToken(userId)
+		logger.Infof("apnsToken[%v], UserId[%v]", apnsToken, userId)
+		if len(apnsToken) > 0 {
+
+			resources, _ := GetResourceByTenantId(tenantId)
+			logger.Infof("toUserId[%v], msg[%v] ,  resources[%v],	 apnsToken[%v]", userId, msg, resources, apnsToken)
+			pushAPNS(msg, resources, apnsToken)
+		}
+	}
+	**/
 }
 
 //推送IOS离线消息
@@ -511,8 +636,16 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 	}
 
 	for _, t := range apnsToken {
+		content := msg["content"].(string)
+		toUserName := msg["toUserName"].(string)
 
-		contentMsg := msg["fromDisplayName"].(string) + ":" + msg["content"].(string)
+		if strings.HasSuffix(toUserName, QUN_SUFFIX) {
+			if strings.Contains(content, "&&") {
+				content = strings.Split(content, "&&")[1]
+			}
+		}
+		contentMsg := msg["fromDisplayName"].(string) + ":" + content
+		logger.Infof(" contentMsg[%v] ", contentMsg)
 
 		if len(contentMsg) > 256 {
 			contentMsg = substr(contentMsg, 0, 250) + "..."
@@ -520,7 +653,7 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 
 		payload := apns.NewPayload()
 		payload.Alert = contentMsg
-		payload.Badge = 0
+		payload.Badge = 1
 		payload.Sound = "bingbong.aiff"
 		payload.Category = "Test!"
 		payload.ContentAvailable = 1
@@ -570,9 +703,11 @@ func substr(s string, pos, length int) string {
 }
 
 // 按会话推送.
-func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int, pushCnt PushCnt) int {
-	if !ValidPush(&pushCnt) {
-		return OverQuotaPush
+func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []string, expire int, pushCnt PushCnt) (int, int64) {
+
+	//不属于任何组织机构的不统计配额不限制
+	if len(pushCnt.TenantId) != 0 && !ValidPush(&pushCnt) {
+		return OverQuotaPush, 0
 	}
 
 	/*记录发送文件信息*/
@@ -580,11 +715,11 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 	if ok && msgType == 2 {
 		objectContent, ok := msg["objectContent"].(map[string]interface{})
 		if !ok {
-			return ParamErr
+			return ParamErr, 0
 		}
 		responseUpload, ok := objectContent["responseUpload"].(map[string]interface{})
 		if !ok {
-			return ParamErr
+			return ParamErr, 0
 		}
 
 		fileId := responseUpload["fid"].(string)
@@ -601,114 +736,141 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 		go SaveFileLinK(fileLink)
 	}
 
-	isQunPush := strings.HasSuffix(toUserName, QUN_SUFFIX)
-	names, _ := getNames(toUserName, sessionArgs)
-
-	fromUserName := msg["fromUserName"].(string)
-	myUserName := pushCnt.CallerId + USER_SUFFIX
-
-	/*群消息不需要查出自己的会话，来自群消息（群通知）也不需要查出自己的会话， 自己给自己发的时候也不需查出发送者的会话*/
-	isFromQun := strings.HasSuffix(fromUserName, QUN_SUFFIX)
-	if !isQunPush && !isFromQun && (fromUserName != toUserName) {
-		myUserNames, _ := getNames(myUserName, []string{"all"})
-		names = append(names, myUserNames...)
-	}
-
-	newContent := msg["content"].(string)
-	originalContent := msg["content"].(string)
-	originalContent = newContent[strings.Index(newContent, "&&")+2 : len(newContent)]
-	// 推送
-	for _, name := range names {
-
-		msg["toUserName"] = name.Id + name.Suffix
-		//发送给群同步给自己
-		if isQunPush && name.Id == pushCnt.CallerId { //不能屏蔽群发送给用户的通知消息
-			// 不用推送给当前设备
-			deviceID, ok := msg["deviceID"].(string)
-			if ok && strings.HasSuffix(name.SessionId, deviceID) {
-				continue
-			}
-
-			msg["fromUserName"] = myUserName
-			msg["toUserName"] = toUserName
-			msg["content"] = originalContent
-
-		} else if name.Id == pushCnt.CallerId && !isFromQun { //发送给人,同步给自己
-			// 不用推送给当前设备
-			deviceID, ok := msg["deviceID"].(string)
-			if ok && strings.HasSuffix(name.SessionId, deviceID) {
-				continue
-			}
-			msg["toUserName"] = toUserName
-
-		} else if isQunPush { // 群发时给其他用户，还原msg信息
-			//复制拼接后的content
-			msg["content"] = newContent
-			msg["fromUserName"] = fromUserName
-		}
-
-		key := name.toKey()
-
-		msg["toUserKey"] = key
-		msg["activeSessions"] = name.ActiveSessionIds
+	/*推送逻辑*/
+	pushLen := 0
+	var result int = OK
+	var mid int64 = 0
+	if strings.HasSuffix(toUserName, APP_SUFFIX) { //推应用,不走会话机制
 
 		msgBytes, err := json.Marshal(msg)
 		if err != nil {
 			logger.Error(err)
+			return ParamErr, mid
+		}
+		logger.Infof("toKey [%v] ", toUserName)
+		//TODO 推应用
+		result, mid = push(toUserName, msgBytes, expire)
+		if result != OK {
+			return result, mid
+		}
+		pushLen = 1
 
-			return ParamErr
+	} else {
+		isQunPush := strings.HasSuffix(toUserName, QUN_SUFFIX)
+		names, _ := getNames(toUserName, sessionArgs)
+
+		fromUserName := msg["fromUserName"].(string)
+		myUserName := pushCnt.CallerId + USER_SUFFIX
+
+		/*群消息不需要查出自己的会话，来自群消息（群通知）也不需要查出自己的会话， 自己给自己发的时候也不需查出发送者的会话*/
+		/*是群推，并且自己有多个设备（多台手机）要同步群消息*/
+		isFromQun := strings.HasSuffix(fromUserName, QUN_SUFFIX)
+		if !isQunPush && !isFromQun && (fromUserName != toUserName) {
+			myUserNames, _ := getNames(myUserName, []string{"all"})
+			names = append(names, myUserNames...)
 		}
 
-		result := push(key, msgBytes, expire)
-		if OK != result {
-			logger.Errorf("Push message failed [%v]", msg)
+		newContent := msg["content"].(string)
+		originalContent := msg["content"].(string)
+		originalContent = newContent[strings.Index(newContent, "&&")+2 : len(newContent)]
+		// 推送
+		for _, name := range names {
+			msg["toUserName"] = name.Id + name.Suffix
+			//发送给群同步给自己
+			if isQunPush && name.Id == pushCnt.CallerId { //不能屏蔽群发送给用户的通知消息
+				// 不用推送给当前设备
+				deviceID, ok := msg["deviceID"].(string)
+				if ok && strings.HasSuffix(name.SessionId, deviceID) {
+					continue
+				}
 
-			// 推送分发过程中失败不立即返回，继续下一个推送
+				msg["fromUserName"] = myUserName
+				msg["toUserName"] = toUserName
+				msg["content"] = originalContent
+
+			} else if name.Id == pushCnt.CallerId && !isFromQun { //发送给人,同步给自己
+				// 不用推送给当前设备
+				deviceID, ok := msg["deviceID"].(string)
+				if ok && strings.HasSuffix(name.SessionId, deviceID) {
+					continue
+				}
+				msg["toUserName"] = toUserName
+				msg["toDisplayName"] = name.DisplayName
+
+			} else if isQunPush { // 群发时给其他用户，还原msg信息
+				//复制拼接后的content
+				msg["content"] = newContent
+				msg["fromUserName"] = fromUserName
+				msg["toDisplayName"] = name.DisplayName
+			}
+
+			key := name.toKey()
+
+			msg["toUserKey"] = key
+			msg["activeSessions"] = name.ActiveSessionIds
+
+			msgBytes, err := json.Marshal(msg)
+			if err != nil {
+				logger.Error(err)
+
+				return ParamErr, mid
+			}
+			logger.Infof("toKey [%v] ", key)
+			result, mid = push(key, msgBytes, expire)
+			if OK != result {
+				logger.Errorf("Push message failed [%v]", msg)
+
+				// 推送分发过程中失败不立即返回，继续下一个推送
+			}
+
 		}
-
+		pushLen = len(names)
 	}
 	//统计消息推送记录
-	pushCnt.Count = len(names)
+	pushCnt.Count = pushLen
 	go StatisticsPush(&pushCnt)
 
-	return OK
+	return result, mid
 }
 
 // 按 key 推送.
-func push(key string, msgBytes []byte, expire int) int {
+func push(key string, msgBytes []byte, expire int) (ret int, mid int64) {
 	node := myrpc.GetComet(key)
 
 	if node == nil || node.CometRPC == nil {
 		logger.Errorf("Get comet node failed [key=%s]", key)
 
-		return NotFoundServer
+		return NotFoundServer, 0
 	}
 
 	client := node.CometRPC.Get()
 	if client == nil {
 		logger.Errorf("Get comet node RPC client failed [key=%s]", key)
 
-		return NotFoundServer
+		return NotFoundServer, 0
 	}
 
 	pushArgs := &myrpc.CometPushPrivateArgs{Msg: json.RawMessage(msgBytes), Expire: uint(expire), Key: key}
 
-	ret := OK
-	if err := client.Call(myrpc.CometServicePushPrivate, pushArgs, &ret); err != nil {
+	if err := client.Call(myrpc.CometServicePushPrivate, pushArgs, &mid); err != nil {
 		logger.Errorf("client.Call(\"%s\", \"%v\", &ret) error(%v)", myrpc.CometServicePushPrivate, string(msgBytes), err)
 
-		return InternalErr
+		return InternalErr, 0
 	}
 
 	logger.Infof("Pushed a message to [key=%s]", key)
-
-	return ret
+	return OK, mid
 }
 
 // 构造推送 name 集.
 func buildNames(userIds []string, sessionArgs []string) (names []*Name) {
 	for _, userId := range userIds {
 		sessions := session.GetSessions(userId, sessionArgs)
+		m := getUserByUid(userId)
+		displayName := ""
+		if nil != m {
+			displayName = m.NickName
+		}
 
 		activeSessionIds := []string{}
 		for _, s := range sessions {
@@ -719,11 +881,11 @@ func buildNames(userIds []string, sessionArgs []string) (names []*Name) {
 
 		// id@user (i.e. for offline msg)发送离线消息使用
 		name := &Name{Id: userId, SessionId: userId /* user_id 作为 session_id */, ActiveSessionIds: activeSessionIds,
-			Suffix: USER_SUFFIX}
+			Suffix: USER_SUFFIX, DisplayName: displayName}
 		names = append(names, name)
 
 		for _, s := range sessions {
-			name := &Name{Id: userId, SessionId: s.Id, ActiveSessionIds: activeSessionIds, Suffix: USER_SUFFIX}
+			name := &Name{Id: userId, SessionId: s.Id, ActiveSessionIds: activeSessionIds, Suffix: USER_SUFFIX, DisplayName: displayName}
 			names = append(names, name)
 		}
 	}
