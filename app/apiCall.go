@@ -100,7 +100,7 @@ func ApiCallStatistics(w http.ResponseWriter, r *http.Request) bool {
 		deviceType = strings.ToLower(deviceType)
 	}
 	/* Token 校验，分为用户校验和应用校验*/
-	if deviceType == DEVICE_TYPE_IOS || deviceType == DEVICE_TYPE_ANDROID { //移动端和网页端
+	if deviceType == DEVICE_TYPE_IOS || deviceType == DEVICE_TYPE_ANDROID || deviceType == DEVICE_TYPE_WIN { //移动端和网页端PC端
 
 		var user *member
 		if args["userName"] != nil { // 登录api接口

@@ -9,4 +9,5 @@ var Device = device{}
 const (
 	DEVICE_TYPE_IOS     = "ios"
 	DEVICE_TYPE_ANDROID = "android"
+	DEVICE_TYPE_WIN     = "win"
 )
