@@ -18,7 +18,7 @@ const (
 	SELECT_EXPIRE_FILELINK = "select  id, file_url from file_link where  updated  < ?"
 )
 
-var ScanFileTime = time.NewTicker(5 * time.Minute)
+var ScanFileTime = time.NewTicker(24 * time.Hour)
 
 type FileLink struct {
 	Id       string
@@ -117,8 +117,8 @@ func ScanExpireFileLink() {
 	subTimeStr := strconv.Itoa(Conf.MsgExpire)
 	subTime, _ := time.ParseDuration("-" + subTimeStr + "s")
 	/*定时任务删除，过期聊天文件*/
-	for t := range ScanFileTime.C {
-
+	for _ = range ScanFileTime.C {
+		n := time.Now().Local()
 		expire := time.Now().Local().Add(subTime)
 
 		rows, err := db.MySQL.Query(SELECT_EXPIRE_FILELINK, expire)
@@ -169,7 +169,8 @@ func ScanExpireFileLink() {
 				return
 			}
 		}
-		logger.Infof("%v scan file succeed", t)
+		//为了查看扫描性能
+		logger.Infof("scan file succeed ---  %v \n", time.Since(n))
 	}
 	logger.Error("scan expire  file logout ")
 }
