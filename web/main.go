@@ -92,6 +92,9 @@ func main() {
 	app.InitQuotaAll()
 	go app.LoadQuotaAll()
 
+	//启动扫描过期文件
+	go app.ScanExpireFileLink()
+
 	// init signals, block wait signals
 	signalCH := InitSignal()
 	HandleSignal(signalCH)

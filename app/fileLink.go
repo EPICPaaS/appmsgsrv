@@ -6,6 +6,7 @@ import (
 	"github.com/EPICPaaS/go-uuid/uuid"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -14,8 +15,10 @@ const (
 	INSERT_FILELINK        = "insert into file_link (id , sender_id,file_id ,file_name,file_url,size,created,updated)  values(?,?,?,?,?,?,?,?)"
 	UPDATE_FILELINK_TIME   = "update file_link set updated =? where sender_id =? and file_id =?"
 	EXIST_FILELINK         = "select id from file_link where sender_id =? and file_id =?"
-	SELECT_EXPIRE_FILELINK = "select  id, file_id from file_link where  updated  < ?"
+	SELECT_EXPIRE_FILELINK = "select  id, file_url from file_link where  updated  < ?"
 )
+
+var ScanFileTime = time.NewTicker(5 * time.Minute)
 
 type FileLink struct {
 	Id       string
@@ -74,9 +77,16 @@ func ExistFileLink(fileLink *FileLink) bool {
 }
 
 /*删除weedfs服务器文件*/
-func DeleteFile(fileId string) bool {
-	var url = "http://115.29.107.77:5083/delete?fid=" + fileId
-	resp, err := http.Get(url)
+func DeleteFile(fileUrl string) bool {
+
+	var url = "http://" + fileUrl
+	client := &http.Client{}
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		logger.Errorf("delete file fail  [ERROR]-%s", err.Error())
+		return false
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		logger.Errorf("delete file fail  [ERROR]-%s", err.Error())
 		return false
@@ -87,12 +97,12 @@ func DeleteFile(fileId string) bool {
 		logger.Errorf("ioutil.ReadAll() failed (%s)", err.Error())
 		return false
 	}
-	var respBody []map[string]interface{}
+	var respBody map[string]interface{}
 	if err := json.Unmarshal(body, &respBody); err != nil {
 		logger.Errorf("convert to json failed (%s)", err.Error())
 		return false
 	}
-	e, ok := respBody[0]["error"].(string)
+	e, ok := respBody["error"].(string)
 	if ok {
 		logger.Errorf("delete file fail [ERROR]- %s", e)
 		return false
@@ -103,56 +113,63 @@ func DeleteFile(fileId string) bool {
 /*定时扫描过期的文件链接，如果过期侧删除该文件记录和文件服务器中的文件*/
 func ScanExpireFileLink() {
 
-	subTime, _ := time.ParseDuration("-168h")
-	expire := time.Now().Local().Add(subTime)
+	//构造时间差
+	subTimeStr := strconv.Itoa(Conf.MsgExpire)
+	subTime, _ := time.ParseDuration("-" + subTimeStr + "s")
+	/*定时任务删除，过期聊天文件*/
+	for t := range ScanFileTime.C {
 
-	rows, err := db.MySQL.Query(SELECT_EXPIRE_FILELINK, expire)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
+		expire := time.Now().Local().Add(subTime)
 
-	defer rows.Close()
-	if err := rows.Err(); err != nil {
-		logger.Error(err)
-		return
-	}
-
-	var delIds []string
-	for rows.Next() {
-		var id, fileId string
-		if err := rows.Scan(&id, &fileId); err != nil {
-			logger.Error(err)
-			continue
-		}
-
-		//删除文件
-		if DeleteFile(fileId) {
-			delIds = append(delIds, id)
-		}
-	}
-
-	/*删除文件记录*/
-	if len(delIds) > 0 {
-		tx, err := db.MySQL.Begin()
+		rows, err := db.MySQL.Query(SELECT_EXPIRE_FILELINK, expire)
 		if err != nil {
 			logger.Error(err)
 			return
 		}
-		delSql := "delete  from file_link where  id   in ('" + strings.Join(delIds, "','") + "')"
-		_, err = tx.Exec(delSql)
-		if err != nil {
+
+		defer rows.Close()
+		if err := rows.Err(); err != nil {
 			logger.Error(err)
-			if err := tx.Rollback(); err != nil {
+			return
+		}
+
+		var delIds []string
+		for rows.Next() {
+			var id, fileUrl string
+			if err := rows.Scan(&id, &fileUrl); err != nil {
 				logger.Error(err)
+				continue
 			}
-			return
-		}
-		//提交操作
-		if err := tx.Commit(); err != nil {
-			logger.Error(err)
-			return
-		}
-	}
 
+			//删除文件
+			if DeleteFile(fileUrl) {
+				delIds = append(delIds, id)
+			}
+		}
+
+		/*删除文件记录*/
+		if len(delIds) > 0 {
+			tx, err := db.MySQL.Begin()
+			if err != nil {
+				logger.Error(err)
+				return
+			}
+			delSql := "delete  from file_link where  id   in ('" + strings.Join(delIds, "','") + "')"
+			_, err = tx.Exec(delSql)
+			if err != nil {
+				logger.Error(err)
+				if err := tx.Rollback(); err != nil {
+					logger.Error(err)
+				}
+				return
+			}
+			//提交操作
+			if err := tx.Commit(); err != nil {
+				logger.Error(err)
+				return
+			}
+		}
+		logger.Infof("%v scan file succeed", t)
+	}
+	logger.Error("scan expire  file logout ")
 }
