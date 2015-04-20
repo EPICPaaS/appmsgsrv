@@ -89,7 +89,7 @@ func StartHTTP() {
 	appAppServeMux.HandleFunc("/app/client/app/syncQuota", common(app.App.SyncQuota))
 	appAppServeMux.HandleFunc("/app/client/app/setSessionState", common(app.SessionStat))
 	appAppServeMux.HandleFunc("/app/client/app/getSessions", common(app.App.GetSession))
-	appAppServeMux.HandleFunc("/app/client/app/user/push", apiCallStat(app.App.UserPush))
+	appAppServeMux.HandleFunc("/app/client/app/user/push", app.App.UserPush) //应用推消息暂不统计
 	appAppServeMux.HandleFunc("/app/client/app/user/auth", common(app.App.UserAuth))
 	appAppServeMux.HandleFunc("/app/client/app/getOrgUserList", common(app.App.GetOrgUserList))
 	appAppServeMux.HandleFunc("/app/client/app/getOrgList", common(app.App.GetOrgList))
