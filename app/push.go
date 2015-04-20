@@ -106,13 +106,14 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	names := []*Name{}
 
 	//准备pushCnt（推送统计）信息
+	/**
 	tenant := getTenantById(application.TenantId)
 	if tenant == nil {
 		baseRes.Ret = InternalErr
 		return
 	}
 	pushCnt := &PushCnt{
-		CustomerId: tenant.CustomerId,
+		CustomerId: application.CustomerId,
 		TenantId:   application.TenantId,
 		CallerId:   application.Id,
 		Type:       "app",
@@ -123,6 +124,7 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 		baseRes.Ret = OverQuotaPush
 		return
 	}
+	**/
 
 	userLen := 0
 	qunLen := 0
@@ -193,6 +195,9 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shieldMsgs := GetShieldTargetMsg(application.Id, 1)
+
+	items := make([]interface{}, 0)
+
 	// 推送
 	for _, name := range names {
 
@@ -227,40 +232,41 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 
 		go pushWithAPNS(application.TenantId, name.Id, msg)
 
-		logger.Infof("toKey [%v] ", key)
-
-		//TODO 应用推送消息忽略mid
-		result, _ := push(key, msgBytes, expire)
+		//TODO 应用推送消息不能忽略mid，应用中需要使用此ID
+		result, mid := push(key, msgBytes, expire)
 		if OK != result {
 			baseRes.Ret = result
-
 			logger.Errorf("Push message failed [%v]", msg)
-
 			// 推送分发过程中失败不立即返回，继续下一个推送
 		}
+		m := make(map[string]interface{})
+		m["mid"] = mid
+		m["key"] = key
+		items = append(items, m)
 	}
-
-	go func() {
-		//统计推用户
-		if userLen != 0 {
-			pushCnt.Count = userLen
-			pushCnt.PushType = USER_SUFFIX
-			StatisticsPush(pushCnt)
-		}
-		//统计群推
-		if qunLen != 0 {
-			pushCnt.Count = qunLen
-			pushCnt.PushType = QUN_SUFFIX
-			StatisticsPush(pushCnt)
-		}
-		//统计推应用
-		if appLen != 0 {
-			pushCnt.Count = appLen
-			pushCnt.PushType = APP_SUFFIX
-			StatisticsPush(pushCnt)
-		}
-	}()
-
+	/**
+		go func() {
+			//统计推用户
+			if userLen != 0 {
+				pushCnt.Count = userLen
+				pushCnt.PushType = USER_SUFFIX
+				StatisticsPush(pushCnt)
+			}
+			//统计群推
+			if qunLen != 0 {
+				pushCnt.Count = qunLen
+				pushCnt.PushType = QUN_SUFFIX
+				StatisticsPush(pushCnt)
+			}
+			//统计推应用
+			if appLen != 0 {
+				pushCnt.Count = appLen
+				pushCnt.PushType = APP_SUFFIX
+				StatisticsPush(pushCnt)
+			}
+		}()
+	**/
+	res["mlist"] = items
 	return
 }
 
@@ -795,7 +801,7 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 					continue
 				}
 				msg["toUserName"] = toUserName
-				msg["toDisplayName"] = name.DisplayName
+				//msg["toDisplayName"] = name.DisplayName
 
 			} else if isQunPush { // 群发时给其他用户，还原msg信息
 				//复制拼接后的content
