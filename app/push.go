@@ -71,6 +71,8 @@ func (*app) UserPush(w http.ResponseWriter, r *http.Request) {
 	content := args["content"].(string)
 	msg["content"] = content
 	msg["msgType"] = args["msgType"].(float64)
+	statusId := args["statusId"].(string)
+	msg["statusId"] = statusId
 	msg["objectContent"] = args["objectContent"]
 
 	toUserNames := args["toUserNames"].([]interface{})
