@@ -101,35 +101,34 @@ func GetSessions(uid string, args []string) []*Session {
 
 //创建会话session记录
 func CreatSession(session *Session) bool {
-	//存在不做任何处理
+
 	if IsExistSession(session.Id) {
-		return true
-	}
-	tx, err := db.MySQL.Begin()
-	if err != nil {
-		logger.Error(err)
-		return false
-	}
-
-	_, err = tx.Exec(INSERT_SESSION, session.Id, session.Type, session.UserId, session.State, session.Created, session.Updated)
-	if err != nil {
-		if !strings.Contains(err.Error(), "Duplicate entry") {
-			// 非主键重复的异常才打日志
+		UpdateSessionUpdated(session.Id, time.Now().Local())
+	} else {
+		tx, err := db.MySQL.Begin()
+		if err != nil {
 			logger.Error(err)
+			return false
+		}
+		_, err = tx.Exec(INSERT_SESSION, session.Id, session.Type, session.UserId, session.State, session.Created, session.Updated)
+		if err != nil {
+
+			logger.Error(err)
+
+			if err := tx.Rollback(); err != nil {
+				logger.Error(err)
+			}
+
+			return false
 		}
 
-		if err := tx.Rollback(); err != nil {
+		//提交操作
+		if err := tx.Commit(); err != nil {
 			logger.Error(err)
+			return false
 		}
-
-		return false
 	}
 
-	//提交操作
-	if err := tx.Commit(); err != nil {
-		logger.Error(err)
-		return false
-	}
 	return true
 }
 
