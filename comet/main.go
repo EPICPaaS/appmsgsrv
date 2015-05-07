@@ -21,6 +21,7 @@ import (
 	"github.com/EPICPaaS/appmsgsrv/db"
 	"github.com/EPICPaaS/appmsgsrv/perf"
 	"github.com/EPICPaaS/appmsgsrv/process"
+	"github.com/EPICPaaS/appmsgsrv/session"
 	"github.com/EPICPaaS/appmsgsrv/ver"
 	"github.com/b3log/wide/log"
 	"os"
@@ -81,6 +82,7 @@ func main() {
 		logger.Errorf("process.Init(\"%s\", \"%s\", \"%s\") error(%v)", Conf.User, Conf.Dir, Conf.PidFile, err)
 		return
 	}
+	go session.ScanSession()
 	// init signals, block wait signals
 	signalCH := InitSignal()
 	HandleSignal(signalCH)

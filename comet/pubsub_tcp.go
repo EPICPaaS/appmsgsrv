@@ -312,8 +312,13 @@ func SubscribeTCPHandle(conn net.Conn, args []string) {
 	if !isAPP {
 		//结束定时更新会话定时任务
 		tickerFlagStop <- true
-		//移除会话session
-		session.RemoveSessionById(sessionId)
+		//将会话更新为超时会话
+		hours, _ := time.ParseDuration("-25h")
+		pastTime := time.Now().Local()
+		pastTime = pastTime.Add(hours)
+		session.UpdateSessionUpdated(sessionId, pastTime)
+		//移除会话sessione
+		//session.RemoveSessionById(sessionId)
 	}
 	return
 }
