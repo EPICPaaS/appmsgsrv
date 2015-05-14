@@ -808,7 +808,7 @@ func pushSessions(msg map[string]interface{}, toUserName string, sessionArgs []s
 					continue
 				}
 				msg["toUserName"] = toUserName
-				msg["toDisplayName"] = name.DisplayName
+				//msg["toDisplayName"] = name.DisplayName
 
 			} else if isQunPush { // 群发时给其他用户，还原msg信息
 				//复制拼接后的content
