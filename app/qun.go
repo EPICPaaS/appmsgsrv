@@ -297,6 +297,26 @@ func (*device) UpdateQunTopicById(w http.ResponseWriter, r *http.Request) {
 
 	chatRoomName := args["ChatRoomName"].(string)
 	qunId := chatRoomName[:strings.LastIndex(chatRoomName, QUN_SUFFIX)]
+	/*校验用户是否存时群成员*/
+	qunUserIds, err := getUserIdsInQun(qunId)
+	if err != nil {
+		baseRes.Ret = InternalErr
+		return
+	}
+
+	isQunUser := false
+	for _, id := range qunUserIds {
+		if id == user.Uid {
+			isQunUser = true
+			break
+		}
+	}
+	if !isQunUser {
+		baseRes.Ret = InternalErr
+		baseRes.ErrMsg = "你已退出该群，不能修改该群聊名称"
+		return
+	}
+
 	topic := args["topic"].(string)
 	if updateQunTopicById(qunId, topic) {
 		baseRes.ErrMsg = "update Qun Topic success"

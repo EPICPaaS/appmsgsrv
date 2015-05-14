@@ -359,8 +359,11 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		isQunUser := false
-		for _, userId := range qunUserIds {
+		for k, userId := range qunUserIds {
 			if userId == fromUserID {
+				/*存在则移除该id，防止重复给该人推送通知*/
+				temp := qunUserIds[:k]
+				qunUserIds = append(temp, qunUserIds[k+1:]...)
 				isQunUser = true
 				break
 			}
@@ -381,6 +384,7 @@ func (*device) Push(w http.ResponseWriter, r *http.Request) {
 		go func() {
 			logger.Infof("qunUserIds[%v]", qunUserIds)
 			for _, usid := range qunUserIds {
+
 				logger.Infof("usid[%v]", usid)
 				pushWithAPNS(user.TenantId, usid, iphoneMsg)
 			}
