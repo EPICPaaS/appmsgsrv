@@ -687,6 +687,15 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 				} else {
 					logger.Trace("delete  INVALID_TOKEN failure")
 				}
+
+			} else if strings.Contains(resp.Error.Error(), "connection timed out") || strings.Contains(resp.Error.Error(), "connection reset by peer") {
+
+				for i := 0; i < 3; i++ {
+					re := client.Send(pn)
+					if re.Success {
+						break
+					}
+				}
 			}
 
 		} else {

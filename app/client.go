@@ -323,7 +323,7 @@ func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 	//记录apnsToken
 	apnsTokenStr, ok := args["apnsToken"].(string)
 
-	if ok {
+	if ok && len(apnsTokenStr) > 0 {
 		apnsToken := &ApnsToken{
 			UserId: user.Uid,
 			//DeviceId:  deviceId,  IOS获取不到deviceID，用APNSToken代替
@@ -333,8 +333,6 @@ func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 			Updated:   time.Now().Local(),
 		}
 
-		//先删除该设备对应的信息
-		deleteApnsTokenByDeviceId(apnsToken.DeviceId)
 		//再插入该设备对应信息
 		if insertApnsToken(apnsToken) {
 			baseRes.Ret = OK
@@ -345,6 +343,9 @@ func (*device) AddApnsToken(w http.ResponseWriter, r *http.Request) {
 			baseRes.ErrMsg = "Save apns_token faild"
 			return
 		}
+	} else {
+		baseRes.ErrMsg = "apnsTokenStr is null"
+		baseRes.Ret = ParamErr
 	}
 }
 
