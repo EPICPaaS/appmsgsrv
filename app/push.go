@@ -690,9 +690,10 @@ func pushAPNS(msg map[string]interface{}, resources []*Resource, apnsToken []Apn
 
 			} else if strings.Contains(resp.Error.Error(), "connection timed out") || strings.Contains(resp.Error.Error(), "connection reset by peer") {
 
-				for i := 0; i < 3; i++ {
+				for i := 1; i < 4; i++ {
 					re := client.Send(pn)
 					if re.Success {
+						logger.Infof("retry[%d] send apns notify success", i)
 						break
 					}
 				}
