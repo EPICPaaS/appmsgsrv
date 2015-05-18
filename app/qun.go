@@ -623,6 +623,9 @@ func (*device) DelQunMember(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			}
+			//发送给自己来，依赖删除其他设备的会话
+			msg["msgType"]="9"
+			pushSessions(msg, user.Uid+USER_SUFFIX, []string{"all"}, Conf.MsgExpire, pushCnt)
 		} else { //删除
 			//消息内容
 			newNikNamesStr := strings.Join(newNikNames, "、")
